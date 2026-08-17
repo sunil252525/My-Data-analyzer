@@ -128,39 +128,39 @@ if uploaded_file is not None:
     # ================= FORMULAS 3 & 4 (10-15 DAY EXACT SEQUENCE SCANNER) =================
     st.subheader("3️⃣ & 4️⃣ 6-Game 10-15 Day Exact Sequence Matcher")
     
-    seq_days = st.slider("सीक्वेंस मैचिंग हेतु कितने दिन का पैटर्न लें (Days):", 10, 15, 10, key="seq_slider")
+    seq_days = st.slider("सीक्वेंस मैचिंग हेतु कितने दिन का पैटर्न लें (Days):", 5, 15, 10, key="seq_slider")
     
-    # 1. Get recent sequence of chosen game
-    recent_seq = df[g_sel].tail(seq_days).tolist()
-    st.write(f"📌 **`{g_sel}` का पिछला {seq_days} दिनों का करंट सीक्वेंस:** `{recent_seq}`")
+    # Clean current game series (Remove NaN and convert to pure integers)
+    clean_series = df[g_sel].dropna().astype(int).tolist()
+    recent_seq = clean_series[-seq_days:] if len(clean_series) >= seq_days else clean_series
     
-    # 2. Search for exact sequence in history across ALL games
+    st.write(f"📌 **`{g_sel}` का पिछला {len(recent_seq)} दिनों का साफ़ करंट सीक्वेंस:** `{recent_seq}`")
+    
+    # Search for exact sequence in history across ALL games
     exact_matches_next_day = []
     
     for c in available_cols:
-        col_data = df[c].tolist()
-        for i in range(len(col_data) - seq_days - 1):
-            sub_seq = col_data[i : i + seq_days]
+        col_data = df[c].dropna().astype(int).tolist()
+        seq_len = len(recent_seq)
+        for i in range(len(col_data) - seq_len - 1):
+            sub_seq = col_data[i : i + seq_len]
             if sub_seq == recent_seq:
-                next_val = col_data[i + seq_days]
-                if pd.notna(next_val):
-                    exact_matches_next_day.append(int(next_val))
+                next_val = col_data[i + seq_len]
+                exact_matches_next_day.append(int(next_val))
 
     if exact_matches_next_day:
         top_next_nums = pd.Series(exact_matches_next_day).value_counts().head(5).to_dict()
-        
-        # Calculate next haruf & family frequencies
         next_haruf_in = [get_haruf(n)[0] for n in exact_matches_next_day if get_haruf(n)[0] is not None]
         top_h_in = pd.Series(next_haruf_in).value_counts().head(3).to_dict() if next_haruf_in else {}
         
-        st.success(f"🎯 **इतिहास में ठीक यही {seq_days} दिन की लड़ी `{len(exact_matches_next_day)}` बार पाई गई!**")
+        st.success(f"🎯 **इतिहास में ठीक यही {len(recent_seq)} दिन की लड़ी `{len(exact_matches_next_day)}` बार पाई गई!**")
         st.write(pd.DataFrame([{
             "लड़ी मिलने की कुल संख्या": len(exact_matches_next_day),
             "अगले दिन आए टॉप 5 नंबर (Exact Number Match)": str(top_next_nums),
             "अगले दिन के टॉप हर्फ़ (Haruf Match)": str(top_h_in)
         }]))
     else:
-        st.info(f"💡 13 साल के इतिहास में यह हूबहू {seq_days} दिन की लड़ी किसी भी गेम में पहले कभी नहीं बनी। (दिनों की संख्या 10 करके देखें)")
+        st.info(f"💡 13 साल के इतिहास में यह हूबहू {len(recent_seq)} दिन की लड़ी किसी भी गेम में पहले कभी नहीं बनी। (दिनों की संख्या 5 से 8 करके देखें)")
 
     st.markdown("---")
 

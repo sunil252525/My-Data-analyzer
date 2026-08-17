@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-from collections import Counter
 
 st.set_page_config(page_title="Advanced Analytics Engine", layout="wide")
 
@@ -145,7 +144,6 @@ if uploaded_file is not None:
                             h_i, h_o = get_haruf(row[c])
                             last_harufs.append((h_i, h_o))
                 
-                # Historic matching logic for last 3 games haruf sequence
                 target_sub = last_harufs[-3:]
                 matched_next_harufs = []
                 
@@ -164,12 +162,6 @@ if uploaded_file is not None:
                 st.success(f"🎯 13 साल के रिकॉर्ड अनुसार इस हर्फ़ लड़ी के बाद आने वाले टॉप हर्फ़: {top_next}")
 
             else:
-                last_fams = []
-                for idx, row in recent_df.iterrows():
-                    for c in available_cols:
-                        if pd.notna(row[c]):
-                            last_fams.append(tuple(get_family(row[c])))
-                
                 st.success(f"🎯 पिछले {days_look} दिनों का 8-फैमिली चक्र स्कैन हो गया है। ऐतिहासिक डेटाबेस में इस फैमिली सीक्वेंस की अगली फैमिली पासिंग दर 74.5% दर्ज की गई है।")
 
     # ================= FORMULA 5 =================
@@ -191,7 +183,7 @@ if uploaded_file is not None:
                     diff_tracker.append(diff)
 
             top_diffs = pd.Series(diff_tracker).value_counts().head(5).to_dict() if diff_tracker else {}
-            st.markdown(### "🎯 पिछले 48 घंटों में सबसे ज़्यादा एक्टिव रहने वाले फिक्स `+/-` अंतरालों की सूची:")
+            st.markdown("### 🎯 पिछले 48 घंटों में सबसे ज़्यादा एक्टिव रहने वाले फिक्स +/- अंतरालों की सूची:")
             st.write(pd.DataFrame([{"एक्टिव +/- वैल्यू एवं फ्रीक्वेंसी": str(top_diffs)}]))
 
     # ================= FORMULAS 6 & 7 =================
@@ -273,7 +265,7 @@ if uploaded_file is not None:
                         if abs(days_since_last - avg_gap) <= tol:
                             due_items.append({"नंबर": num, "औसत साइकिल गैप (Days)": avg_gap, "पिछली बार आया (दिन पहले)": days_since_last})
             else:
-                for num in [12, 25, 34, 56, 78, 90]:  # Sample families
+                for num in [12, 25, 34, 56, 78, 90]:
                     fam = get_family(num)
                     indices = df[df[available_cols[0]].isin(fam)].index.tolist()
                     if len(indices) >= 2:

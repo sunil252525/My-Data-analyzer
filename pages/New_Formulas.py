@@ -64,20 +64,19 @@ if uploaded_file is not None:
     series_cols = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     available_cols = [c for c in series_cols if c in df.columns]
     
-    # Clean numeric values and drop completely empty rows
     for c in available_cols:
         df[c] = pd.to_numeric(df[c], errors='coerce')
     
     df = df.dropna(subset=available_cols, how='all').reset_index(drop=True)
 
-    st.success("✅ 13 साल का डेटाबेस लोड हो गया! सभी खाली एंट्रीज़ को साफ़ कर दिया गया है।")
+    st.success("✅ 13 साल का डेटाबेस लोड हो गया!")
 
     # ---------------- GLOBAL INPUTS ----------------
     st.markdown("---")
     st.header("🎯 मास्टर इनपुट (ग्लोबल सेटिंग्स)")
     c1, c2 = st.columns(2)
     with c1:
-        g_sel = st.selectbox("गेम चुनें (F1/F2 फ़ॉर्मूला हेतु):", available_cols)
+        g_sel = st.selectbox("मुख्य गेम चुनें (F1/F2 फ़ॉर्मूला हेतु):", available_cols)
     with c2:
         target_num = st.number_input("टारगेट नंबर दर्ज करें:", 0, 99, 58)
 
@@ -126,40 +125,42 @@ if uploaded_file is not None:
 
     st.markdown("---")
 
-    # ================= FORMULAS 3 & 4 =================
-    st.subheader("3️⃣ & 4️⃣ 6-Game 10-15 Day Sequence Matcher")
-    recent_df = df.tail(10)[available_cols]
-    st.write("📌 **हाल ही के वैलि़ड रिकॉर्ड्स Matrix:**")
-    st.dataframe(recent_df.tail(3))
-
-    last_harufs = []
-    for idx, row in recent_df.iterrows():
-        for c in available_cols:
-            if pd.notna(row[c]):
-                h_i, h_o = get_haruf(row[c])
-                if h_i is not None:
-                    last_harufs.append((h_i, h_o))
-
-    if len(last_harufs) >= 3:
-        target_sub = last_harufs[-3:]
-        matched_next_harufs = []
-        
-        for i in range(len(df) - 11):
-            hist_slice = []
-            for c in available_cols:
-                if pd.notna(df.loc[i, c]):
-                    hist_slice.append(get_haruf(df.loc[i, c]))
-            if len(hist_slice) >= 3 and hist_slice[-3:] == target_sub and i + 1 < len(df):
-                next_val = df.loc[i+1, available_cols[0]]
+    # ================= FORMULAS 3 & 4 (10-15 DAY EXACT SEQUENCE SCANNER) =================
+    st.subheader("3️⃣ & 4️⃣ 6-Game 10-15 Day Exact Sequence Matcher")
+    
+    seq_days = st.slider("सीक्वेंस मैचिंग हेतु कितने दिन का पैटर्न लें (Days):", 10, 15, 10, key="seq_slider")
+    
+    # 1. Get recent sequence of chosen game
+    recent_seq = df[g_sel].tail(seq_days).tolist()
+    st.write(f"📌 **`{g_sel}` का पिछला {seq_days} दिनों का करंट सीक्वेंस:** `{recent_seq}`")
+    
+    # 2. Search for exact sequence in history across ALL games
+    exact_matches_next_day = []
+    
+    for c in available_cols:
+        col_data = df[c].tolist()
+        for i in range(len(col_data) - seq_days - 1):
+            sub_seq = col_data[i : i + seq_days]
+            if sub_seq == recent_seq:
+                next_val = col_data[i + seq_days]
                 if pd.notna(next_val):
-                    h_next, _ = get_haruf(next_val)
-                    if h_next is not None:
-                        matched_next_harufs.append(h_next)
+                    exact_matches_next_day.append(int(next_val))
 
-        top_next = pd.Series(matched_next_harufs).value_counts().head(3).to_dict() if matched_next_harufs else "कोई पर्याप्त ऐतिहासिक मैच नहीं मिला"
-        st.info(f"🎯 **हर्फ़ लड़ी रिजल्ट:** इस लड़ी के बाद आने वाले सबसे मजबूत हर्फ़: `{top_next}`")
+    if exact_matches_next_day:
+        top_next_nums = pd.Series(exact_matches_next_day).value_counts().head(5).to_dict()
+        
+        # Calculate next haruf & family frequencies
+        next_haruf_in = [get_haruf(n)[0] for n in exact_matches_next_day if get_haruf(n)[0] is not None]
+        top_h_in = pd.Series(next_haruf_in).value_counts().head(3).to_dict() if next_haruf_in else {}
+        
+        st.success(f"🎯 **इतिहास में ठीक यही {seq_days} दिन की लड़ी `{len(exact_matches_next_day)}` बार पाई गई!**")
+        st.write(pd.DataFrame([{
+            "लड़ी मिलने की कुल संख्या": len(exact_matches_next_day),
+            "अगले दिन आए टॉप 5 नंबर (Exact Number Match)": str(top_next_nums),
+            "अगले दिन के टॉप हर्फ़ (Haruf Match)": str(top_h_in)
+        }]))
     else:
-        st.warning("डेटा अपर्याप्त है।")
+        st.info(f"💡 13 साल के इतिहास में यह हूबहू {seq_days} दिन की लड़ी किसी भी गेम में पहले कभी नहीं बनी। (दिनों की संख्या 10 करके देखें)")
 
     st.markdown("---")
 
@@ -184,14 +185,8 @@ if uploaded_file is not None:
 
     # ================= FORMULAS 6 & 7 =================
     st.subheader("6️⃣ & 7️⃣ Multi-Day & Date Digit Sum Engine")
-    recent_sums = []
-    for idx in range(max(0, len(df)-5), len(df)):
-        for c in available_cols:
-            if pd.notna(df.loc[idx, c]):
-                recent_sums.append(get_digit_sum(df.loc[idx, c]))
-    
-    curr_seq = recent_sums[-3:] if len(recent_sums) >= 3 else []
-    st.write(f"📌 **पिछले खेलों का डिजिट सम क्रम:** `{curr_seq}`")
+    recent_sums = [get_digit_sum(df.loc[len(df)-1, c]) for c in available_cols if pd.notna(df.loc[len(df)-1, c])]
+    st.write(f"📌 **आज का डिजिट सम क्रम:** `{recent_sums}`")
     
     recent_roots = [get_digital_root(df.loc[len(df)-1, c]) for c in available_cols if pd.notna(df.loc[len(df)-1, c])]
     st.info(f"🎯 **डिजिटल रूट (तारीख रिडक्शन):** `{recent_roots}`")
@@ -200,14 +195,8 @@ if uploaded_file is not None:
 
     # ================= FORMULA 8 =================
     st.subheader("8️⃣ Gap Distance Progression Engine")
-    recent_gaps = []
-    for idx in range(max(0, len(df)-5), len(df)):
-        for c in available_cols:
-            if pd.notna(df.loc[idx, c]):
-                recent_gaps.append(get_digit_gap(df.loc[idx, c]))
-    
-    curr_gap_seq = recent_gaps[-4:] if len(recent_gaps) >= 4 else []
-    st.write(f"📌 **वर्तमान डिजिट गैप सीरीज़ (अंतर):** `{curr_gap_seq}`")
+    recent_gaps = [get_digit_gap(df.loc[len(df)-1, c]) for c in available_cols if pd.notna(df.loc[len(df)-1, c])]
+    st.write(f"📌 **वर्तमान डिजिट गैप सीरीज़ (अंतर):** `{recent_gaps}`")
 
     st.markdown("---")
 

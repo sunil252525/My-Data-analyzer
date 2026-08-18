@@ -372,3 +372,67 @@ if uploaded_file is not None:
         st.dataframe(pd.DataFrame(due_items).head(10))
     else:
         st.info("आज के लिए कोई पेंडिंग साइकिल अलर्ट नहीं है।")
+# ================= FORMULA 10 (TARGET NUMBER 2-DAY FOLLOW-UP SCANNER) =================
+    st.markdown("---")
+    st.subheader("🔟 Target Number 2-Day Historical Follow-up & Family Scanner")
+
+    c_target, c_days = st.columns(2)
+    with c_target:
+        scan_target = st.number_input("जिस नंबर का 13 साल का रिकॉर्ड देखना है (उदा. 20):", 0, 99, 20, key="scan_target_num")
+    with c_days:
+        follow_days = st.radio("कितने दिनों के अंदर का रिकॉर्ड देखना है?", [1, 2], index=1, key="follow_days_radio")
+
+    if st.button("🔍 13 साल का इतिहास स्कैन करें", key="run_scan_10"):
+        hist_records = []
+        direct_hits = []
+        family_hits = []
+
+        target_fam = set(get_family(scan_target))
+
+        # 13 साल की पूरी CSV डेटाफ़ाइल को स्कैन करना
+        for col in available_cols:
+            col_series = df[col].dropna().reset_index(drop=True)
+            col_dates = df['Date'] if 'Date' in df.columns else None
+            
+            for idx in range(len(col_series) - follow_days):
+                if int(col_series[idx]) == scan_target:
+                    # अगले 1 या 2 दिन के रिजल्ट निकालना
+                    next_1 = int(col_series[idx + 1])
+                    next_2 = int(col_series[idx + 2]) if (follow_days == 2 and idx + 2 < len(col_series)) else None
+                    
+                    direct_hits.append(next_1)
+                    family_hits.extend(get_family(next_1))
+                    
+                    if next_2 is not None:
+                        direct_hits.append(next_2)
+                        family_hits.extend(get_family(next_2))
+
+                    rec_date = df.loc[idx, 'Date'] if 'Date' in df.columns else f"Row #{idx}"
+                    
+                    hist_records.append({
+                        "तारीख / रो": rec_date,
+                        "गेम": col,
+                        "टारगेट नंबर": f"{scan_target:02d}",
+                        "1 दिन बाद आया": f"{next_1:02d} (फैमिली: {get_family(next_1)})",
+                        "2 दिन बाद आया": f"{next_2:02d} (फैमिली: {get_family(next_2)})" if next_2 is not None else "-"
+                    })
+
+        if hist_records:
+            st.success(f"🎯 **13 साल के रिकॉर्ड में `{scan_target:02d}` कुल `{len(hist_records)}` बार आया है!**")
+            
+            # टॉप आने वाले डायरेक्ट नंबर और फैमिली का हिसाब
+            top_direct = pd.Series(direct_hits).value_counts().head(5).to_dict()
+            top_family = pd.Series(family_hits).value_counts().head(5).to_dict()
+
+            col_res1, col_res2 = st.columns(2)
+            with col_res1:
+                st.markdown(f"🔥 **{follow_days} दिन के अंदर सबसे ज़्यादा बार आए डायरेक्ट नंबर:**")
+                st.write(top_direct)
+            with col_res2:
+                st.markdown(f"💥 **{follow_days} दिन के अंदर सबसे ज़्यादा एक्टिव रहने वाली फैमिली/नंबर:**")
+                st.write(top_family)
+
+            st.markdown("📋 **पूरा ऐतिहासिक रिकॉर्ड:**")
+            st.dataframe(pd.DataFrame(hist_records), use_container_width=True)
+        else:
+            st.warning(f"⚠️ इतिहास में नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")

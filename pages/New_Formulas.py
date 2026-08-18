@@ -69,6 +69,13 @@ def get_digit_gap(num):
     except:
         return 0
 
+def get_signed_diff(val_from, val_to):
+    """प्लस/माइनस अंतर (-50 से +50 की रेंज) निकालता है"""
+    diff = (int(val_to) - int(val_from)) % 100
+    if diff > 50:
+        diff -= 100
+    return diff
+
 # ================= MAIN DASHBOARD =================
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
@@ -192,75 +199,79 @@ if uploaded_file is not None:
 
     st.markdown("---")
 
-    # ================= FORMULA 5 (3-4 DAYS MULTI-GAME CONTINUOUS PATTERN ENGINE) =================
-    st.subheader("5️⃣ Multi-Day & Multi-Game Arithmetic Sequence Predictor")
+    # ================= FORMULA 5 (SMART CROSS-GAME SEQUENCE & DIFFERENCE ENGINE) =================
+    st.subheader("5️⃣ Smart Multi-Day Cross-Game Sequence & Predictor Engine")
     
-    if len(df) >= 4:
-        num_days = st.slider("इतिहास के कितने दिनों का सीक्वेंस देखना है?", 3, 5, 4, key="f5_days_slider")
+    if len(df) >= 3:
+        num_days = st.slider("इतिहास के कितने दिनों का डिफ़्रेंस एनालिसिस देखना है?", 3, 5, 4, key="f5_slider")
         
-        sub_df = df.tail(num_days).reset_index(drop=True)
+        recent_df = df.tail(num_days).reset_index(drop=True)
         
         st.write(f"📌 **पिछले {num_days} दिनों का 6-गेम डेटा बोर्ड:**")
-        st.dataframe(sub_df[['Date'] + available_cols] if 'Date' in sub_df.columns else sub_df[available_cols], use_container_width=True)
+        st.dataframe(recent_df[['Date'] + available_cols] if 'Date' in recent_df.columns else recent_df[available_cols], use_container_width=True)
         
-        detected_patterns = []
+        all_pair_diffs = []
         
-        for source_g in available_cols:
-            for target_g in available_cols:
-                if source_g == target_g:
+        for src_g in available_cols:
+            for tgt_g in available_cols:
+                if src_g == tgt_g:
                     continue
                 
-                diff_history = []
-                for d in range(num_days - 1):
-                    val_src = sub_df.loc[d, source_g]
-                    val_tgt = sub_df.loc[d + 1, target_g]
-                    
-                    if pd.notna(val_src) and pd.notna(val_tgt):
-                        diff = (int(val_tgt) - int(val_src)) % 100
-                        diff_history.append(diff)
+                diffs = []
+                for d in range(len(recent_df) - 1):
+                    v1 = recent_df.loc[d, src_g]
+                    v2 = recent_df.loc[d + 1, tgt_g]
+                    if pd.notna(v1) and pd.notna(v2):
+                        diffs.append(get_signed_diff(v1, v2))
                 
-                if len(diff_history) >= (num_days - 1):
-                    step_changes = [diff_history[i+1] - diff_history[i] for i in range(len(diff_history)-1)]
+                if len(diffs) >= 2:
+                    diff_str = " ➔ ".join([f"{d:+}" for d in diffs])
+                    steps = [diffs[i+1] - diffs[i] for i in range(len(diffs)-1)]
                     
-                    if len(set(step_changes)) == 1:
-                        step = step_changes[0]
-                        next_expected_diff = (diff_history[-1] + step) % 100
-                        
-                        last_src_val = sub_df.loc[num_days - 1, source_g]
-                        if pd.notna(last_src_val):
-                            pred_num = (int(last_src_val) + next_expected_diff) % 100
-                            
-                            detected_patterns.append({
-                                "पैटर्न का प्रकार": "लगातार घटता/बढ़ता क्रम (Step Sequence)",
-                                "गेम कनेक्शन": f"{source_g} ➔ {target_g}",
-                                "पिछले डिफ़्रेंस का क्रम": " ➔ ".join([f"{d:+}" for d in diff_history]),
-                                "आज का संभावित अंतर": f"{next_expected_diff:+}",
-                                "आज आने वाला नंबर": f"{pred_num:02d}",
-                                "फैमिली": str(get_family(pred_num))
-                            })
+                    is_exact_step = len(set(steps)) == 1
+                    is_same_diff = len(set(diffs)) == 1
                     
-                    elif len(set(diff_history)) == 1:
-                        same_diff = diff_history[0]
-                        last_src_val = sub_df.loc[num_days - 1, source_g]
-                        if pd.notna(last_src_val):
-                            pred_num = (int(last_src_val) + same_diff) % 100
-                            
-                            detected_patterns.append({
-                                "पैटर्न का प्रकार": "समान अंतर रिपीट (Fixed Repeat Diff)",
-                                "गेम कनेक्शन": f"{source_g} ➔ {target_g}",
-                                "पिछले डिफ़्रेंस का क्रम": " ➔ ".join([f"{d:+}" for d in diff_history]),
-                                "आज का संभावित अंतर": f"{same_diff:+}",
-                                "आज आने वाला नंबर": f"{pred_num:02d}",
-                                "फैमिली": str(get_family(pred_num))
-                            })
+                    if is_same_diff:
+                        next_diff = diffs[-1]
+                        pattern_type = "🎯 समान अंतर (Same Pattern)"
+                    elif is_exact_step:
+                        next_diff = diffs[-1] + steps[0]
+                        pattern_type = f"📈 लड़ी क्रम (Step {steps[0]:+})"
+                    else:
+                        avg_step = int(np.round(np.mean(steps))) if steps else 0
+                        next_diff = diffs[-1] + avg_step
+                        pattern_type = f"📊 ट्रेंड अंतर (Avg Step {avg_step:+})"
+                    
+                    last_src_val = recent_df.loc[len(recent_df) - 1, src_g]
+                    pred_num_str = "N/A"
+                    pred_fam = "N/A"
+                    
+                    if pd.notna(last_src_val):
+                        pred_num = (int(last_src_val) + next_diff) % 100
+                        pred_num_str = f"{pred_num:02d}"
+                        pred_fam = str(get_family(pred_num))
+                    
+                    all_pair_diffs.append({
+                        "गेम कनेक्शन (From ➔ To)": f"{src_g} ➔ {tgt_g}",
+                        "पिछले दिनों के डिफ़्रेंस": diff_str,
+                        "आज का संभावित डिफ़्रेंस": f"{next_diff:+}",
+                        "पैटर्न का प्रकार": pattern_type,
+                        "आज का संभावित नंबर": pred_num_str,
+                        "फैमिली": pred_fam,
+                        "Priority": 1 if (is_same_diff or is_exact_step) else 2
+                    })
 
-        if detected_patterns:
-            st.success(f"🔥 **कुल `{len(detected_patterns)}` लगातार 3-4 दिनों के क्रॉस-गेम पैटर्न मिले हैं!**")
-            st.table(pd.DataFrame(detected_patterns))
+        diff_matrix_df = pd.DataFrame(all_pair_diffs)
+        
+        if not diff_matrix_df.empty:
+            diff_matrix_df = diff_matrix_df.sort_values(by=["Priority", "गेम कनेक्शन (From ➔ To)"]).drop(columns=["Priority"])
+            
+            st.success("🔥 **सभी 6 गेमों के बीच पिछले दिनों के डिफ़्रेंस और आने वाले नंबरों का पूरा एनालिसिस:**")
+            st.dataframe(diff_matrix_df, use_container_width=True)
         else:
-            st.warning("⚠️ पिछले 3-4 दिनों में कोई लगातार घटता/बढ़ता या सेम डिफ़्रेंस वाला पैटर्न नहीं मिला।")
+            st.warning("⚠️ डिफ़्रेंस निकालने के लिए पर्याप्त डेटा नहीं मिला।")
     else:
-        st.error("डेटाबेस में कम से कम 4 दिनों का डेटा होना आवश्यक है।")
+        st.error("डेटाबेस में कम से कम 3 दिनों का डेटा होना आवश्यक है।")
 
     st.markdown("---")
 

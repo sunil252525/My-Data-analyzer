@@ -149,7 +149,7 @@ if uploaded_file is not None:
     st.subheader("3️⃣ & 4️⃣ Multi-Pattern Sequence Search Engine")
     
     # 1. दिनों का स्लाइडर (3 से 20 दिन)
-    seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 3, 20, 5, key="seq_slider")
+    seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 2, 20, 5, key="seq_slider")
 
     # 2. पैटर्न मैचिंग टाइप चुनने का विकल्प
     match_mode = st.selectbox(

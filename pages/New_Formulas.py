@@ -145,17 +145,29 @@ if uploaded_file is not None:
 
     st.markdown("---")
 
-    # ================= FORMULAS 3 & 4 =================
-    st.subheader("3️⃣ & 4️⃣ 6-Game Haruf & Rashi Pattern Sequence Engine")
+    # ================= FORMULAS 3 & 4 (WITH / WITHOUT RASHI TOGGLE) =================
+    st.subheader("3️⃣ & 4️⃣ 6-Game Haruf & Sequence Pattern Engine")
     
-    seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 3, 30, 5, key="seq_slider")
+    # 1. 20 दिनों का स्लाइडर
+    seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 3, 20, 5, key="seq_slider")
+
+    # 2. बिना राशि (Without Rashi) या राशि के साथ चुनने का विकल्प
+    use_rashi = st.checkbox("राशि (Rashi) को भी शामिल करें?", value=True, help="इसे अनचेक (Uncheck) करने पर केवल बिना राशि (Direct Haruf) वाला पैटर्न ही खोजा जाएगा।")
 
     clean_series = df[g_sel].dropna().astype(int).tolist()
     recent_nums = clean_series[-seq_days:] if len(clean_series) >= seq_days else clean_series
     
     st.info(f"📌 **`{g_sel}` का हालिया {len(recent_nums)} दिनों का पैटर्न:** `{recent_nums}`")
 
-    recent_haruf_sets = [get_haruf_and_rashi_set(n) for n in recent_nums]
+    # पैटर्न सेट तैयार करना (राशि के साथ या बिना राशि)
+    recent_haruf_sets = []
+    for n in recent_nums:
+        if use_rashi:
+            recent_haruf_sets.append(get_haruf_and_rashi_set(n))
+        else:
+            h_i, h_o = get_haruf(n)
+            recent_haruf_sets.append({h_i, h_o} if h_i is not None else set())
+
     matched_records = []
 
     for col in available_cols:
@@ -169,8 +181,14 @@ if uploaded_file is not None:
             
             is_match = True
             for day_idx in range(len(recent_nums)):
-                hist_haruf_set = get_haruf_and_rashi_set(sub_seq[day_idx])
-                if not (recent_haruf_sets[day_idx] & hist_haruf_set):
+                if use_rashi:
+                    hist_set = get_haruf_and_rashi_set(sub_seq[day_idx])
+                else:
+                    h_i, h_o = get_haruf(sub_seq[day_idx])
+                    hist_set = {h_i, h_o} if h_i is not None else set()
+
+                # अगर कोई भी हर्फ़ मैच नहीं हुआ तो मैच फ़ेल
+                if not (recent_haruf_sets[day_idx] & hist_set):
                     is_match = False
                     break
 
@@ -191,13 +209,12 @@ if uploaded_file is not None:
         next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
         top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
         
-        st.success(f"🎯 **इतिहास में यह हरूफ़/राशि लड़ी कुल `{len(matched_records)}` बार पाई गई!**")
+        mode_text = "हर्फ़ + राशि" if use_rashi else "केवल बिना राशि (Direct Haruf)"
+        st.success(f"🎯 **इतिहास में यह लड़ी ({mode_text}) कुल `{len(matched_records)}` बार पाई गई!**")
         st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
         st.dataframe(match_result_df, use_container_width=True)
     else:
-        st.warning("⚠️ इस लड़ी के लिए इतिहास में कोई पैटर्न नहीं मिला।")
-
-    st.markdown("---")
+        st.warning("⚠️ इस लड़ी के लिए इतिहास में कोई पैटर्न नहीं मिला। कृपया स्लाइडर से दिनों की संख्या कम करके देखें या राशि वाला विकल्प ऑन करें।")
 
     # ================= FORMULA 5 (SMART CROSS-GAME SEQUENCE & DIFFERENCE ENGINE) =================
     st.subheader("5️⃣ Smart Multi-Day Cross-Game Sequence & Predictor Engine")

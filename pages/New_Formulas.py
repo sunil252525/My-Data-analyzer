@@ -16,6 +16,7 @@ def get_rashi_digit(d):
 
 def get_family(num):
     try:
+        if pd.isna(num): return []
         num = int(num)
         d1, d2 = num // 10, num % 10
         r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
@@ -32,6 +33,14 @@ def get_haruf(num):
         if pd.isna(num): return None, None
         num = int(num)
         return num // 10, num % 10
+    except:
+        return None, None
+
+def get_haruf_rashi(num):
+    try:
+        h_i, h_o = get_haruf(num)
+        if h_i is None: return None, None
+        return get_rashi_digit(h_i), get_rashi_digit(h_o)
     except:
         return None, None
 
@@ -61,6 +70,10 @@ def get_digit_gap(num):
 # ================= MAIN DASHBOARD =================
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
+    
+    # Preserve original Date column if present
+    date_col = 'Date' if 'Date' in df.columns else None
+    
     series_cols = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     available_cols = [c for c in series_cols if c in df.columns]
     
@@ -69,14 +82,14 @@ if uploaded_file is not None:
     
     df = df.dropna(subset=available_cols, how='all').reset_index(drop=True)
 
-    st.success("✅ 13 साल का डेटाबेस लोड हो गया!")
+    st.success("✅ 13 साल का डेटाबेस सफलतापूर्वक लोड हो गया!")
 
     # ---------------- GLOBAL INPUTS ----------------
     st.markdown("---")
     st.header("🎯 मास्टर इनपुट (ग्लोबल सेटिंग्स)")
     c1, c2 = st.columns(2)
     with c1:
-        g_sel = st.selectbox("मुख्य गेम चुनें (F1/F2 फ़ॉर्मूला हेतु):", available_cols)
+        g_sel = st.selectbox("मुख्य गेम चुनें (करंट पैटर्न हेतु):", available_cols)
     with c2:
         target_num = st.number_input("टारगेट नंबर दर्ज करें:", 0, 99, 58)
 
@@ -125,42 +138,86 @@ if uploaded_file is not None:
 
     st.markdown("---")
 
-    # ================= FORMULAS 3 & 4 (10-15 DAY EXACT SEQUENCE SCANNER) =================
-    st.subheader("3️⃣ & 4️⃣ 6-Game 10-15 Day Exact Sequence Matcher")
+    # ================= FORMULAS 3 & 4 (ADVANCED FLEXIBLE SEQUENCE MATCHER) =================
+    st.subheader("3️⃣ & 4️⃣ 6-Game Flexible Pattern & Rashi/Haruf Sequence Engine")
     
-    seq_days = st.slider("सीक्वेंस मैचिंग हेतु कितने दिन का पैटर्न लें (Days):", 5, 15, 10, key="seq_slider")
-    
-    # Clean current game series (Remove NaN and convert to pure integers)
+    col_s1, col_s2 = st.columns(2)
+    with col_s1:
+        seq_days = st.slider("लड़ी कितने दिनों की लें (Pattern Days):", 3, 10, 5, key="seq_slider")
+    with col_s2:
+        match_mode = st.selectbox(
+            "मैचिंग का प्रकार चुनें (Search Mode):",
+            [
+                "1. Family Sequence (फैमिली लड़ी मैच)",
+                "2. Inside Haruf / Rashi (अंदर हर्फ़ व राशि लड़ी)",
+                "3. Outside Haruf / Rashi (बाहर हर्फ़ व राशि लड़ी)",
+                "4. Exact Numbers (हूबहू नंबर)"
+            ]
+        )
+
     clean_series = df[g_sel].dropna().astype(int).tolist()
-    recent_seq = clean_series[-seq_days:] if len(clean_series) >= seq_days else clean_series
+    recent_nums = clean_series[-seq_days:] if len(clean_series) >= seq_days else clean_series
     
-    st.write(f"📌 **`{g_sel}` का पिछला {len(recent_seq)} दिनों का साफ़ करंट सीक्वेंस:** `{recent_seq}`")
-    
-    # Search for exact sequence in history across ALL games
-    exact_matches_next_day = []
+    st.write(f"📌 **`{g_sel}` का हालिया {len(recent_nums)} दिनों का नंबर पैटर्न:** `{recent_nums}`")
+
+    # Historical Pattern Search Logic
+    match_records = []
     
     for c in available_cols:
-        col_data = df[c].dropna().astype(int).tolist()
-        seq_len = len(recent_seq)
-        for i in range(len(col_data) - seq_len - 1):
-            sub_seq = col_data[i : i + seq_len]
-            if sub_seq == recent_seq:
-                next_val = col_data[i + seq_len]
-                exact_matches_next_day.append(int(next_val))
+        col_vals = df[c].tolist()
+        for i in range(len(col_vals) - len(recent_nums) - 1):
+            sub_seq = col_vals[i : i + len(recent_nums)]
+            if any(pd.isna(v) for v in sub_seq):
+                continue
+            
+            sub_seq = [int(v) for v in sub_seq]
+            is_match = False
+            
+            if "1. Family Sequence" in match_mode:
+                # Check if each number in history falls into the family of current sequence
+                is_match = all(sub_seq[k] in get_family(recent_nums[k]) for k in range(len(recent_nums)))
+            
+            elif "2. Inside Haruf" in match_mode:
+                # Check inside haruf or its rashi
+                is_match = all(
+                    get_haruf(sub_seq[k])[0] in (get_haruf(recent_nums[k])[0], get_haruf_rashi(recent_nums[k])[0])
+                    for k in range(len(recent_nums))
+                )
 
-    if exact_matches_next_day:
-        top_next_nums = pd.Series(exact_matches_next_day).value_counts().head(5).to_dict()
-        next_haruf_in = [get_haruf(n)[0] for n in exact_matches_next_day if get_haruf(n)[0] is not None]
-        top_h_in = pd.Series(next_haruf_in).value_counts().head(3).to_dict() if next_haruf_in else {}
+            elif "3. Outside Haruf" in match_mode:
+                # Check outside haruf or its rashi
+                is_match = all(
+                    get_haruf(sub_seq[k])[1] in (get_haruf(recent_nums[k])[1], get_haruf_rashi(recent_nums[k])[1])
+                    for k in range(len(recent_nums))
+                )
+
+            elif "4. Exact Numbers" in match_mode:
+                is_match = (sub_seq == recent_nums)
+
+            if is_match:
+                next_val = col_vals[i + len(recent_nums)]
+                if pd.notna(next_val):
+                    rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
+                    match_records.append({
+                        "मैच हुई तारीख/इंडेक्स": rec_date,
+                        "गेम नाम": c,
+                        "ऐतिहासिक लड़ी": str(sub_seq),
+                        "अगले दिन आया नंबर (Next Result)": int(next_val),
+                        "अगले नंबर की फैमिली": str(get_family(next_val))
+                    })
+
+    if match_records:
+        match_result_df = pd.DataFrame(match_records)
+        next_nums_list = match_result_df["अगले दिन आया नंबर (Next Result)"].tolist()
+        top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
         
-        st.success(f"🎯 **इतिहास में ठीक यही {len(recent_seq)} दिन की लड़ी `{len(exact_matches_next_day)}` बार पाई गई!**")
-        st.write(pd.DataFrame([{
-            "लड़ी मिलने की कुल संख्या": len(exact_matches_next_day),
-            "अगले दिन आए टॉप 5 नंबर (Exact Number Match)": str(top_next_nums),
-            "अगले दिन के टॉप हर्फ़ (Haruf Match)": str(top_h_in)
-        }]))
+        st.success(f"🎯 **13 साल के इतिहास में कुल `{len(match_records)}` बार यह पैटर्न मिला है!**")
+        st.markdown(f"🔥 **अगले दिन सबसे ज्यादा आए टॉप 5 नंबर:** `{top_5_next}`")
+        
+        st.write("📋 **ऐतिहासिक मैचों का पूरा रिकॉर्ड (तारीख और रिजल्ट सहित):**")
+        st.dataframe(match_result_df, use_container_width=True)
     else:
-        st.info(f"💡 13 साल के इतिहास में यह हूबहू {len(recent_seq)} दिन की लड़ी किसी भी गेम में पहले कभी नहीं बनी। (दिनों की संख्या 5 से 8 करके देखें)")
+        st.info("💡 इस चुने हुए मोड में इतिहास में कोई पैटर्न नहीं मिला। कृपया स्लाइडर से दिनों की संख्या (3 या 4) बदलें या सर्च मोड बदलें।")
 
     st.markdown("---")
 

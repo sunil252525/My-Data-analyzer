@@ -148,7 +148,7 @@ if uploaded_file is not None:
     # ================= FORMULAS 3 & 4 =================
     st.subheader("3️⃣ & 4️⃣ 6-Game Haruf & Rashi Pattern Sequence Engine")
     
-    seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 3, 8, 5, key="seq_slider")
+    seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 3, 30, 5, key="seq_slider")
 
     clean_series = df[g_sel].dropna().astype(int).tolist()
     recent_nums = clean_series[-seq_days:] if len(clean_series) >= seq_days else clean_series

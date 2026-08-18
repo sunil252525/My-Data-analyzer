@@ -145,109 +145,113 @@ if uploaded_file is not None:
 
     st.markdown("---")
 
-    # ================= FORMULAS 3 & 4 (MULTI-PATTERN MATCHING ENGINE) =================
-    st.subheader("3️⃣ & 4️⃣ Multi-Pattern Sequence Search Engine")
+    # ================= FORMULAS 3 & 4 (ALL-IN-ONE OPEN PATTERN SEARCH ENGINE) =================
+    st.subheader("3️⃣ & 4️⃣ All-in-One Sequence Pattern Engine (All Open Results)")
     
-    # 1. दिनों का स्लाइडर (3 से 20 दिन)
+    # 1. दिनों का स्लाइडर (2 से 20 दिन)
     seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 2, 20, 5, key="seq_slider")
-
-    # 2. पैटर्न मैचिंग टाइप चुनने का विकल्प
-    match_mode = st.selectbox(
-        "🎯 किस प्रकार का पैटर्न मैच करना चाहते हैं?",
-        [
-            "1. हर्फ़ + राशि (Haruf & Rashi)",
-            "2. केवल हर्फ़ (Direct Haruf - Without Rashi)",
-            "3. सेम टू सेम (Exact Number Match)",
-            "4. अलट-पलट / पलटी (Direct & Flip/Reverse)",
-            "5. फैमिली (Full Family Match)"
-        ],
-        key="match_mode_select"
-    )
 
     clean_series = df[g_sel].dropna().astype(int).tolist()
     recent_nums = clean_series[-seq_days:] if len(clean_series) >= seq_days else clean_series
     
     st.info(f"📌 **`{g_sel}` का हालिया {len(recent_nums)} दिनों का पैटर्न:** `{recent_nums}`")
 
-    # पैटर्न सेट/लिस्ट तैयार करना
-    recent_patterns = []
-    for n in recent_nums:
-        if "1." in match_mode:
-            recent_patterns.append(get_haruf_and_rashi_set(n))
-        elif "2." in match_mode:
-            h_i, h_o = get_haruf(n)
-            recent_patterns.append({h_i, h_o} if h_i is not None else set())
-        elif "3." in match_mode:
-            recent_patterns.append(int(n))
-        elif "4." in match_mode:
-            rev_n = int(f"{int(n):02d}"[::-1])
-            recent_patterns.append({int(n), rev_n})
-        elif "5." in match_mode:
-            recent_patterns.append(set(get_family(n)))
+    # पाँचों पैटर्न मोड का कॉन्फ़िगरेशन
+    modes = [
+        {"id": "1", "name": "1️⃣ हर्फ़ + राशि (Haruf & Rashi)"},
+        {"id": "2", "name": "2️⃣ केवल हर्फ़ (Direct Haruf - Without Rashi)"},
+        {"id": "3", "name": "3️⃣ सेम टू सेम (Exact Number Match)"},
+        {"id": "4", "name": "4️⃣ अलट-पलट / पलटी (Direct & Flip/Reverse)"},
+        {"id": "5", "name": "5️⃣ फैमिली (Full Family Match)"}
+    ]
 
-    matched_records = []
-
-    for col in available_cols:
-        col_vals = df[col].tolist()
-        for i in range(len(col_vals) - len(recent_nums) - 1):
-            sub_seq = col_vals[i : i + len(recent_nums)]
-            if any(pd.isna(v) for v in sub_seq):
-                continue
-            
-            sub_seq = [int(v) for v in sub_seq]
-            
-            is_match = True
-            for day_idx in range(len(recent_nums)):
-                curr_val = sub_seq[day_idx]
-                
-                if "1." in match_mode:
-                    hist_set = get_haruf_and_rashi_set(curr_val)
-                    if not (recent_patterns[day_idx] & hist_set):
-                        is_match = False
-                        break
-                elif "2." in match_mode:
-                    h_i, h_o = get_haruf(curr_val)
-                    hist_set = {h_i, h_o} if h_i is not None else set()
-                    if not (recent_patterns[day_idx] & hist_set):
-                        is_match = False
-                        break
-                elif "3." in match_mode:
-                    if curr_val != recent_patterns[day_idx]:
-                        is_match = False
-                        break
-                elif "4." in match_mode:
-                    if curr_val not in recent_patterns[day_idx]:
-                        is_match = False
-                        break
-                elif "5." in match_mode:
-                    hist_fam = set(get_family(curr_val))
-                    if not (recent_patterns[day_idx] & hist_fam):
-                        is_match = False
-                        break
-
-            if is_match:
-                next_val = col_vals[i + len(recent_nums)]
-                if pd.notna(next_val):
-                    rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
-                    matched_records.append({
-                        "तारीख / रो (Date/Row)": rec_date,
-                        "गेम का नाम": col,
-                        "ऐतिहासिक लड़ी": str(sub_seq),
-                        "अगले दिन आया रिजल्ट (Next Result)": int(next_val),
-                        "अगले नंबर की फैमिली": str(get_family(next_val))
-                    })
-
-    if matched_records:
-        match_result_df = pd.DataFrame(matched_records)
-        next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
-        top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
+    # हर पैटर्न को एक के बाद एक ओपन (Open Page) दिखाना
+    for mode in modes:
+        mode_id = mode["id"]
+        mode_name = mode["name"]
         
-        st.success(f"🎯 **इतिहास में यह लड़ी (`{match_mode}`) कुल `{len(matched_records)}` बार पाई गई!**")
-        st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
-        st.dataframe(match_result_df, use_container_width=True)
-    else:
-        st.warning("⚠️ इस लड़ी के लिए इतिहास में कोई पैटर्न नहीं मिला। कृपया दिनों की संख्या कम करें या कोई दूसरा पैटर्न मोड चुनकर देखें।")
-    # ================= FORMULA 5 (SMART CROSS-GAME SEQUENCE & DIFFERENCE ENGINE) =================
+        st.markdown(f"---")
+        st.subheader(f"🎯 {mode_name}")
+        
+        # 1. हालिया पैटर्न तैयार करना
+        recent_patterns = []
+        for n in recent_nums:
+            if mode_id == "1":
+                recent_patterns.append(get_haruf_and_rashi_set(n))
+            elif mode_id == "2":
+                h_i, h_o = get_haruf(n)
+                recent_patterns.append({h_i, h_o} if h_i is not None else set())
+            elif mode_id == "3":
+                recent_patterns.append(int(n))
+            elif mode_id == "4":
+                rev_n = int(f"{int(n):02d}"[::-1])
+                recent_patterns.append({int(n), rev_n})
+            elif mode_id == "5":
+                recent_patterns.append(set(get_family(n)))
+
+        # 2. इतिहास में सर्च करना
+        matched_records = []
+        for col in available_cols:
+            col_vals = df[col].tolist()
+            for i in range(len(col_vals) - len(recent_nums) - 1):
+                sub_seq = col_vals[i : i + len(recent_nums)]
+                if any(pd.isna(v) for v in sub_seq):
+                    continue
+                
+                sub_seq = [int(v) for v in sub_seq]
+                is_match = True
+                
+                for day_idx in range(len(recent_nums)):
+                    curr_val = sub_seq[day_idx]
+                    
+                    if mode_id == "1":
+                        hist_set = get_haruf_and_rashi_set(curr_val)
+                        if not (recent_patterns[day_idx] & hist_set):
+                            is_match = False
+                            break
+                    elif mode_id == "2":
+                        h_i, h_o = get_haruf(curr_val)
+                        hist_set = {h_i, h_o} if h_i is not None else set()
+                        if not (recent_patterns[day_idx] & hist_set):
+                            is_match = False
+                            break
+                    elif mode_id == "3":
+                        if curr_val != recent_patterns[day_idx]:
+                            is_match = False
+                            break
+                    elif mode_id == "4":
+                        if curr_val not in recent_patterns[day_idx]:
+                            is_match = False
+                            break
+                    elif mode_id == "5":
+                        hist_fam = set(get_family(curr_val))
+                        if not (recent_patterns[day_idx] & hist_fam):
+                            is_match = False
+                            break
+
+                if is_match:
+                    next_val = col_vals[i + len(recent_nums)]
+                    if pd.notna(next_val):
+                        rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
+                        matched_records.append({
+                            "तारीख / रो (Date/Row)": rec_date,
+                            "गेम का नाम": col,
+                            "ऐतिहासिक लड़ी": str(sub_seq),
+                            "अगले दिन आया रिजल्ट (Next Result)": int(next_val),
+                            "अगले नंबर की फैमिली": str(get_family(next_val))
+                        })
+
+        # 3. परिणाम दिखाना
+        if matched_records:
+            match_result_df = pd.DataFrame(matched_records)
+            next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
+            top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
+            
+            st.success(f"✅ **कुल मैच पाए गए: `{len(matched_records)}` बार**")
+            st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
+            st.dataframe(match_result_df, use_container_width=True)
+        else:
+            st.warning("⚠️ इस मोड में इतिहास में कोई पैटर्न नहीं मिला।")
     st.subheader("5️⃣ Smart Multi-Day Cross-Game Sequence & Predictor Engine")
     
     if len(df) >= 3:

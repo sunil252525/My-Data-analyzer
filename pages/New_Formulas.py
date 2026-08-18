@@ -146,34 +146,42 @@ if uploaded_file is not None:
     st.markdown("---")
 
     # ================= FORMULAS 3 & 4 (ALL-IN-ONE OPEN PATTERN SEARCH ENGINE) =================
-    st.subheader("3️⃣ & 4️⃣ All-in-One Sequence Pattern Engine (All Open Results)")
-    
-    # 1. दिनों का स्लाइडर (2 से 20 दिन)
-    seq_days = st.slider("लड़ी के दिनों की संख्या (Sequence Days):", 2, 20, 5, key="seq_slider")
 
-    clean_series = df[g_sel].dropna().astype(int).tolist()
-    recent_nums = clean_series[-seq_days:] if len(clean_series) >= seq_days else clean_series
-    
-    st.info(f"📌 **`{g_sel}` का हालिया {len(recent_nums)} दिनों का पैटर्न:** `{recent_nums}`")
+    st.subheader("3️⃣ & 4️⃣ All-in-One Sequence Pattern Engine (Individual Controls)")
 
-    # पाँचों पैटर्न मोड का कॉन्फ़िगरेशन
+    # पाँचों पैटर्न मोड की लिस्ट
     modes = [
-        {"id": "1", "name": "1️⃣ हर्फ़ + राशि (Haruf & Rashi)"},
-        {"id": "2", "name": "2️⃣ केवल हर्फ़ (Direct Haruf - Without Rashi)"},
-        {"id": "3", "name": "3️⃣ सेम टू सेम (Exact Number Match)"},
-        {"id": "4", "name": "4️⃣ अलट-पलट / पलटी (Direct & Flip/Reverse)"},
-        {"id": "5", "name": "5️⃣ फैमिली (Full Family Match)"}
+        {"id": "1", "name": "1️⃣ हर्फ़ + राशि (Haruf & Rashi)", "key_prefix": "slider_hr"},
+        {"id": "2", "name": "2️⃣ केवल हर्फ़ (Direct Haruf - Without Rashi)", "key_prefix": "slider_h"},
+        {"id": "3", "name": "3️⃣ सेम टू सेम (Exact Number Match)", "key_prefix": "slider_exact"},
+        {"id": "4", "name": "4️⃣ अलट-पलट / पलटी (Direct & Flip/Reverse)", "key_prefix": "slider_flip"},
+        {"id": "5", "name": "5️⃣ फैमिली (Full Family Match)", "key_prefix": "slider_fam"}
     ]
 
-    # हर पैटर्न को एक के बाद एक ओपन (Open Page) दिखाना
+    # हर मोड के लिए अलग स्लाइडर और पूरा ओपन रिजल्ट
     for mode in modes:
         mode_id = mode["id"]
         mode_name = mode["name"]
+        key_prefix = mode["key_prefix"]
         
         st.markdown(f"---")
         st.subheader(f"🎯 {mode_name}")
         
-        # 1. हालिया पैटर्न तैयार करना
+        # 1. हर मोड के ऊपर उसका अपना रेड स्लाइडर (2 से 20 दिनों का)
+        mode_seq_days = st.slider(
+            f"लड़ी के दिनों की संख्या (Sequence Days) - {mode_name}:", 
+            min_value=2, 
+            max_value=20, 
+            value=5, 
+            key=f"{key_prefix}_days"
+        )
+
+        clean_series = df[g_sel].dropna().astype(int).tolist()
+        recent_nums = clean_series[-mode_seq_days:] if len(clean_series) >= mode_seq_days else clean_series
+        
+        st.info(f"📌 **`{g_sel}` का हालिया {len(recent_nums)} दिनों का पैटर्न:** `{recent_nums}`")
+
+        # 2. हालिया पैटर्न तैयार करना
         recent_patterns = []
         for n in recent_nums:
             if mode_id == "1":
@@ -189,7 +197,7 @@ if uploaded_file is not None:
             elif mode_id == "5":
                 recent_patterns.append(set(get_family(n)))
 
-        # 2. इतिहास में सर्च करना
+        # 3. इतिहास में सर्च करना
         matched_records = []
         for col in available_cols:
             col_vals = df[col].tolist()
@@ -241,7 +249,7 @@ if uploaded_file is not None:
                             "अगले नंबर की फैमिली": str(get_family(next_val))
                         })
 
-        # 3. परिणाम दिखाना
+        # 4. परिणाम दिखाना
         if matched_records:
             match_result_df = pd.DataFrame(matched_records)
             next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
@@ -251,7 +259,7 @@ if uploaded_file is not None:
             st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
             st.dataframe(match_result_df, use_container_width=True)
         else:
-            st.warning("⚠️ इस मोड में इतिहास में कोई पैटर्न नहीं मिला।")
+            st.warning("⚠️ इस लड़ी के लिए इतिहास में कोई पैटर्न नहीं मिला। कृपया स्लाइडर से दिनों की संख्या बदलकर देखें।")
     st.subheader("5️⃣ Smart Multi-Day Cross-Game Sequence & Predictor Engine")
     
     if len(df) >= 3:

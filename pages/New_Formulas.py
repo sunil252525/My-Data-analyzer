@@ -101,7 +101,53 @@ if uploaded_file is not None:
         target_num = st.number_input("टारगेट नंबर दर्ज करें:", 0, 99, 58)
 
     st.markdown("---")
+    # ================= TOP SECTION: THIS MONTH DIGIT FREQUENCY SUMMARY =================
+    st.markdown("---")
+    st.subheader("📊 इस महीने का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड (All 6 Games)")
 
+    # यदि CSV में Date कॉलम है, तो चालू महीने का डेटा फ़िल्टर करना
+    # अगर Date नहीं है या सिंगल मंथ की CSV है, तो पूरे अपलोड किए डेटा का हिसाब दिखाएगा
+    month_df = df.copy()
+    
+    if date_col and date_col in month_df.columns:
+        # तारीख से महीना निकालने की कोशिश
+        try:
+            month_df['dt_temp'] = pd.to_datetime(month_df[date_col], errors='coerce')
+            latest_month = month_df['dt_temp'].dt.month.dropna().iloc[-1]
+            latest_year = month_df['dt_temp'].dt.year.dropna().iloc[-1]
+            month_df = month_df[(month_df['dt_temp'].dt.month == latest_month) & (month_df['dt_temp'].dt.year == latest_year)]
+            st.caption(f"📅 वर्तमान महीने का विश्लेषण (Month: {int(latest_month)}/{int(latest_year)})")
+        except:
+            st.caption("📅 वर्तमान अपलोड किए गए डेटा का कुल अंक विश्लेषण:")
+    else:
+        st.caption("📅 इस महीने/डेटा का कुल अंक विश्लेषण:")
+
+    # 0 से 9 तक के सभी अंकों की गिनती करना
+    digit_counts = {str(d): 0 for d in range(10)}
+
+    for col in available_cols:
+        for val in month_df[col].dropna():
+            # दो अंकों में कन्वर्ट करना (उदा. 5 -> '05')
+            val_str = f"{int(val):02d}"
+            for char in val_str:
+                if char in digit_counts:
+                    digit_counts[char] += 1
+
+    # परिणाम को सुंदर कार्ड्स/मैट्रिक्स में दिखाना
+    cols = st.columns(10)
+    for i in range(10):
+        digit_key = str(i)
+        count_val = digit_counts[digit_key]
+        with cols[i]:
+            st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
+
+    # सबसे ज़्यादा और सबसे कम आने वाले अंकों का समरी नोट
+    sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
+    hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
+    cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
+
+    st.info(f"🔥 **सबसे ज़्यादा आए टॉप अंक (Hot):** {hot_digits} | 🧊 **सबसे कम आए अंक (Cold):** {cold_digits}")
+    
     # ================= FORMULAS 1 & 2 =================
     st.subheader("1️⃣ & 2️⃣ 24-Hour All-Games Number, Family & Haruf Engine")
     matches = df[df[g_sel] == target_num].index

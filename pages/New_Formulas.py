@@ -102,47 +102,50 @@ if uploaded_file is not None:
 
     st.markdown("---")
     
-       # ================= TOP SECTION: AUGUST 2026 (CURRENT MONTH ONLY) DIGIT FREQUENCY =================
+           # ================= EXACT CURRENT MONTH (AUGUST 2026) DIGIT COUNTER =================
     st.markdown("---")
-    st.subheader("📊 8वें महीने (अगस्त) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड (All 6 Games)")
+    st.subheader("📊 8वें महीने (अगस्त 2026) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड")
 
     month_df = df.copy()
 
-    # 1. 13 साल के डेटा में से केवल अगस्त 2026 (या चालू महीने) का डेटा फ़िल्टर करना
+    # 1. तारीख का फ़ॉर्मैट सही करके अगस्त 2026 का डेटा फ़िल्टर करना
     if date_col and date_col in month_df.columns:
-        try:
-            month_df['dt_temp'] = pd.to_datetime(month_df[date_col], errors='coerce')
-            
-            # तारीख से 8वाँ महीना (August) और 2026 साल फ़िल्टर करना
-            # यदि आप हमेशा सिस्टम की आज की तारीख (Current Month) ऑटो-डिटेक्ट करना चाहते हैं:
-            from datetime import datetime
-            now = datetime.now()
-            target_m = now.month  # 8
-            target_y = now.year   # 2026
-
-            month_df = month_df[(month_df['dt_temp'].dt.month == target_m) & (month_df['dt_temp'].dt.year == target_y)].reset_index(drop=True)
-            st.caption(f"📅 **फ़िल्टर चालू:** केवल {target_m}वें महीने ({target_y}) की 1 तारीख से आज तक का डेटा स्कैन किया गया है।")
-        except:
-            # अगर Date फ़ॉर्मैट न मिले तो आखरी 30 पंक्तियाँ (चालू महीना)
-            month_df = month_df.tail(30).reset_index(drop=True)
-            st.caption("📅 **फ़िल्टर चालू:** चालू महीने (हालिया 30 दिन) का डेटा:")
+        # dayfirst=True से DD/MM/YYYY की ग़लती सही हो जाती है
+        month_df['dt_temp'] = pd.to_datetime(month_df[date_col], dayfirst=True, errors='coerce')
+        
+        # केवल 8वाँ महीना और 2026 साल की रोज़ (Rows) चुनना
+        aug_mask = (month_df['dt_temp'].dt.month == 8) & (month_df['dt_temp'].dt.year == 2026)
+        filtered_df = month_df[aug_mask].reset_index(drop=True)
+        
+        # अगर अगस्त 2026 में डेटा मिला तो वही लेंगे, वरना हालिया 19 दिन (चालू महीना)
+        if len(filtered_df) > 0:
+            month_df = filtered_df
+            st.caption("📅 **सटीक फ़िल्टर:** केवल अगस्त 2026 (1 से 19 तारीख तक) का डेटा स्कैन हुआ है।")
+        else:
+            # अगर साल फ़ाइल में अलग है, तो सिर्फ आखरी 19 दिनों की पंक्तियाँ (Rows) ली जाएँगी
+            month_df = month_df.tail(19).reset_index(drop=True)
+            st.caption("📅 **फ़िल्टर:** चालू महीने के हालिया 19 दिनों का डेटा स्कैन हुआ है।")
     else:
-        month_df = month_df.tail(30).reset_index(drop=True)
-        st.caption("📅 **फ़िल्टर चालू:** चालू महीने का डेटा:")
+        # अगर Date कॉलम नहीं मिला तो सीधे आखरी 19 दिनों का डेटा
+        month_df = month_df.tail(19).reset_index(drop=True)
+        st.caption("📅 **फ़िल्टर:** हालिया 19 दिनों का डेटा:")
 
-    # 2. 0 से 9 तक के सभी अंकों की गिनती (0, 1, 2, 3... 9)
+    # 2. 0 से 9 तक के अंकों की गिनती
     digit_counts = {str(d): 0 for d in range(10)}
 
     for col in available_cols:
         if col in month_df.columns:
             for val in month_df[col].dropna():
-                # नंबर को 2 अंकों की स्ट्रिंग बनाना (जैसे 5 -> '05')
-                val_str = f"{int(val):02d}"
-                for char in val_str:
-                    if char in digit_counts:
-                        digit_counts[char] += 1
+                try:
+                    val_int = int(val)
+                    val_str = f"{val_int:02d}"  # 5 को '05' बनाएगा
+                    for char in val_str:
+                        if char in digit_counts:
+                            digit_counts[char] += 1
+                except:
+                    continue
 
-    # 3. 0 से 9 तक के अंकों का डिब्बा (Metrics Display)
+    # 3. 0 से 9 तक के अंकों का प्रदर्शन (Matrix Display)
     cols = st.columns(10)
     for i in range(10):
         digit_key = str(i)
@@ -150,12 +153,13 @@ if uploaded_file is not None:
         with cols[i]:
             st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
 
-    # 4. हॉट और कोल्ड हरूफ़ अलर्ट
+    # 4. हॉट और कोल्ड अंक
     sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
     hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
     cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
 
-    st.info(f"🔥 **8वें महीने में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")
+    st.info(f"🔥 **अगस्त में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")
+
     
     # ================= FORMULAS 1 & 2 =================
     st.subheader("1️⃣ & 2️⃣ 24-Hour All-Games Number, Family & Haruf Engine")

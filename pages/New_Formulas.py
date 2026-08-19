@@ -291,34 +291,129 @@ if uploaded_file is not None:
                             is_match = False
                             break
                     elif mode_id == "5":
-                        hist_fam = set(get_family(curr_val))
-                        if not (recent_patterns[day_idx] & hist_fam):
-                            is_match = False
-                            break
+# ================= FORMULAS 3 & 4 (STRICT NO-DUPLICATE PATTERN SEARCH ENGINE) =================
+    st.subheader("3️⃣ & 4️⃣ All-in-One Sequence Pattern Engine (Non-Overlapping Controls)")
 
+    modes = [
+        {"id": "1", "name": "1️⃣ हर्फ़ + राशि (Haruf & Rashi)", "key_prefix": "slider_hr"},
+        {"id": "2", "name": "2️⃣ केवल हर्फ़ (Direct Haruf - Without Rashi)", "key_prefix": "slider_h"},
+        {"id": "3", "name": "3️⃣ सेम टू सेम (Exact Number Match)", "key_prefix": "slider_exact"},
+        {"id": "4", "name": "4️⃣ अलट-पलट / पलटी (Direct & Flip/Reverse)", "key_prefix": "slider_flip"},
+        {"id": "5", "name": "5️⃣ फैमिली (Full Family Match)", "key_prefix": "slider_fam"}
+    ]
+
+    # सहायता फ़ंक्शन: जाँचता है कि कोई पद मैच करता है या नहीं
+    def check_single_match(mode_id, hist_val, rec_pattern):
+        if mode_id == "1":
+            return bool(rec_pattern & get_haruf_and_rashi_set(hist_val))
+        elif mode_id == "2":
+            h_i, h_o = get_haruf(hist_val)
+            hist_set = {h_i, h_o} if h_i is not None else set()
+            return bool(rec_pattern & hist_set)
+        elif mode_id == "3":
+            return hist_val == rec_pattern
+        elif mode_id == "4":
+            return hist_val in rec_pattern
+        elif mode_id == "5":
+            return bool(rec_pattern & set(get_family(hist_val)))
+        return False
+
+    for mode in modes:
+        mode_id = mode["id"]
+        mode_name = mode["name"]
+        key_prefix = mode["key_prefix"]
+        
+        st.markdown("---")
+        st.subheader(f"🎯 {mode_name}")
+        
+        mode_seq_days = st.slider(
+            f"लड़ी के दिनों की संख्या (Sequence Days) - {mode_name}:", 
+            min_value=2, 
+            max_value=20, 
+            value=5, 
+            key=f"{key_prefix}_days"
+        )
+
+        clean_series = df[g_sel].dropna().astype(int).tolist()
+        max_possible_days = len(clean_series)
+        
+        # अधिकतम उपलब्द पैटर्न रेंज (ताकि आगे-पीछे का ओवरलैप चेक हो सके)
+        full_recent_nums = clean_series[-25:] if max_possible_days >= 25 else clean_series
+        recent_nums = clean_series[-mode_seq_days:] if max_possible_days >= mode_seq_days else clean_series
+        
+        st.info(f"📌 **`{g_sel}` का हालिया {len(recent_nums)} दिनों का पैटर्न:** `{recent_nums}`")
+
+        # सभी उपलब्ध दिनों के लिए पैटर्न तैयार करना
+        full_patterns = []
+        for n in full_recent_nums:
+            if mode_id == "1":
+                full_patterns.append(get_haruf_and_rashi_set(n))
+            elif mode_id == "2":
+                h_i, h_o = get_haruf(n)
+                full_patterns.append({h_i, h_o} if h_i is not None else set())
+            elif mode_id == "3":
+                full_patterns.append(int(n))
+            elif mode_id == "4":
+                rev_n = int(f"{int(n):02d}"[::-1])
+                full_patterns.append({int(n), rev_n})
+            elif mode_id == "5":
+                full_patterns.append(set(get_family(n)))
+
+        recent_patterns = full_patterns[-mode_seq_days:]
+
+        matched_records = []
+        for col in available_cols:
+            col_vals = df[col].tolist()
+            n_vals = len(col_vals)
+            
+            for i in range(n_vals - len(recent_nums) - 1):
+                sub_seq = col_vals[i : i + len(recent_nums)]
+                if any(pd.isna(v) for v in sub_seq):
+                    continue
+                
+                sub_seq = [int(v) for v in sub_seq]
+                
+                # 1. क्या चुना गया N-दिनों का पैटर्न मैच होता है?
+                is_match = True
+                for day_idx in range(len(recent_nums)):
+                    if not check_single_match(mode_id, sub_seq[day_idx], recent_patterns[day_idx]):
+                        is_match = False
+                        break
+
+                # 2. NO-DUPLICATE / EXACT LENGTH CHECK:
+                # यदि यह पैटर्न 1 दिन और पहले (N+1 दिन) भी लगातार मैच कर रहा था, तो इसे केवल बड़े ग्रुप में गिना जाएगा।
                 if is_match:
-                    next_val = col_vals[i + len(recent_nums)]
-                    if pd.notna(next_val):
-                        rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
-                        matched_records.append({
-                            "तारीख / रो (Date/Row)": rec_date,
-                            "गेम का नाम": col,
-                            "ऐतिहासिक लड़ी": str(sub_seq),
-                            "अगले दिन आया रिजल्ट (Next Result)": int(next_val),
-                            "अगले नंबर की फैमिली": str(get_family(next_val))
-                        })
+                    has_prior_match = False
+                    if i > 0 and len(full_patterns) > len(recent_nums):
+                        prev_val = col_vals[i - 1]
+                        if pd.notna(prev_val):
+                            prior_pattern = full_patterns[-(len(recent_nums) + 1)]
+                            if check_single_match(mode_id, int(prev_val), prior_pattern):
+                                has_prior_match = True
 
-        # 4. परिणाम दिखाना
+                    # यदि यह बड़ी लड़ी का हिस्सा नहीं है, तो इसे यूनिक माना जाएगा
+                    if not has_prior_match:
+                        next_val = col_vals[i + len(recent_nums)]
+                        if pd.notna(next_val):
+                            rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
+                            matched_records.append({
+                                "तारीख / रो (Date/Row)": rec_date,
+                                "गेम का नाम": col,
+                                "सटीक लड़ी": str(sub_seq),
+                                "अगले दिन आया रिजल्ट (Next Result)": int(next_val),
+                                "अगले नंबर की फैमिली": str(get_family(next_val))
+                            })
+
         if matched_records:
             match_result_df = pd.DataFrame(matched_records)
             next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
             top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
             
-            st.success(f"✅ **कुल मैच पाए गए: `{len(matched_records)}` बार**")
+            st.success(f"✅ **सटीक (Unique) मैच पाए गए: `{len(matched_records)}` बार (कोई डुप्लीकेट/ओवरलैप नहीं)**")
             st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
             st.dataframe(match_result_df, use_container_width=True)
         else:
-            st.warning("⚠️ इस लड़ी के लिए इतिहास में कोई पैटर्न नहीं मिला। कृपया स्लाइडर से दिनों की संख्या बदलकर देखें।")
+            st.warning("⚠️ इस सटीक लड़ी के लिए इतिहास में कोई नया/यूनिक पैटर्न नहीं मिला।")
     st.subheader("5️⃣ Smart Multi-Day Cross-Game Sequence & Predictor Engine")
     
     if len(df) >= 3:

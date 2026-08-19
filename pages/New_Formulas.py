@@ -102,6 +102,60 @@ if uploaded_file is not None:
 
     st.markdown("---")
     
+       # ================= TOP SECTION: AUGUST 2026 (CURRENT MONTH ONLY) DIGIT FREQUENCY =================
+    st.markdown("---")
+    st.subheader("📊 8वें महीने (अगस्त) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड (All 6 Games)")
+
+    month_df = df.copy()
+
+    # 1. 13 साल के डेटा में से केवल अगस्त 2026 (या चालू महीने) का डेटा फ़िल्टर करना
+    if date_col and date_col in month_df.columns:
+        try:
+            month_df['dt_temp'] = pd.to_datetime(month_df[date_col], errors='coerce')
+            
+            # तारीख से 8वाँ महीना (August) और 2026 साल फ़िल्टर करना
+            # यदि आप हमेशा सिस्टम की आज की तारीख (Current Month) ऑटो-डिटेक्ट करना चाहते हैं:
+            from datetime import datetime
+            now = datetime.now()
+            target_m = now.month  # 8
+            target_y = now.year   # 2026
+
+            month_df = month_df[(month_df['dt_temp'].dt.month == target_m) & (month_df['dt_temp'].dt.year == target_y)].reset_index(drop=True)
+            st.caption(f"📅 **फ़िल्टर चालू:** केवल {target_m}वें महीने ({target_y}) की 1 तारीख से आज तक का डेटा स्कैन किया गया है।")
+        except:
+            # अगर Date फ़ॉर्मैट न मिले तो आखरी 30 पंक्तियाँ (चालू महीना)
+            month_df = month_df.tail(30).reset_index(drop=True)
+            st.caption("📅 **फ़िल्टर चालू:** चालू महीने (हालिया 30 दिन) का डेटा:")
+    else:
+        month_df = month_df.tail(30).reset_index(drop=True)
+        st.caption("📅 **फ़िल्टर चालू:** चालू महीने का डेटा:")
+
+    # 2. 0 से 9 तक के सभी अंकों की गिनती (0, 1, 2, 3... 9)
+    digit_counts = {str(d): 0 for d in range(10)}
+
+    for col in available_cols:
+        if col in month_df.columns:
+            for val in month_df[col].dropna():
+                # नंबर को 2 अंकों की स्ट्रिंग बनाना (जैसे 5 -> '05')
+                val_str = f"{int(val):02d}"
+                for char in val_str:
+                    if char in digit_counts:
+                        digit_counts[char] += 1
+
+    # 3. 0 से 9 तक के अंकों का डिब्बा (Metrics Display)
+    cols = st.columns(10)
+    for i in range(10):
+        digit_key = str(i)
+        count_val = digit_counts[digit_key]
+        with cols[i]:
+            st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
+
+    # 4. हॉट और कोल्ड हरूफ़ अलर्ट
+    sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
+    hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
+    cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
+
+    st.info(f"🔥 **8वें महीने में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")
     
     # ================= FORMULAS 1 & 2 =================
     st.subheader("1️⃣ & 2️⃣ 24-Hour All-Games Number, Family & Haruf Engine")

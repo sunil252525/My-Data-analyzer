@@ -787,6 +787,8 @@ if uploaded_file is not None:
         st.warning("⚠️ विश्लेषण के लिए पर्याप्त डेटा नहीं मिला।")
 # ================= FORMULA 15 =================
     st.markdown("---")
+    # ================= FORMULA 15 =================
+    st.markdown("---")
     st.subheader("1️⃣5️⃣ 3-Day Backtest & Crossing History Tracker (Formulas 3 & 4)")
 
     summary_3days_f15 = []

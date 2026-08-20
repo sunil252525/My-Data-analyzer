@@ -767,17 +767,17 @@ if uploaded_file is not None:
             for h in follow_up_harufs:
                 haruf_scores[h] += 3
 
-            # सबसे ज़्यादा स्कोर वाले टॉप 6 हरूफ़ चुनना
-            top_6_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)[:6]
-            top_6_harufs.sort()  # बढ़ते क्रम में लगाने के लिए
+            # सबसे ज़्यादा स्कोर वाले टॉप 7 हरूफ़ चुनना
+            top_7_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)[:7]
+            top_7_harufs.sort()  # बढ़ते क्रम में लगाने के लिए
             
-            crossing_haruf_str = ", ".join(map(str, top_6_harufs))
+            crossing_haruf_str = ", ".join(map(str, top_7_harufs))
             
             crossing_summary.append({
                 "लोकेशन / गेम": col,
                 "🎯 ताज़ा रिज़ल्ट": f"{last_num:02d}",
-                "🔥 6 हरूफ़ की ख़ास क्रॉसिंग": crossing_haruf_str,
-                "👑 टॉप 3 मेन हरूफ़": ", ".join(map(str, top_6_harufs[:3])),
+                "🔥 7 हरूफ़ की ख़ास क्रॉसिंग": crossing_haruf_str,
+                "👑 टॉप 3 मेन हरूफ़": ", ".join(map(str, top_7_harufs[:3])),
                 "💡 कुल जोड़ियाँ": "36 जोड़ियाँ (6x6)"
             })
 

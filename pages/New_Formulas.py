@@ -534,108 +534,111 @@ if uploaded_file is not None:
             st.warning(f"⚠️ 13 साल के इतिहास में नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")
             # ================= FORMULA 11 =================
     st.markdown("---")
-    st.subheader("1️⃣1️⃣ Continuous 2-Month Pair Repeat Engine (2 महीने का लगातार पैटर्न)")
+    st.subheader("1️⃣1️⃣ Time-Frame Cycle & Repeat Guarantee Engine (1, 2, 3, 4 महीने का गैप फ़िल्टर)")
 
-    # ऑटोमैटिक तारीख़ (Date) कॉलम खोजना
+    timeframe_option = st.selectbox(
+        "समय सीमा (Cycle Window) चुनें:",
+        ["1 महीना (30 दिन)", "2 महीने (60 दिन)", "3 महीने (90 दिन)", "4 महीने (120 दिन)"],
+        index=1,
+        key="f11_tf_select"
+    )
+
+    days_map = {
+        "1 महीना (30 दिन)": 30,
+        "2 महीने (60 दिन)": 60,
+        "3 महीने (90 दिन)": 90,
+        "4 महीने (120 दिन)": 120
+    }
+    target_days = days_map[timeframe_option]
+
     detected_date_col = None
     for c in df.columns:
         if any(term in str(c).lower() for term in ['date', 'dt', 'tarikh', 'tariq', 'time', 'दिन', 'तारीख']):
             detected_date_col = c
             break
 
-    if detected_date_col is None and 'date_col' in locals() and date_col in df.columns:
+    if detected_date_col is None and date_col and date_col in df.columns:
         detected_date_col = date_col
 
+    temp_df = df.copy()
+    has_valid_dates = False
+
     if detected_date_col:
-        temp_df = df.copy()
-        temp_df['dt'] = pd.to_datetime(temp_df[detected_date_col], dayfirst=True, errors='coerce')
-        temp_df = temp_df.dropna(subset=['dt']).reset_index(drop=True)
+        temp_df['dt_parsed'] = pd.to_datetime(temp_df[detected_date_col], dayfirst=True, errors='coerce')
+        temp_df = temp_df.dropna(subset=['dt_parsed']).sort_values('dt_parsed').reset_index(drop=True)
+        if len(temp_df) > 0:
+            has_valid_dates = True
+
+    f11_summary = []
+    detailed_tables = {}
+
+    for col in available_cols:
+        col_res = []
         
-        # 2-महीने का पेयर ID बनाना
-        temp_df['Pair_Code'] = (temp_df['dt'].dt.month - 1) // 2
-        temp_df['Pair_Year_ID'] = temp_df['dt'].dt.year.astype(str) + "_P" + temp_df['Pair_Code'].astype(str)
-        
-        pair_names = [
-            "1. जनवरी - फ़रवरी (Jan-Feb)",
-            "2. मार्च - अप्रैल (Mar-Apr)",
-            "3. मई - जून (May-Jun)",
-            "4. जुलाई - अगस्त (Jul-Aug)",
-            "5. सितंबर - अक्टूबर (Sep-Oct)",
-            "6. नवंबर - दिसंबर (Nov-Dec)"
-        ]
-
-        tab1, tab2 = st.tabs(["🔄 लगातार 2-महीने के जोड़ों में आने वाले सदाबहार नंबर", "📆 2-महीने के पेयर (जैसे Jan-Feb) के अनुसार रिज़ल्ट"])
-
-        # TAB 1: हर 2 महीने के जोड़े में बिना मिस हुए आने वाले नंबर
-        with tab1:
-            st.markdown("📌 **ऐसे नंबर जो लगातार हर 2-महीने के ब्लॉक (Jan-Feb, Mar-Apr...) में गिरते ही गिरते हैं:**")
-            
-            all_pair_blocks = sorted(temp_df['Pair_Year_ID'].unique())
-            total_blocks_count = len(all_pair_blocks)
-            
-            pair_consistency_res = []
-            
-            for col in available_cols:
-                num_block_map = {n: set() for n in range(100)}
-                num_total_count = {n: 0 for n in range(100)}
+        for num in range(100):
+            if has_valid_dates:
+                num_rows = temp_df[temp_df[col] == num]
+                dates = num_rows['dt_parsed'].tolist()
                 
-                for idx, row in temp_df.iterrows():
-                    val = row[col]
-                    if pd.notna(val):
-                        try:
-                            n = int(val)
-                            if 0 <= n <= 99:
-                                num_block_map[n].add(row['Pair_Year_ID'])
-                                num_total_count[n] += 1
-                        except:
-                            continue
-                
-                sorted_nums = sorted(num_block_map.keys(), key=lambda x: len(num_block_map[x]), reverse=True)
-                
-                top_1 = sorted_nums[0]
-                top_1_b = len(num_block_map[top_1])
-                top_1_tot = num_total_count[top_1]
-                top_1_rate = round((top_1_b / total_blocks_count) * 100, 1) if total_blocks_count > 0 else 0
-                
-                top_2 = sorted_nums[1]
-                top_2_b = len(num_block_map[top_2])
-                top_2_tot = num_total_count[top_2]
-                
-                pair_consistency_res.append({
-                    "लोकेशन / गेम": col,
-                    "👑 #1 सबसे ज़्यादा रिपीट नंबर": f"{top_1:02d}",
-                    "कितने 2-महीने के जोड़ों में आया": f"{top_1_b} / {total_blocks_count} पेयर्स ({top_1_rate}%)",
-                    "कुल बार गिरा": f"{top_1_tot} बार",
-                    "🥈 #2 दूसरा बेस्ट नंबर": f"{top_2:02d} ({top_2_b} पेयर्स में)",
-                })
-            
-            st.dataframe(pd.DataFrame(pair_consistency_res), use_container_width=True)
-
-        # TAB 2: विशिष्ट 2-महीने के जोड़े में आने वाले नंबर
-        with tab2:
-            selected_pair_idx = st.selectbox("2 महीने का जोड़ा चुनें:", range(6), format_func=lambda x: pair_names[x], key="f11_pair_select")
-            
-            st.markdown(f"🔥 **इतिहास में '{pair_names[selected_pair_idx]}' के जोड़ों में सबसे ज़्यादा आने वाले नंबर:**")
-            
-            p_filtered = temp_df[temp_df['Pair_Code'] == selected_pair_idx]
-            p_results = []
-            
-            for col in available_cols:
-                vals = p_filtered[col].dropna().astype(int).tolist()
-                if vals:
-                    counts = pd.Series(vals).value_counts()
-                    top_n = counts.index[0]
-                    top_cnt = counts.iloc[0]
-                    top_5_dict = counts.head(5).to_dict()
+                if len(dates) >= 2:
+                    gaps = [(dates[i] - dates[i-1]).days for i in range(1, len(dates))]
+                    last_gap = (temp_df['dt_parsed'].max() - dates[-1]).days
+                    max_gap = max(gaps)
+                    passed_within_target = sum(1 for g in gaps if g <= target_days)
+                    total_gaps = len(gaps)
+                    pass_rate = round((passed_within_target / total_gaps) * 100, 1) if total_gaps > 0 else 0
                     
-                    p_results.append({
-                        "लोकेशन / गेम": col,
-                        "🔥 सबसे हॉट नंबर": f"{top_n:02d}",
-                        "कितनी बार आया": f"{top_cnt} बार",
-                        "टॉप 5 नंबर (बार)": str({f"{k:02d}": v for k, v in top_5_dict.items()})
+                    col_res.append({
+                        "नंबर": f"{num:02d}",
+                        "13 साल में अधिकतम गैप (दिन)": max_gap,
+                        f"तय {target_days} दिनों में आने की दर (%)": pass_rate,
+                        "वर्तमान पेंडिंग (दिन)": last_gap,
+                        "कुल बार आया": len(dates),
+                        "is_perfect": max_gap <= target_days
                     })
-            
-            st.dataframe(pd.DataFrame(p_results), use_container_width=True)
+            else:
+                num_indices = temp_df[temp_df[col] == num].index.tolist()
+                if len(num_indices) >= 2:
+                    gaps = [num_indices[i] - num_indices[i-1] for i in range(1, len(num_indices))]
+                    last_gap = len(temp_df) - 1 - num_indices[-1]
+                    max_gap = max(gaps)
+                    passed_within_target = sum(1 for g in gaps if g <= target_days)
+                    total_gaps = len(gaps)
+                    pass_rate = round((passed_within_target / total_gaps) * 100, 1) if total_gaps > 0 else 0
+                    
+                    col_res.append({
+                        "नंबर": f"{num:02d}",
+                        "13 साल में अधिकतम गैप (दिन/रो)": max_gap,
+                        f"तय {target_days} दिनों में आने की दर (%)": pass_rate,
+                        "वर्तमान पेंडिंग (दिन/रो)": last_gap,
+                        "कुल बार आया": len(num_indices),
+                        "is_perfect": max_gap <= target_days
+                    })
 
+        if col_res:
+            col_res_df = pd.DataFrame(col_res)
+            col_res_df = col_res_df.sort_values(by=[f"तय {target_days} दिनों में आने की दर (%)", "13 साल में अधिकतम गैप (दिन)" if has_valid_dates else "13 साल में अधिकतम गैप (दिन/रो)"], ascending=[False, True])
+            
+            detailed_tables[col] = col_res_df
+            top_best = col_res_df.iloc[0]
+            perfect_nums = col_res_df[col_res_df['is_perfect']]['नंबर'].tolist()
+            
+            f11_summary.append({
+                "लोकेशन / गेम": col,
+                f"🏆 #1 सबसे गारंटेड नंबर (हर {target_days} दिन)": top_best['नंबर'],
+                "13 साल में सबसे लंबा गैप": f"{top_best['13 साल में अधिकतम गैप (दिन)' if has_valid_dates else '13 साल में अधिकतम गैप (दिन/रो)']} दिन",
+                "सफलता दर (%)": f"{top_best[f'तय {target_days} दिनों में आने की दर (%)']}%",
+                f"100% गारंटेड नंबर (जो कभी {target_days} दिन से ऊपर नहीं गए)": ", ".join(perfect_nums) if perfect_nums else "कोई नहीं (टॉप पासिंग रेट देखें)"
+            })
+
+    if f11_summary:
+        st.success(f"📊 **{timeframe_option} के गैप एनालिसिस के आधार पर सबसे भरोसेमंद नंबर:**")
+        st.dataframe(pd.DataFrame(f11_summary), use_container_width=True)
+
+        st.markdown("---")
+        st.subheader("🔍 हर लोकेशन के लिए सभी 100 नंबरों की विस्तृत सूची (Ranked Table)")
+        selected_loc = st.selectbox("लोकेशन / गेम चुनें:", available_cols, key="f11_loc_detail")
+        if selected_loc in detailed_tables:
+            st.dataframe(detailed_tables[selected_loc].drop(columns=['is_perfect']), use_container_width=True)
     else:
-        st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें।")
+        st.warning("⚠️ गैप एनालिसिस निकालने के लिए पर्याप्त डेटा नहीं मिला।")

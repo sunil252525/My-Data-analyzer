@@ -430,6 +430,8 @@ if uploaded_file is not None:
         hist_records = []
         direct_hits = []
         family_hits = []
+        location_hits = []
+        fam_location_dict = {}
 
         for col in available_cols:
             col_series = df[col].dropna().reset_index(drop=True)
@@ -448,10 +450,21 @@ if uploaded_file is not None:
                                     val_int = int(val)
                                     next_found_nums.append(val_int)
                                     hit_games.append(f"{g_col} (D+{day_offset}): {val_int:02d}")
+                                    
+                                    # लोकेशन और फैमिली का ट्रैक रखना
+                                    location_hits.append(g_col)
+                                    fam_list = get_family(val_int)
+                                    if fam_list:
+                                        fam_name = f"फैमिली {fam_list[0]:02d} ({fam_list})"
+                                        if fam_name not in fam_location_dict:
+                                            fam_location_dict[fam_name] = {}
+                                        fam_location_dict[fam_name][g_col] = fam_location_dict[fam_name].get(g_col, 0) + 1
 
                     for n in next_found_nums:
                         direct_hits.append(n)
-                        family_hits.extend(get_family(n))
+                        fam_list = get_family(n)
+                        if fam_list:
+                            family_hits.append(f"फैमिली {fam_list[0]:02d} ({fam_list})")
 
                     rec_date = df.loc[idx, 'Date'] if 'Date' in df.columns else f"Row #{idx}"
                     unique_next_nums = sorted(list(set(next_found_nums)))
@@ -467,18 +480,55 @@ if uploaded_file is not None:
         if hist_records:
             st.success(f"🎯 **13 साल के रिकॉर्ड में नंबर `{scan_target:02d}` कुल `{len(hist_records)}` बार आया है!**")
             
-            top_direct = pd.Series(direct_hits).value_counts().head(5).to_dict()
-            top_family = pd.Series(family_hits).value_counts().head(5).to_dict()
+            top_direct_series = pd.Series(direct_hits).value_counts()
+            top_family_series = pd.Series(family_hits).value_counts()
+            top_location_series = pd.Series(location_hits).value_counts()
 
-            col_res1, col_res2 = st.columns(2)
+            best_number = top_direct_series.index[0] if not top_direct_series.empty else "N/A"
+            best_number_count = top_direct_series.iloc[0] if not top_direct_series.empty else 0
+
+            best_family = top_family_series.index[0] if not top_family_series.empty else "N/A"
+            best_family_count = top_family_series.iloc[0] if not top_family_series.empty else 0
+
+            best_location = top_location_series.index[0] if not top_location_series.empty else "N/A"
+            best_location_count = top_location_series.iloc[0] if not top_location_series.empty else 0
+
+            # साफ़ मुख्य परिणाम हाइलाइट बॉक्स
+            st.info(f"""
+            🏆 **मुख्य निष्कर्ष (Summary):**
+            * 💥 **सबसे ज़्यादा बार आने वाला सिंगल नंबर:** `{best_number:02d}` (कुल **{best_number_count}** बार)
+            * 👑 **सबसे ज़्यादा पास होने वाली फैमिली:** `{best_family}` (कुल **{best_family_count}** बार)
+            * 📍 **सबसे ज़्यादा पासिंग देने वाली लोकेशन/गेम:** `{best_location}` (कुल **{best_location_count}** पासिंग)
+            """)
+
+            col_res1, col_res2, col_res3 = st.columns(3)
             with col_res1:
-                st.markdown(f"🔥 **6 की 6 गेमों में सबसे ज़्यादा बार गिरे 'डायरेक्ट नंबर' (Top Numbers):**")
-                st.write(top_direct)
+                st.markdown("🔥 **टॉप 5 सिंगल नंबर:**")
+                st.table(top_direct_series.head(5).rename("बार आया"))
             with col_res2:
-                st.markdown(f"💥 **अगले {follow_days} दिनों में सबसे ज़्यादा बार पास होने वाली 'फैमिली':**")
-                st.write(top_family)
+                st.markdown("💥 **टॉप 5 फैमिली:**")
+                st.table(top_family_series.head(5).rename("बार पास हुई"))
+            with col_res3:
+                st.markdown("📍 **गेम/लोकेशन अनुसार कुल पासिंग:**")
+                st.table(top_location_series.rename("कुल हिट्स"))
 
-            st.markdown("📋 **13 साल का पूरा 6-गेम ब्रेकडाउन रिकॉर्ड:**")
+            # फैमिली अनुसार लोकेशन का ब्रेकडाउन टेबल
+            fam_loc_rows = []
+            for fam_name, loc_counts in fam_location_dict.items():
+                total_hits = sum(loc_counts.values())
+                loc_summary = ", ".join([f"{loc}: {cnt} बार" for loc, cnt in sorted(loc_counts.items(), key=lambda x: x[1], reverse=True)])
+                fam_loc_rows.append({
+                    "फैमिली": fam_name,
+                    "कुल पासिंग": total_hits,
+                    "किस-किस लोकेशन पर कितनी बार आई (Location Breakdown)": loc_summary
+                })
+            
+            fam_loc_df = pd.DataFrame(fam_loc_rows).sort_values(by="कुल पासिंग", ascending=False).reset_index(drop=True)
+
+            st.markdown("📊 **फैमिली अनुसार लोकेशन का ब्रेकडाउन (किस गेम में कितनी बार पास हुई):**")
+            st.dataframe(fam_loc_df, use_container_width=True)
+
+            st.markdown("📋 **13 साल का पूरा ब्रेकडाउन रिकॉर्ड:**")
             st.dataframe(pd.DataFrame(hist_records), use_container_width=True)
         else:
             st.warning(f"⚠️ 13 साल के इतिहास में नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")

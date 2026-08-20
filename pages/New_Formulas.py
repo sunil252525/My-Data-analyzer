@@ -785,3 +785,70 @@ if uploaded_file is not None:
         st.dataframe(pd.DataFrame(crossing_summary), use_container_width=True)
     else:
         st.warning("⚠️ विश्लेषण के लिए पर्याप्त डेटा नहीं मिला।")
+# ================= FORMULA 15 =================
+    st.markdown("---")
+    st.subheader("1️⃣5️⃣ 3-Day Backtest & Crossing History Tracker (Formulas 3 & 4)")
+
+    summary_3days_f15 = []
+
+    for col in available_cols:
+        vals = df[col].dropna().astype(int).tolist()
+        date_list = df['Date'].tolist() if 'Date' in df.columns else [f"Row #{i}" for i in range(len(df))]
+        
+        if len(vals) >= 8:
+            row_data = {"लोकेशन / गेम": col}
+            pass_count = 0  # पिछले 3 दिनों की कुल पासिंग गिनती
+
+            # पिछले 3 दिनों का बैकटेस्ट (3 दिन पहले, 2 दिन पहले, 1 दिन पहले)
+            for offset in [3, 2, 1]:
+                target_idx = len(vals) - offset
+                
+                if target_idx >= 5:
+                    day_date = date_list[target_idx] if target_idx < len(date_list) else f"T-{offset}"
+                    actual_result = vals[target_idx]
+                    
+                    # उस दिन के ठीक पहले तक का इतिहास
+                    past_vals = vals[:target_idx]
+                    last_trigger_num = past_vals[-1]
+                    
+                    # 1. फ़ॉर्मूला 3 लॉजिक: इतिहास में हरूफ़ की ओवरऑल फ़्रीक्वेंसी (+1 पॉइंट)
+                    haruf_scores = {d: 0 for d in range(10)}
+                    for num in past_vals:
+                        haruf_scores[num // 10] += 1
+                        haruf_scores[num % 10] += 1
+
+                    # 2. फ़ॉर्मूला 4 लॉजिक: लास्ट रिज़ल्ट के फ़ॉलो-अप हरूफ़ (+3 पॉइंट्स)
+                    follow_up_harufs = []
+                    for i in range(len(past_vals) - 2):
+                        if past_vals[i] == last_trigger_num:
+                            f1 = past_vals[i + 1]
+                            f2 = past_vals[i + 2]
+                            follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
+
+                    for h in follow_up_harufs:
+                        haruf_scores[h] += 3
+
+                    # टॉप 6 हरूफ़ चुनना
+                    top_6 = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)[:6]
+                    top_6.sort()
+                    crossing_str = "".join(map(str, top_6))
+
+                    # पास/फेल चेक (अंदर और बाहर दोनों हरूफ़ क्रॉसिंग में होने चाहिए)
+                    d1, d2 = actual_result // 10, actual_result % 10
+                    is_pass = (d1 in top_6) and (d2 in top_6)
+                    
+                    status_tag = "✅ पास" if is_pass else "❌ फेल"
+                    if is_pass:
+                        pass_count += 1
+
+                    # तारीख़ अनुसार कॉलम फ़ॉर्मैटिंग
+                    col_header = f"📅 {day_date}"
+                    row_data[col_header] = f"🎯 {actual_result:02d} | 🎲 ({crossing_str}) | {status_tag}"
+
+            row_data["📊 3 दिन का स्कोर"] = f"{pass_count}/3 पास"
+            summary_3days_f15.append(row_data)
+
+    if summary_3days_f15:
+        st.dataframe(pd.DataFrame(summary_3days_f15), use_container_width=True)
+    else:
+        st.warning("⚠️ बैकटेस्टिंग के लिए पर्याप्त डेटा उपलब्ध नहीं है।")

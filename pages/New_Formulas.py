@@ -642,3 +642,42 @@ if uploaded_file is not None:
             st.dataframe(detailed_tables[selected_loc].drop(columns=['is_perfect']), use_container_width=True)
     else:
         st.warning("⚠️ गैप एनालिसिस निकालने के लिए पर्याप्त डेटा नहीं मिला।")
+# ================= FORMULA 12 =================
+    st.markdown("---")
+    st.subheader("1️⃣2️⃣ Top Single, Main 20 & Top 70 Numbers Engine")
+
+    summary_data = []
+
+    for col in available_cols:
+        vals = df[col].dropna().astype(int).tolist()
+        valid_vals = [x for x in vals if 0 <= x <= 99]
+        
+        if valid_vals:
+            counts = pd.Series(valid_vals).value_counts()
+            
+            # 1. #1 सबसे हॉट सिंगल नंबर
+            top_1_single = counts.index[0]
+            top_1_count = counts.iloc[0]
+            
+            # 2. टॉप 20 मेन नंबर
+            top_20_main = counts.head(20).index.tolist()
+            
+            # 3. कुल टॉप 70 नंबर
+            top_70 = counts.head(70).index.tolist()
+            
+            # 13 साल की ऐतिहासिक पासिंग दर (%)
+            passed_count = sum(counts.head(70))
+            coverage_pct = round((passed_count / len(valid_vals)) * 100, 1)
+
+            summary_data.append({
+                "लोकेशन / गेम": col,
+                "👑 #1 सबसे हॉट सिंगल नंबर": f"{top_1_single:02d} ({top_1_count} बार)",
+                "🔥 टॉप 20 मेन नंबर": ", ".join([f"{n:02d}" for n in top_20_main]),
+                "📊 70 नंबरों की ऐतिहासिक पासिंग (%)": f"{coverage_pct}%",
+                "📋 बाकी 50 सपोर्ट नंबर": ", ".join([f"{n:02d}" for n in top_70[20:]])
+            })
+
+    if summary_data:
+        st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
+    else:
+        st.warning("⚠️ विश्लेषण के लिए डेटा उपलब्ध नहीं है।")

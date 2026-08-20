@@ -552,110 +552,115 @@ if uploaded_file is not None:
 
     else:
         st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें।")
-        # ================= FORMULA 11 =================
-    st.markdown("---")
-    st.subheader("1️⃣1️⃣ Continuous 2-Month Pair Repeat Engine (2 महीने का लगातार पैटर्न)")
-
-    # ऑटोमैटिक तारीख़ (Date) कॉलम खोजना
-    detected_date_col = None
-    for c in df.columns:
-        if any(term in str(c).lower() for term in ['date', 'dt', 'tarikh', 'tariq', 'time', 'दिन', 'तारीख']):
-            detected_date_col = c
-            break
-
-    if detected_date_col is None and 'date_col' in locals() and date_col in df.columns:
-        detected_date_col = date_col
-
-    if detected_date_col:
-        temp_df = df.copy()
-        temp_df['dt'] = pd.to_datetime(temp_df[detected_date_col], dayfirst=True, errors='coerce')
-        temp_df = temp_df.dropna(subset=['dt']).reset_index(drop=True)
-        
-        # 2-महीने का पेयर ID बनाना (0: Jan-Feb, 1: Mar-Apr, 2: May-Jun, 3: Jul-Aug, 4: Sep-Oct, 5: Nov-Dec)
-        temp_df['Pair_Code'] = (temp_df['dt'].dt.month - 1) // 2
-        temp_df['Pair_Year_ID'] = temp_df['dt'].dt.year.astype(str) + "_P" + temp_df['Pair_Code'].astype(str)
-        
-        pair_names = [
-            "1. जनवरी - फ़रवरी (Jan-Feb)",
-            "2. मार्च - अप्रैल (Mar-Apr)",
-            "3. मई - जून (May-Jun)",
-            "4. जुलाई - अगस्त (Jul-Aug)",
-            "5. सितंबर - अक्टूबर (Sep-Oct)",
-            "6. नवंबर - दिसंबर (Nov-Dec)"
-        ]
-
-        tab1, tab2 = st.tabs(["🔄 लगातार 2-महीने के जोड़ों में आने वाले सदाबहार नंबर", "📆 2-महीने के पेयर (जैसे Jan-Feb) के अनुसार रिज़ल्ट"])
-
-        # TAB 1: हर 2 महीने के जोड़े में बिना मिस हुए आने वाले नंबर
-        with tab1:
-            st.markdown("📌 **ऐसे नंबर जो लगातार हर 2-महीने के ब्लॉक (Jan-Feb, Mar-Apr...) में गिरते ही गिरते हैं:**")
-            
-            all_pair_blocks = sorted(temp_df['Pair_Year_ID'].unique())
-            total_blocks_count = len(all_pair_blocks)
-            
-            pair_consistency_res = []
-            
-            for col in available_cols:
-                num_block_map = {n: set() for n in range(100)}
-                num_total_count = {n: 0 for n in range(100)}
-                
-                for idx, row in temp_df.iterrows():
-                    val = row[col]
-                    if pd.notna(val):
-                        try:
-                            n = int(val)
-                            if 0 <= n <= 99:
-                                num_block_map[n].add(row['Pair_Year_ID'])
-                                num_total_count[n] += 1
-                        except:
-                            continue
-                
-                sorted_nums = sorted(num_block_map.keys(), key=lambda x: len(num_block_map[x]), reverse=True)
-                
-                top_1 = sorted_nums[0]
-                top_1_b = len(num_block_map[top_1])
-                top_1_tot = num_total_count[top_1]
-                top_1_rate = round((top_1_b / total_blocks_count) * 100, 1) if total_blocks_count > 0 else 0
-                
-                top_2 = sorted_nums[1]
-                top_2_b = len(num_block_map[top_2])
-                top_2_tot = num_total_count[top_2]
-                
-                pair_consistency_res.append({
-                    "लोकेशन / गेम": col,
-                    "👑 #1 सबसे ज़्यादा रिपीट नंबर": f"{top_1:02d}",
-                    "कितने 2-महीने के जोड़ों में आया": f"{top_1_b} / {total_blocks_count} पेयर्स ({top_1_rate}%)",
-                    "कुल बार गिरा": f"{top_1_tot} बार",
-                    "🥈 #2 दूसरा बेस्ट नंबर": f"{top_2:02d} ({top_2_b} पेयर्स में)",
-                })
-            
-            st.dataframe(pd.DataFrame(pair_consistency_res), use_container_width=True)
-
-        # TAB 2: विशिष्ट 2-महीने के जोड़े (जैसे Jan-Feb) में आने वाले नंबर
-        with tab2:
-            selected_pair_idx = st.selectbox("2 महीने का जोड़ा चुनें:", range(6), format_func=lambda x: pair_names[x], key="f11_pair_select")
-            
-            st.markdown(f"🔥 **इतिहास में '{pair_names[selected_pair_idx]}' के जोड़ों में सबसे ज़्यादा आने वाले नंबर:**")
-            
-            p_filtered = temp_df[temp_df['Pair_Code'] == selected_pair_idx]
-            p_results = []
-            
-            for col in available_cols:
-                vals = p_filtered[col].dropna().astype(int).tolist()
-                if vals:
-                    counts = pd.Series(vals).value_counts()
-                    top_n = counts.index[0]
-                    top_cnt = counts.iloc[0]
-                    top_5_dict = counts.head(5).to_dict()
                     
-                    p_results.append({
-                        "लोकेशन / गेम": col,
-                        "🔥 सबसे हॉट नंबर": f"{top_n:02d}",
-                        "कितनी बार आया": f"{top_cnt} बार",
-                        "टॉप 5 नंबर (बार)": str({f"{k:02d}": v for k, v in top_5_dict.items()})
-                    })
-            
             st.dataframe(pd.DataFrame(p_results), use_container_width=True)
 
     else:
         st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें।")
+# ================= FORMULA 11 =================
+st.markdown("---")
+st.subheader("1️⃣1️⃣ Continuous 2-Month Pair Repeat Engine (2 महीने का लगातार पैटर्न)")
+
+# ऑटोमैटिक तारीख़ (Date) कॉलम खोजना
+detected_date_col = None
+for c in df.columns:
+    if any(term in str(c).lower() for term in ['date', 'dt', 'tarikh', 'tariq', 'time', 'दिन', 'तारीख']):
+        detected_date_col = c
+        break
+
+if detected_date_col is None and 'date_col' in locals() and date_col in df.columns:
+    detected_date_col = date_col
+
+if detected_date_col:
+    temp_df = df.copy()
+    temp_df['dt'] = pd.to_datetime(temp_df[detected_date_col], dayfirst=True, errors='coerce')
+    temp_df = temp_df.dropna(subset=['dt']).reset_index(drop=True)
+    
+    # 2-महीने का पेयर ID बनाना
+    temp_df['Pair_Code'] = (temp_df['dt'].dt.month - 1) // 2
+    temp_df['Pair_Year_ID'] = temp_df['dt'].dt.year.astype(str) + "_P" + temp_df['Pair_Code'].astype(str)
+    
+    pair_names = [
+        "1. जनवरी - फ़रवरी (Jan-Feb)",
+        "2. मार्च - अप्रैल (Mar-Apr)",
+        "3. मई - जून (May-Jun)",
+        "4. जुलाई - अगस्त (Jul-Aug)",
+        "5. सितंबर - अक्टूबर (Sep-Oct)",
+        "6. नवंबर - दिसंबर (Nov-Dec)"
+    ]
+
+    tab1, tab2 = st.tabs(["🔄 लगातार 2-महीने के जोड़ों में आने वाले सदाबहार नंबर", "📆 2-महीने के पेयर (जैसे Jan-Feb) के अनुसार रिज़ल्ट"])
+
+    # TAB 1: हर 2 महीने के जोड़े में बिना मिस हुए आने वाले नंबर
+    with tab1:
+        st.markdown("📌 **ऐसे नंबर जो लगातार हर 2-महीने के ब्लॉक (Jan-Feb, Mar-Apr...) में गिरते ही गिरते हैं:**")
+        
+        all_pair_blocks = sorted(temp_df['Pair_Year_ID'].unique())
+        total_blocks_count = len(all_pair_blocks)
+        
+        pair_consistency_res = []
+        
+        for col in available_cols:
+            num_block_map = {n: set() for n in range(100)}
+            num_total_count = {n: 0 for n in range(100)}
+            
+            for idx, row in temp_df.iterrows():
+                val = row[col]
+                if pd.notna(val):
+                    try:
+                        n = int(val)
+                        if 0 <= n <= 99:
+                            num_block_map[n].add(row['Pair_Year_ID'])
+                            num_total_count[n] += 1
+                    except:
+                        continue
+            
+            sorted_nums = sorted(num_block_map.keys(), key=lambda x: len(num_block_map[x]), reverse=True)
+            
+            top_1 = sorted_nums[0]
+            top_1_b = len(num_block_map[top_1])
+            top_1_tot = num_total_count[top_1]
+            top_1_rate = round((top_1_b / total_blocks_count) * 100, 1) if total_blocks_count > 0 else 0
+            
+            top_2 = sorted_nums[1]
+            top_2_b = len(num_block_map[top_2])
+            top_2_tot = num_total_count[top_2]
+            
+            pair_consistency_res.append({
+                "लोकेशन / गेम": col,
+                "👑 #1 सबसे ज़्यादा रिपीट नंबर": f"{top_1:02d}",
+                "कितने 2-महीने के जोड़ों में आया": f"{top_1_b} / {total_blocks_count} पेयर्स ({top_1_rate}%)",
+                "कुल बार गिरा": f"{top_1_tot} बार",
+                "🥈 #2 दूसरा बेस्ट नंबर": f"{top_2:02d} ({top_2_b} पेयर्स में)",
+            })
+        
+        st.dataframe(pd.DataFrame(pair_consistency_res), use_container_width=True)
+
+    # TAB 2: विशिष्ट 2-महीने के जोड़े में आने वाले नंबर
+    with tab2:
+        selected_pair_idx = st.selectbox("2 महीने का जोड़ा चुनें:", range(6), format_func=lambda x: pair_names[x], key="f11_pair_select")
+        
+        st.markdown(f"🔥 **इतिहास में '{pair_names[selected_pair_idx]}' के जोड़ों में सबसे ज़्यादा आने वाले नंबर:**")
+        
+        p_filtered = temp_df[temp_df['Pair_Code'] == selected_pair_idx]
+        p_results = []
+        
+        for col in available_cols:
+            vals = p_filtered[col].dropna().astype(int).tolist()
+            if vals:
+                counts = pd.Series(vals).value_counts()
+                top_n = counts.index[0]
+                top_cnt = counts.iloc[0]
+                top_5_dict = counts.head(5).to_dict()
+                
+                p_results.append({
+                    "लोकेशन / गेम": col,
+                    "🔥 सबसे हॉट नंबर": f"{top_n:02d}",
+                    "कितनी बार आया": f"{top_cnt} बार",
+                    "टॉप 5 नंबर (बार)": str({f"{k:02d}": v for k, v in top_5_dict.items()})
+                })
+        
+        st.dataframe(pd.DataFrame(p_results), use_container_width=True)
+
+else:
+    st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें।")

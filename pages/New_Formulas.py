@@ -736,3 +736,52 @@ if uploaded_file is not None:
         st.dataframe(pd.DataFrame(summary_data_13), use_container_width=True)
     else:
         st.warning("⚠️ विश्लेषण के लिए डेटा उपलब्ध नहीं है।")
+# ================= FORMULA 14 =================
+    st.markdown("---")
+    st.subheader("1️⃣4️⃣ Top 6 Haruf Crossing Engine (Formulas 3 & 4 Combined)")
+
+    crossing_summary = []
+
+    for col in available_cols:
+        vals = df[col].dropna().astype(int).tolist()
+        valid_vals = [x for x in vals if 0 <= x <= 99]
+        
+        if len(valid_vals) >= 5:
+            last_num = valid_vals[-1]  # ताज़ा रिज़ल्ट
+            
+            # 1. फ़ॉर्मूला 3 लॉजिक: पूरे इतिहास में हरूफ़ की फ़्रीक्वेंसी (1 पॉइंट)
+            haruf_scores = {d: 0 for d in range(10)}
+            for num in valid_vals:
+                haruf_scores[num // 10] += 1  # अंदर का हरूफ़
+                haruf_scores[num % 10] += 1   # बाहर का हरूफ़
+
+            # 2. फ़ॉर्मूला 4 लॉजिक: ताज़ा रिज़ल्ट के बाद अगले 2 दिनों में आए फ़ॉलो-अप हरूफ़
+            follow_up_harufs = []
+            for i in range(len(valid_vals) - 2):
+                if valid_vals[i] == last_num:
+                    f1 = valid_vals[i + 1]
+                    f2 = valid_vals[i + 2]
+                    follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
+
+            # फ़ॉलो-अप हरूफ़ को 3 गुना ज़्यादा वज़न देना (+3 पॉइंट्स)
+            for h in follow_up_harufs:
+                haruf_scores[h] += 3
+
+            # सबसे ज़्यादा स्कोर वाले टॉप 6 हरूफ़ चुनना
+            top_6_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)[:6]
+            top_6_harufs.sort()  # बढ़ते क्रम में लगाने के लिए
+            
+            crossing_haruf_str = ", ".join(map(str, top_6_harufs))
+            
+            crossing_summary.append({
+                "लोकेशन / गेम": col,
+                "🎯 ताज़ा रिज़ल्ट": f"{last_num:02d}",
+                "🔥 6 हरूफ़ की ख़ास क्रॉसिंग": crossing_haruf_str,
+                "👑 टॉप 3 मेन हरूफ़": ", ".join(map(str, top_6_harufs[:3])),
+                "💡 कुल जोड़ियाँ": "36 जोड़ियाँ (6x6)"
+            })
+
+    if crossing_summary:
+        st.dataframe(pd.DataFrame(crossing_summary), use_container_width=True)
+    else:
+        st.warning("⚠️ विश्लेषण के लिए पर्याप्त डेटा नहीं मिला।")

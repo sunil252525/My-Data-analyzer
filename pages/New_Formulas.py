@@ -557,6 +557,7 @@ if uploaded_file is not None:
 
     else:
         st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें।")
+      
 # ================= FORMULA 11 =================
 st.markdown("---")
 st.subheader("1️⃣1️⃣ Continuous 2-Month Pair Repeat Engine (2 महीने का लगातार पैटर्न)")

@@ -537,10 +537,19 @@ if uploaded_file is not None:
     st.markdown("---")
     st.subheader("1️⃣1️⃣ All-Time Monthly Consistency & Location-wise Hot Number Engine")
 
-    if date_col and date_col in df.columns:
-        # तारीख़ को datetime में बदलना
+    # ऑटोमैटिक तारीख़ (Date) कॉलम खोजना
+    detected_date_col = None
+    for c in df.columns:
+        if any(term in str(c).lower() for term in ['date', 'dt', 'tarikh', 'tariq', 'time', 'दिन', 'तारीख']):
+            detected_date_col = c
+            break
+
+    if detected_date_col is None and 'date_col' in locals() and date_col in df.columns:
+        detected_date_col = date_col
+
+    if detected_date_col:
         temp_df = df.copy()
-        temp_df['dt'] = pd.to_datetime(temp_df[date_col], dayfirst=True, errors='coerce')
+        temp_df['dt'] = pd.to_datetime(temp_df[detected_date_col], dayfirst=True, errors='coerce')
         temp_df = temp_df.dropna(subset=['dt']).reset_index(drop=True)
         
         temp_df['YearMonth'] = temp_df['dt'].dt.to_period('M')
@@ -548,18 +557,17 @@ if uploaded_file is not None:
         
         total_unique_months = temp_df['YearMonth'].nunique()
         
-        st.write(f"📅 **कुल स्कैन किए गए महीने:** `{total_unique_months}` (13 साल के रिकॉर्ड में)")
+        st.write(f"📅 **स्कैन किया गया तारीख़ कॉलम:** `{detected_date_col}` | **कुल महीने:** `{total_unique_months}`")
 
         tab1, tab2 = st.tabs(["👑 हर महीने आने वाले 'सदाबहार' नंबर (Location-Wise)", "📆 चालू महीने (Month-wise) के हॉट नंबर"])
 
-        # TAB 1: हर महीने पास होने वाले नंबर (Consistency Engine)
+        # TAB 1: हर महीने पास होने वाले नंबर
         with tab1:
             st.markdown("📌 **हर लोकेशन (गेम) में ऐसा नंबर जो लगभग हर महीने पास होता है:**")
             
             location_consistency = []
             
             for col in available_cols:
-                # हर नंबर का महीने वाइज प्रेजेंस काउंट
                 num_month_map = {n: set() for n in range(100)}
                 num_total_count = {n: 0 for n in range(100)}
                 
@@ -574,17 +582,15 @@ if uploaded_file is not None:
                         except:
                             continue
                 
-                # सबसे ज़्यादा महीनों में आने वाले टॉप 3 नंबर
                 sorted_nums = sorted(num_month_map.keys(), key=lambda x: len(num_month_map[x]), reverse=True)
                 
                 top_1 = sorted_nums[0]
                 top_1_m = len(num_month_map[top_1])
                 top_1_tot = num_total_count[top_1]
-                consistency_rate_1 = round((top_1_m / total_unique_months) * 100, 1)
+                consistency_rate_1 = round((top_1_m / total_unique_months) * 100, 1) if total_unique_months > 0 else 0
                 
                 top_2 = sorted_nums[1]
                 top_2_m = len(num_month_map[top_2])
-                top_2_tot = num_total_count[top_2]
                 
                 location_consistency.append({
                     "लोकेशन / गेम": col,
@@ -624,4 +630,4 @@ if uploaded_file is not None:
             st.dataframe(pd.DataFrame(m_results), use_container_width=True)
 
     else:
-        st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। महीने अनुसार गणना के लिए CSV में Date होना ज़रूरी है।")
+        st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें कि उसमें तारीख़ वाला कॉलम किस नाम से है।")

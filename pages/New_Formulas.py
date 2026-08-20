@@ -2,6 +2,12 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
+st.set_page_config(page_title="All-in-One Analytics Dashboard", layout="wide")
+
+st.title("📊 All-in-One Analytics Dashboard")
+
+uploaded_file = st.file_uploader("अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"], key="dashboard_uploader")
+
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
 
@@ -22,137 +28,408 @@ def get_family(num):
     except:
         return []
 
-def show_new_formulas(df, available_cols, date_col=None):
-    st.title("📊 Advance Analytics & Extra Formulas")
-
-    # ================= FORMULA 1 =================
-    st.subheader("1️⃣ Single Number Search Engine")
-    search_num = st.number_input("नंबर चुनें (0-99):", min_value=0, max_value=99, value=88, step=1, key="f1_num")
-    
-    f1_results = []
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        cnt = vals.count(search_num)
-        f1_results.append({"लोकेशन / गेम": col, "कुल बार आया": cnt})
-    st.dataframe(pd.DataFrame(f1_results), use_container_width=True)
-
-    # ================= FORMULA 2 =================
-    st.markdown("---")
-    st.subheader("2️⃣ Family Search Engine")
-    fam_input = st.text_input("फैमिली के नंबर डालें (कॉमा से अलग करें, उदा: 02, 07, 20, 25, 52, 57, 70, 75):", "02, 07, 20, 25, 52, 57, 70, 75", key="f2_fam")
-    
+def get_haruf(num):
     try:
-        fam_nums = [int(x.strip()) for x in fam_input.split(",") if x.strip().isdigit()]
-        f2_results = []
-        for col in available_cols:
-            vals = df[col].dropna().astype(int).tolist()
-            cnt = sum(vals.count(n) for n in fam_nums)
-            f2_results.append({"लोकेशन / गेम": col, "फैमिली पासिंग बार": cnt})
-        st.dataframe(pd.DataFrame(f2_results), use_container_width=True)
-    except Exception as e:
-        st.error("कृपया सही फ़ॉर्मेट में नंबर दर्ज करें।")
+        if pd.isna(num): return None, None
+        num = int(num)
+        return num // 10, num % 10
+    except:
+        return None, None
 
-    # ================= FORMULA 3 =================
-    st.markdown("---")
-    st.subheader("3️⃣ Location Hit Engine")
-    f3_results = []
-    for col in available_cols:
-        cnt = df[col].dropna().count()
-        f3_results.append({"लोकेशन / गेम": col, "कुल रिकॉर्ड्स": cnt})
-    st.dataframe(pd.DataFrame(f3_results), use_container_width=True)
+def get_haruf_and_rashi_set(num):
+    try:
+        if pd.isna(num): return set()
+        num = int(num)
+        d1, d2 = num // 10, num % 10
+        r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
+        return {d1, d2, r1, r2}
+    except:
+        return set()
 
-    # ================= FORMULA 4 =================
-    st.markdown("---")
-    st.subheader("4️⃣ Next 2 Days Follow-up Engine")
-    trigger_num = st.number_input("ट्रिगर नंबर चुनें (जिसके बाद देखना है):", min_value=0, max_value=99, value=88, step=1, key="f4_trig")
+def get_digit_sum(num):
+    try:
+        if pd.isna(num): return 0
+        num = int(num)
+        return (num // 10 + num % 10)
+    except:
+        return 0
+
+def get_digital_root(num):
+    try:
+        s = get_digit_sum(num)
+        return s if s < 10 else (s // 10 + s % 10)
+    except:
+        return 0
+
+def get_digit_gap(num):
+    try:
+        if pd.isna(num): return 0
+        num = int(num)
+        return abs((num // 10) - (num % 10))
+    except:
+        return 0
+
+def get_signed_diff(val_from, val_to):
+    """प्लस/माइनस अंतर (-50 से +50 की रेंज) निकालता है"""
+    diff = (int(val_to) - int(val_from)) % 100
+    if diff > 50:
+        diff -= 100
+    return diff
+
+def check_single_match(mode_id, hist_val, rec_pattern):
+    if mode_id == "1":
+        return bool(rec_pattern & get_haruf_and_rashi_set(hist_val))
+    elif mode_id == "2":
+        h_i, h_o = get_haruf(hist_val)
+        hist_set = {h_i, h_o} if h_i is not None else set()
+        return bool(rec_pattern & hist_set)
+    elif mode_id == "3":
+        return hist_val == rec_pattern
+    elif mode_id == "4":
+        return hist_val in rec_pattern
+    elif mode_id == "5":
+        return bool(rec_pattern & set(get_family(hist_val)))
+    return False
+
+# ================= MAIN DASHBOARD =================
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    date_col = 'Date' if 'Date' in df.columns else None
     
-    follow_list = []
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        for i in range(len(vals) - 1):
-            if vals[i] == trigger_num:
-                if i + 1 < len(vals):
-                    follow_list.append(vals[i + 1])
-                if i + 2 < len(vals):
-                    follow_list.append(vals[i + 2])
-                    
-    if follow_list:
-        s_counts = pd.Series(follow_list).value_counts().head(5)
-        st.write(f"🔥 **{trigger_num} के अगले 2 दिनों में सबसे ज़्यादा आने वाले नंबर:**")
-        st.dataframe(pd.DataFrame({"नंबर": [f"{n:02d}" for n in s_counts.index], "कुल बार आया": s_counts.values}), use_container_width=True)
+    series_cols = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
+    available_cols = [c for c in series_cols if c in df.columns]
+    
+    for c in available_cols:
+        df[c] = pd.to_numeric(df[c], errors='coerce')
+    
+    df = df.dropna(subset=available_cols, how='all').reset_index(drop=True)
+
+    st.success("✅ डेटाबेस सफलतापूर्वक लोड हो गया!")
+
+    # ---------------- GLOBAL INPUTS ----------------
+    st.markdown("---")
+    st.header("🎯 मास्टर इनपुट (ग्लोबल सेटिंग्स)")
+    c1, c2 = st.columns(2)
+    with c1:
+        g_sel = st.selectbox("मुख्य गेम चुनें (करंट पैटर्न हेतु):", available_cols)
+    with c2:
+        target_num = st.number_input("टारगेट नंबर दर्ज करें:", 0, 99, 58)
+
+    # ================= EXACT CURRENT MONTH (AUGUST 2026) DIGIT COUNTER =================
+    st.markdown("---")
+    st.subheader("📊 8वें महीने (अगस्त 2026) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड")
+
+    month_df = df.copy()
+
+    if date_col and date_col in month_df.columns:
+        month_df['dt_temp'] = pd.to_datetime(month_df[date_col], dayfirst=True, errors='coerce')
+        aug_mask = (month_df['dt_temp'].dt.month == 8) & (month_df['dt_temp'].dt.year == 2026)
+        filtered_df = month_df[aug_mask].reset_index(drop=True)
+        
+        if len(filtered_df) > 0:
+            month_df = filtered_df
+            st.caption("📅 **सटीक फ़िल्टर:** केवल अगस्त 2026 (1 से 19 तारीख तक) का डेटा स्कैन हुआ है।")
+        else:
+            month_df = month_df.tail(19).reset_index(drop=True)
+            st.caption("📅 **फ़िल्टर:** चालू महीने के हालिया 19 दिनों का डेटा स्कैन हुआ है।")
     else:
-        st.info("इस नंबर का कोई फॉलो-अप डेटा नहीं मिला।")
+        month_df = month_df.tail(19).reset_index(drop=True)
+        st.caption("📅 **फ़िल्टर:** हालिया 19 दिनों का डेटा:")
+
+    digit_counts = {str(d): 0 for d in range(10)}
+
+    for col in available_cols:
+        if col in month_df.columns:
+            for val in month_df[col].dropna():
+                try:
+                    val_int = int(val)
+                    val_str = f"{val_int:02d}"
+                    for char in val_str:
+                        if char in digit_counts:
+                            digit_counts[char] += 1
+                except:
+                    continue
+
+    cols = st.columns(10)
+    for i in range(10):
+        digit_key = str(i)
+        count_val = digit_counts[digit_key]
+        with cols[i]:
+            st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
+
+    sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
+    hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
+    cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
+
+    st.info(f"🔥 **अगस्त में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")
+
+    # ================= FORMULAS 1 & 2 =================
+    st.markdown("---")
+    st.subheader("1️⃣ & 2️⃣ 24-Hour All-Games Number, Family & Haruf Engine")
+    matches = df[df[g_sel] == target_num].index
+    total_matches = len(matches)
+    
+    if total_matches > 0:
+        next_numbers, haruf_in, haruf_out = [], [], []
+        family_hits = 0
+        target_fam = get_family(target_num)
+
+        for idx in matches:
+            if idx + 1 < len(df):
+                for c in available_cols:
+                    val = df.loc[idx + 1, c]
+                    if pd.notna(val):
+                        val_int = int(val)
+                        next_numbers.append(val_int)
+                        h_i, h_o = get_haruf(val_int)
+                        if h_i is not None: haruf_in.append(h_i)
+                        if h_o is not None: haruf_out.append(h_o)
+                        if val_int in target_fam:
+                            family_hits += 1
+
+        total_ops = len(next_numbers)
+        top_nums = pd.Series(next_numbers).value_counts().head(5).to_dict() if next_numbers else {}
+        top_in = pd.Series(haruf_in).value_counts().head(3).to_dict() if haruf_in else {}
+        top_out = pd.Series(haruf_out).value_counts().head(3).to_dict() if haruf_out else {}
+        fam_rate = round((family_hits / total_ops)*100, 2) if total_ops > 0 else 0
+
+        res_df = pd.DataFrame([{
+            "कुल ऐतिहासिक मैच": total_matches,
+            "24 घंटे मौक़े": total_ops,
+            "टॉप 5 रिपीट नंबर": str(top_nums),
+            "फैमिली पासिंग दर (%)": f"{fam_rate}%",
+            "टॉप अंदर हर्फ़": str(top_in),
+            "टॉप बाहर हर्फ़": str(top_out)
+        }])
+        st.table(res_df)
+    else:
+        st.warning("इस गेम में यह नंबर दर्ज नहीं मिला।")
+
+    # ================= FORMULAS 3 & 4 =================
+    st.markdown("---")
+    st.subheader("3️⃣ & 4️⃣ All-in-One Sequence Pattern Engine (Non-Overlapping Controls)")
+
+    modes = [
+        {"id": "1", "name": "1️⃣ हर्फ़ + राशि (Haruf & Rashi)", "key_prefix": "slider_hr"},
+        {"id": "2", "name": "2️⃣ केवल हर्फ़ (Direct Haruf - Without Rashi)", "key_prefix": "slider_h"},
+        {"id": "3", "name": "3️⃣ सेम टू सेम (Exact Number Match)", "key_prefix": "slider_exact"},
+        {"id": "4", "name": "4️⃣ अलट-पलट / पलटी (Direct & Flip/Reverse)", "key_prefix": "slider_flip"},
+        {"id": "5", "name": "5️⃣ फैमिली (Full Family Match)", "key_prefix": "slider_fam"}
+    ]
+
+    for mode in modes:
+        mode_id = mode["id"]
+        mode_name = mode["name"]
+        key_prefix = mode["key_prefix"]
+        
+        st.markdown("---")
+        st.subheader(f"🎯 {mode_name}")
+        
+        mode_seq_days = st.slider(
+            f"लड़ी के दिनों की संख्या (Sequence Days) - {mode_name}:", 
+            min_value=2, 
+            max_value=20, 
+            value=5, 
+            key=f"{key_prefix}_days"
+        )
+
+        clean_series = df[g_sel].dropna().astype(int).tolist()
+        max_possible_days = len(clean_series)
+        
+        full_recent_nums = clean_series[-25:] if max_possible_days >= 25 else clean_series
+        recent_nums = clean_series[-mode_seq_days:] if max_possible_days >= mode_seq_days else clean_series
+        
+        st.info(f"📌 **`{g_sel}` का हालिया {len(recent_nums)} दिनों का पैटर्न:** `{recent_nums}`")
+
+        full_patterns = []
+        for n in full_recent_nums:
+            if mode_id == "1":
+                full_patterns.append(get_haruf_and_rashi_set(n))
+            elif mode_id == "2":
+                h_i, h_o = get_haruf(n)
+                full_patterns.append({h_i, h_o} if h_i is not None else set())
+            elif mode_id == "3":
+                full_patterns.append(int(n))
+            elif mode_id == "4":
+                rev_n = int(f"{int(n):02d}"[::-1])
+                full_patterns.append({int(n), rev_n})
+            elif mode_id == "5":
+                full_patterns.append(set(get_family(n)))
+
+        recent_patterns = full_patterns[-mode_seq_days:]
+
+        matched_records = []
+        for col in available_cols:
+            col_vals = df[col].tolist()
+            n_vals = len(col_vals)
+            
+            for i in range(n_vals - len(recent_nums) - 1):
+                sub_seq = col_vals[i : i + len(recent_nums)]
+                if any(pd.isna(v) for v in sub_seq):
+                    continue
+                
+                sub_seq = [int(v) for v in sub_seq]
+                
+                is_match = True
+                for day_idx in range(len(recent_nums)):
+                    if not check_single_match(mode_id, sub_seq[day_idx], recent_patterns[day_idx]):
+                        is_match = False
+                        break
+
+                if is_match:
+                    has_prior_match = False
+                    if i > 0 and len(full_patterns) > len(recent_nums):
+                        prev_val = col_vals[i - 1]
+                        if pd.notna(prev_val):
+                            prior_pattern = full_patterns[-(len(recent_nums) + 1)]
+                            if check_single_match(mode_id, int(prev_val), prior_pattern):
+                                has_prior_match = True
+
+                    if not has_prior_match:
+                        next_val = col_vals[i + len(recent_nums)]
+                        if pd.notna(next_val):
+                            rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
+                            matched_records.append({
+                                "तारीख / रो (Date/Row)": rec_date,
+                                "गेम का नाम": col,
+                                "सटीक लड़ी": str(sub_seq),
+                                "अगले दिन आया रिजल्ट (Next Result)": int(next_val),
+                                "अगले नंबर की फैमिली": str(get_family(next_val))
+                            })
+
+        if matched_records:
+            match_result_df = pd.DataFrame(matched_records)
+            next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
+            top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
+            
+            st.success(f"✅ **सटीक (Unique) मैच पाए गए: `{len(matched_records)}` बार (कोई डुप्लीकेट/ओवरलैप नहीं)**")
+            st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
+            st.dataframe(match_result_df, use_container_width=True)
+        else:
+            st.warning("⚠️ इस सटीक लड़ी के लिए इतिहास में कोई नया/यूनिक पैटर्न नहीं मिला।")
 
     # ================= FORMULA 5 =================
     st.markdown("---")
-    st.subheader("5️⃣ Top 5 Single Numbers (Location-wise)")
-    f5_res = []
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        if vals:
-            top_5 = pd.Series(vals).value_counts().head(5).to_dict()
-            f5_res.append({"लोकेशन / गेम": col, "टॉप 5 नंबर (बार)": str({f"{k:02d}": v for k, v in top_5.items()})})
-    st.dataframe(pd.DataFrame(f5_res), use_container_width=True)
+    st.subheader("5️⃣ Smart Multi-Day Cross-Game Sequence & Predictor Engine")
+    
+    if len(df) >= 3:
+        num_days = st.slider("इतिहास के कितने दिनों का डिफ़्रेंस एनालिसिस देखना है?", 3, 5, 4, key="f5_slider")
+        recent_df = df.tail(num_days).reset_index(drop=True)
+        
+        st.write(f"📌 **पिछले {num_days} दिनों का 6-गेम डेटा बोर्ड:**")
+        st.dataframe(recent_df[['Date'] + available_cols] if 'Date' in recent_df.columns else recent_df[available_cols], use_container_width=True)
+        
+        all_pair_diffs = []
+        for src_g in available_cols:
+            for tgt_g in available_cols:
+                if src_g == tgt_g:
+                    continue
+                
+                diffs = []
+                for d in range(len(recent_df) - 1):
+                    v1 = recent_df.loc[d, src_g]
+                    v2 = recent_df.loc[d + 1, tgt_g]
+                    if pd.notna(v1) and pd.notna(v2):
+                        diffs.append(get_signed_diff(v1, v2))
+                
+                if len(diffs) >= 2:
+                    diff_str = " ➔ ".join([f"{d:+}" for d in diffs])
+                    steps = [diffs[i+1] - diffs[i] for i in range(len(diffs)-1)]
+                    
+                    is_exact_step = len(set(steps)) == 1
+                    is_same_diff = len(set(diffs)) == 1
+                    
+                    if is_same_diff:
+                        next_diff = diffs[-1]
+                        pattern_type = "🎯 समान अंतर (Same Pattern)"
+                    elif is_exact_step:
+                        next_diff = diffs[-1] + steps[0]
+                        pattern_type = f"📈 लड़ी क्रम (Step {steps[0]:+})"
+                    else:
+                        avg_step = int(np.round(np.mean(steps))) if steps else 0
+                        next_diff = diffs[-1] + avg_step
+                        pattern_type = f"📊 ट्रेंड अंतर (Avg Step {avg_step:+})"
+                    
+                    last_src_val = recent_df.loc[len(recent_df) - 1, src_g]
+                    pred_num_str = "N/A"
+                    pred_fam = "N/A"
+                    
+                    if pd.notna(last_src_val):
+                        pred_num = (int(last_src_val) + next_diff) % 100
+                        pred_num_str = f"{pred_num:02d}"
+                        pred_fam = str(get_family(pred_num))
+                    
+                    all_pair_diffs.append({
+                        "गेम कनेक्शन (From ➔ To)": f"{src_g} ➔ {tgt_g}",
+                        "पिछले दिनों के डिफ़्रेंस": diff_str,
+                        "आज का संभावित डिफ़्रेंस": f"{next_diff:+}",
+                        "पैटर्न का प्रकार": pattern_type,
+                        "आज का संभावित नंबर": pred_num_str,
+                        "फैमिली": pred_fam,
+                        "Priority": 1 if (is_same_diff or is_exact_step) else 2
+                    })
 
-    # ================= FORMULA 6 =================
-    st.markdown("---")
-    st.subheader("6️⃣ Repeat Number Engine")
-    f7_res = []
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        rep_cnt = sum(1 for i in range(1, len(vals)) if vals[i] == vals[i-1])
-        f7_res.append({"लोकेशन / गेम": col, "लगातार 2 दिन सेम नंबर (Repeat)": rep_cnt})
-    st.dataframe(pd.DataFrame(f7_res), use_container_width=True)
+        diff_matrix_df = pd.DataFrame(all_pair_diffs)
+        if not diff_matrix_df.empty:
+            diff_matrix_df = diff_matrix_df.sort_values(by=["Priority", "गेम कनेक्शन (From ➔ To)"]).drop(columns=["Priority"])
+            st.success("🔥 **सभी 6 गेमों के बीच पिछले दिनों के डिफ़्रेंस और आने वाले नंबरों का पूरा एनालिसिस:**")
+            st.dataframe(diff_matrix_df, use_container_width=True)
+        else:
+            st.warning("⚠️ डिफ़्रेंस निकालने के लिए पर्याप्त डेटा नहीं मिला।")
+    else:
+        st.error("डेटाबेस में कम से कम 3 दिनों का डेटा होना आवश्यक है।")
 
-    # ================= FORMULA 7 =================
+    # ================= FORMULAS 6 & 7 =================
     st.markdown("---")
-    st.subheader("7️⃣ Odd/Even Ratio Engine")
-    f8_res = []
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        even_cnt = sum(1 for x in vals if x % 2 == 0)
-        odd_cnt = len(vals) - even_cnt
-        f8_res.append({"लोकेशन / गेम": col, "सम (Even)": even_cnt, "विषम (Odd)": odd_cnt})
-    st.dataframe(pd.DataFrame(f8_res), use_container_width=True)
+    st.subheader("6️⃣ & 7️⃣ Multi-Day & Date Digit Sum Engine")
+    recent_sums = [get_digit_sum(df.loc[len(df)-1, c]) for c in available_cols if pd.notna(df.loc[len(df)-1, c])]
+    st.write(f"📌 **आज का डिजिट सम क्रम:** `{recent_sums}`")
+    
+    recent_roots = [get_digital_root(df.loc[len(df)-1, c]) for c in available_cols if pd.notna(df.loc[len(df)-1, c])]
+    st.info(f"🎯 **डिजिटल रूट (तारीख रिडक्शन):** `{recent_roots}`")
 
     # ================= FORMULA 8 =================
     st.markdown("---")
-    st.subheader("8️⃣ Haruf Analysis Engine")
-    f9_res = []
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        inside = [x // 10 for x in vals]
-        outside = [x % 10 for x in vals]
-        top_in = pd.Series(inside).value_counts().idxmax() if inside else "-"
-        top_out = pd.Series(outside).value_counts().idxmax() if outside else "-"
-        f9_res.append({"लोकेशन / गेम": col, "अंदर का सबसे हॉट हरूफ़": top_in, "बाहर का सबसे हॉट हरूफ़": top_out})
-    st.dataframe(pd.DataFrame(f9_res), use_container_width=True)
+    st.subheader("8️⃣ Gap Distance Progression Engine")
+    recent_gaps = [get_digit_gap(df.loc[len(df)-1, c]) for c in available_cols if pd.notna(df.loc[len(df)-1, c])]
+    st.write(f"📌 **वर्तमान डिजिट गैप सीरीज़ (अंतर):** `{recent_gaps}`")
 
     # ================= FORMULA 9 =================
     st.markdown("---")
-    st.subheader("9️⃣ Pair / Jodi Analysis Engine")
-    f10_res = []
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        jodi_cnt = sum(1 for x in vals if x // 10 == x % 10)
-        f10_res.append({"लोकेशन / गेम": col, "जोड़ा (उदा: 11, 22, 88) कुल बार": jodi_cnt})
-    st.dataframe(pd.DataFrame(f10_res), use_container_width=True)
+    st.subheader("9️⃣ Dynamic Cycle & Flexible Tolerance Repeater")
+    due_items = []
+    last_idx = len(df) - 1
+
+    for num in range(100):
+        indices = df[df[available_cols[0]] == num].index.tolist()
+        if len(indices) >= 2:
+            gaps = [indices[i] - indices[i-1] for i in range(1, len(indices))]
+            avg_gap = int(np.mean(gaps))
+            days_since_last = last_idx - indices[-1]
+            
+            if abs(days_since_last - avg_gap) <= 2:
+                due_items.append({"नंबर": num, "औसत साइकिल गैप (दिन)": avg_gap, "पेंडिंग दिन": days_since_last})
+
+    if due_items:
+        st.write("🔥 **आज साइकिल चक्र पूरा करने वाले संभावित नंबर:**")
+        st.dataframe(pd.DataFrame(due_items).head(10))
+    else:
+        st.info("आज के लिए कोई पेंडिंग साइकिल अलर्ट नहीं है।")
 
     # ================= FORMULA 10 =================
     st.markdown("---")
-    st.subheader("🔟 Family Scanner (Target & Rare Number)")
+    st.subheader("🔟 Target & Rare Number 2-Day Cross-Game Family Scanner")
 
     c_target, c_days = st.columns(2)
     with c_target:
-        scan_target = st.number_input("जिस रेयर/टारगेट नंबर का इतिहास चेक करना है (उदा. 20, 34, 88):", 0, 99, 88, key="scan_target_num_nf")
+        scan_target = st.number_input("जिस रेयर/टारगेट नंबर का 13 साल का रिकॉर्ड चेक करना है (उदा. 20, 34, 35):", 0, 99, 20, key="scan_target_num")
     with c_days:
-        follow_days = st.radio("कितने दिनों के अंदर का ट्रैक रिकॉर्ड देखना है?", [1, 2], index=1, key="follow_days_radio_nf")
+        follow_days = st.radio("कितने दिनों के अंदर का ट्रैक रिकॉर्ड देखना है?", [1, 2], index=1, key="follow_days_radio")
 
-    if st.button("🔍 13 साल का इतिहास स्कैन करें", key="run_scan_10_nf"):
+    if st.button("🔍 13 साल का इतिहास स्कैन करें", key="run_scan_10"):
         hist_records = []
         direct_hits = []
         family_hits = []
-        location_hits = []
 
         for col in available_cols:
             col_series = df[col].dropna().reset_index(drop=True)
@@ -160,6 +437,7 @@ def show_new_formulas(df, available_cols, date_col=None):
             for idx in range(len(col_series) - follow_days):
                 if int(col_series[idx]) == scan_target:
                     next_found_nums = []
+                    hit_games = []
 
                     for day_offset in range(1, follow_days + 1):
                         target_row_idx = idx + day_offset
@@ -169,144 +447,29 @@ def show_new_formulas(df, available_cols, date_col=None):
                                 if pd.notna(val):
                                     val_int = int(val)
                                     next_found_nums.append(val_int)
-                                    location_hits.append(g_col)
-                                    fam_list = get_family(val_int)
-                                    if fam_list:
-                                        family_hits.append(f"फैमिली {fam_list[0]:02d}")
+                                    hit_games.append(f"{g_col} (D+{day_offset}): {val_int:02d}")
 
                     for n in next_found_nums:
                         direct_hits.append(n)
+                        family_hits.extend(get_family(n))
 
                     rec_date = df.loc[idx, 'Date'] if 'Date' in df.columns else f"Row #{idx}"
                     unique_next_nums = sorted(list(set(next_found_nums)))
                     
                     hist_records.append({
-                        "तारीख़ / रो": rec_date,
-                        "लोकेशन": col,
+                        "तारीख / रो": rec_date,
+                        "जिस गेम में आया": col,
                         "टारगेट नंबर": f"{scan_target:02d}",
-                        "अगले दिनों के यूनिक नंबर": str([f"{n:02d}" for n in unique_next_nums])
+                        "अगले दिनों में आए नंबर (सभी 6 गेम)": str(unique_next_nums[:8]) + ("..." if len(unique_next_nums) > 8 else ""),
+                        "6 गेमों के रिजल्ट (Game Breakdown)": ", ".join(hit_games[:5]) + "..."
                     })
 
         if hist_records:
-            st.success(f"🎯 **13 साल के रिकॉर्ड में नंबर {scan_target:02d} कुल {len(hist_records)} बार आया है!**")
+            st.success(f"🎯 **13 साल के रिकॉर्ड में नंबर `{scan_target:02d}` कुल `{len(hist_records)}` बार आया है!**")
             
-            top_single = pd.Series(direct_hits).value_counts().head(1)
-            top_fam = pd.Series(family_hits).value_counts().head(1)
-            top_loc = pd.Series(location_hits).value_counts().head(1)
+            top_direct = pd.Series(direct_hits).value_counts().head(5).to_dict()
+            top_family = pd.Series(family_hits).value_counts().head(5).to_dict()
 
-            s_num = f"{top_single.index[0]:02d}" if not top_single.empty else "N/A"
-            s_cnt = top_single.values[0] if not top_single.empty else 0
-            
-            f_name = top_fam.index[0] if not top_fam.empty else "N/A"
-            f_cnt = top_fam.values[0] if not top_fam.empty else 0
-            
-            l_name = top_loc.index[0] if not top_loc.empty else "N/A"
-            l_cnt = top_loc.values[0] if not top_loc.empty else 0
-
-            st.markdown(f"""
-            🏆 **मुख्य निष्कर्ष (Summary):**
-            * 💥 **सबसे ज़्यादा बार आने वाला सिंगल नंबर:** {s_num} (कुल {s_cnt} बार)
-            * 👑 **सबसे ज़्यादा पास होने वाली फैमिली:** {f_name} (कुल {f_cnt} बार)
-            * 📍 **सबसे ज़्यादा पासिंग देने वाली लोकेशन/गेम:** {l_name} (कुल {l_cnt} पासिंग)
-            """)
-            
-            st.dataframe(pd.DataFrame(hist_records), use_container_width=True)
-        else:
-            st.warning("इतिहास में इस नंबर का कोई रिकॉर्ड नहीं मिला।")
-
-    # ================= FORMULA 11 =================
-    st.markdown("---")
-    st.subheader("1️⃣1️⃣ Continuous 2-Month Pair Repeat Engine")
-
-    detected_date_col = None
-    for c in df.columns:
-        if any(term in str(c).lower() for term in ['date', 'dt', 'tarikh', 'tariq', 'time', 'दिन', 'तारीख']):
-            detected_date_col = c
-            break
-
-    if detected_date_col is None and date_col and date_col in df.columns:
-        detected_date_col = date_col
-
-    if detected_date_col:
-        temp_df = df.copy()
-        temp_df['dt'] = pd.to_datetime(temp_df[detected_date_col], dayfirst=True, errors='coerce')
-        temp_df = temp_df.dropna(subset=['dt']).reset_index(drop=True)
-        
-        temp_df['Pair_Code'] = (temp_df['dt'].dt.month - 1) // 2
-        temp_df['Pair_Year_ID'] = temp_df['dt'].dt.year.astype(str) + "_P" + temp_df['Pair_Code'].astype(str)
-        
-        pair_names = [
-            "1. जनवरी - फ़रवरी (Jan-Feb)",
-            "2. मार्च - अप्रैल (Mar-Apr)",
-            "3. मई - जून (May-Jun)",
-            "4. जुलाई - अगस्त (Jul-Aug)",
-            "5. सितंबर - अक्टूबर (Sep-Oct)",
-            "6. नवंबर - दिसंबर (Nov-Dec)"
-        ]
-
-        tab1, tab2 = st.tabs(["🔄 लगातार 2-महीने के जोड़ों में आने वाले सदाबहार नंबर", "📆 2-महीने के पेयर (जैसे Jan-Feb) के अनुसार रिज़ल्ट"])
-
-        with tab1:
-            all_pair_blocks = sorted(temp_df['Pair_Year_ID'].unique())
-            total_blocks_count = len(all_pair_blocks)
-            pair_consistency_res = []
-            
-            for col in available_cols:
-                num_block_map = {n: set() for n in range(100)}
-                num_total_count = {n: 0 for n in range(100)}
-                
-                for idx, row in temp_df.iterrows():
-                    val = row[col]
-                    if pd.notna(val):
-                        try:
-                            n = int(val)
-                            if 0 <= n <= 99:
-                                num_block_map[n].add(row['Pair_Year_ID'])
-                                num_total_count[n] += 1
-                        except:
-                            continue
-                
-                sorted_nums = sorted(num_block_map.keys(), key=lambda x: len(num_block_map[x]), reverse=True)
-                
-                top_1 = sorted_nums[0]
-                top_1_b = len(num_block_map[top_1])
-                top_1_tot = num_total_count[top_1]
-                top_1_rate = round((top_1_b / total_blocks_count) * 100, 1) if total_blocks_count > 0 else 0
-                top_2 = sorted_nums[1]
-                top_2_b = len(num_block_map[top_2])
-                
-                pair_consistency_res.append({
-                    "लोकेशन / गेम": col,
-                    "👑 #1 सबसे ज़्यादा रिपीट नंबर": f"{top_1:02d}",
-                    "कितने 2-महीने के जोड़ों में आया": f"{top_1_b} / {total_blocks_count} पेयर्स ({top_1_rate}%)",
-                    "कुल बार गिरा": f"{top_1_tot} बार",
-                    "🥈 #2 दूसरा बेस्ट नंबर": f"{top_2:02d} ({top_2_b} पेयर्स में)",
-                })
-            
-            st.dataframe(pd.DataFrame(pair_consistency_res), use_container_width=True)
-
-        with tab2:
-            selected_pair_idx = st.selectbox("2 महीने का जोड़ा चुनें:", range(6), format_func=lambda x: pair_names[x], key="f11_pair_select_nf")
-            
-            p_filtered = temp_df[temp_df['Pair_Code'] == selected_pair_idx]
-            p_results = []
-            
-            for col in available_cols:
-                vals = p_filtered[col].dropna().astype(int).tolist()
-                if vals:
-                    counts = pd.Series(vals).value_counts()
-                    top_n = counts.index[0]
-                    top_cnt = counts.iloc[0]
-                    top_5_dict = counts.head(5).to_dict()
-                    
-                    p_results.append({
-                        "लोकेशन / गेम": col,
-                        "🔥 सबसे हॉट नंबर": f"{top_n:02d}",
-                        "कितनी बार आया": f"{top_cnt} बार",
-                        "टॉप 5 नंबर (बार)": str({f"{k:02d}": v for k, v in top_5_dict.items()})
-                    })
-            
-            st.dataframe(pd.DataFrame(p_results), use_container_width=True)
-
-    else:
-        st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला।")
+            col_res1, col_res2 = st.columns(2)
+            with col_res1:
+                st.markdow

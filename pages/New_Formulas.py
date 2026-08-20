@@ -472,4 +472,13 @@ if uploaded_file is not None:
 
             col_res1, col_res2 = st.columns(2)
             with col_res1:
-                st.markdow
+                st.markdown(f"🔥 **6 की 6 गेमों में सबसे ज़्यादा बार गिरे 'डायरेक्ट नंबर' (Top Numbers):**")
+                st.write(top_direct)
+            with col_res2:
+                st.markdown(f"💥 **अगले {follow_days} दिनों में सबसे ज़्यादा बार पास होने वाली 'फैमिली':**")
+                st.write(top_family)
+
+            st.markdown("📋 **13 साल का पूरा 6-गेम ब्रेकडाउन रिकॉर्ड:**")
+            st.dataframe(pd.DataFrame(hist_records), use_container_width=True)
+        else:
+            st.warning(f"⚠️ 13 साल के इतिहास में नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")

@@ -524,6 +524,7 @@ if uploaded_file is not None:
                 })
             
             fam_loc_df = pd.DataFrame(fam_loc_rows).sort_values(by="कुल पासिंग", ascending=False).reset_index(drop=True)
+            
 
             st.markdown("📊 **फैमिली अनुसार लोकेशन का ब्रेकडाउन (किस गेम में कितनी बार पास हुई):**")
             st.dataframe(fam_loc_df, use_container_width=True)
@@ -532,3 +533,95 @@ if uploaded_file is not None:
             st.dataframe(pd.DataFrame(hist_records), use_container_width=True)
         else:
             st.warning(f"⚠️ 13 साल के इतिहास में नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")
+            # ================= FORMULA 11 =================
+    st.markdown("---")
+    st.subheader("1️⃣1️⃣ All-Time Monthly Consistency & Location-wise Hot Number Engine")
+
+    if date_col and date_col in df.columns:
+        # तारीख़ को datetime में बदलना
+        temp_df = df.copy()
+        temp_df['dt'] = pd.to_datetime(temp_df[date_col], dayfirst=True, errors='coerce')
+        temp_df = temp_df.dropna(subset=['dt']).reset_index(drop=True)
+        
+        temp_df['YearMonth'] = temp_df['dt'].dt.to_period('M')
+        temp_df['Month_Num'] = temp_df['dt'].dt.month
+        
+        total_unique_months = temp_df['YearMonth'].nunique()
+        
+        st.write(f"📅 **कुल स्कैन किए गए महीने:** `{total_unique_months}` (13 साल के रिकॉर्ड में)")
+
+        tab1, tab2 = st.tabs(["👑 हर महीने आने वाले 'सदाबहार' नंबर (Location-Wise)", "📆 चालू महीने (Month-wise) के हॉट नंबर"])
+
+        # TAB 1: हर महीने पास होने वाले नंबर (Consistency Engine)
+        with tab1:
+            st.markdown("📌 **हर लोकेशन (गेम) में ऐसा नंबर जो लगभग हर महीने पास होता है:**")
+            
+            location_consistency = []
+            
+            for col in available_cols:
+                # हर नंबर का महीने वाइज प्रेजेंस काउंट
+                num_month_map = {n: set() for n in range(100)}
+                num_total_count = {n: 0 for n in range(100)}
+                
+                for idx, row in temp_df.iterrows():
+                    val = row[col]
+                    if pd.notna(val):
+                        try:
+                            n = int(val)
+                            if 0 <= n <= 99:
+                                num_month_map[n].add(row['YearMonth'])
+                                num_total_count[n] += 1
+                        except:
+                            continue
+                
+                # सबसे ज़्यादा महीनों में आने वाले टॉप 3 नंबर
+                sorted_nums = sorted(num_month_map.keys(), key=lambda x: len(num_month_map[x]), reverse=True)
+                
+                top_1 = sorted_nums[0]
+                top_1_m = len(num_month_map[top_1])
+                top_1_tot = num_total_count[top_1]
+                consistency_rate_1 = round((top_1_m / total_unique_months) * 100, 1)
+                
+                top_2 = sorted_nums[1]
+                top_2_m = len(num_month_map[top_2])
+                top_2_tot = num_total_count[top_2]
+                
+                location_consistency.append({
+                    "लोकेशन / गेम": col,
+                    "👑 #1 सदाबहार नंबर": f"{top_1:02d}",
+                    "कितने महीनों में आया": f"{top_1_m} / {total_unique_months} महीने ({consistency_rate_1}%)",
+                    "कुल कितनी बार गिरा": f"{top_1_tot} बार",
+                    "🥈 #2 दूसरा बेस्ट नंबर": f"{top_2:02d} ({top_2_m} महीनों में)",
+                })
+            
+            st.dataframe(pd.DataFrame(location_consistency), use_container_width=True)
+
+        # TAB 2: महीने अनुसार (उदा. अगस्त) इतिहास का हॉट नंबर
+        with tab2:
+            current_m = st.slider("महीना चुनें (1 = जनवरी, 12 = दिसंबर):", 1, 12, 8, key="f11_month_select")
+            month_names = ["जनवरी", "फ़रवरी", "मार्च", "अप्रैल", "मई", "जून", "जुलाई", "अगस्त", "सितंबर", "अक्टूबर", "नवंबर", "दिसंबर"]
+            
+            st.markdown(f"🔥 **इतिहास के सभी '{month_names[current_m - 1]}' महीनों में सबसे ज़्यादा आने वाले नंबर:**")
+            
+            m_filtered = temp_df[temp_df['Month_Num'] == current_m]
+            m_results = []
+            
+            for col in available_cols:
+                vals = m_filtered[col].dropna().astype(int).tolist()
+                if vals:
+                    counts = pd.Series(vals).value_counts()
+                    top_n = counts.index[0]
+                    top_cnt = counts.iloc[0]
+                    top_5_dict = counts.head(5).to_dict()
+                    
+                    m_results.append({
+                        "लोकेशन / गेम": col,
+                        "🔥 सबसे हॉट नंबर": f"{top_n:02d}",
+                        "कितनी बार आया": f"{top_cnt} बार",
+                        "टॉप 5 नंबर (बार)": str({f"{k:02d}": v for k, v in top_5_dict.items()})
+                    })
+            
+            st.dataframe(pd.DataFrame(m_results), use_container_width=True)
+
+    else:
+        st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। महीने अनुसार गणना के लिए CSV में Date होना ज़रूरी है।")

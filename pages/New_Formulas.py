@@ -535,7 +535,7 @@ if uploaded_file is not None:
             st.warning(f"⚠️ 13 साल के इतिहास में नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")
             # ================= FORMULA 11 =================
     st.markdown("---")
-    st.subheader("1️⃣1️⃣ All-Time Monthly Consistency & Location-wise Hot Number Engine")
+    st.subheader("1️⃣1️⃣ All-Time Monthly & 2-Month Consistency Engine")
 
     # ऑटोमैटिक तारीख़ (Date) कॉलम खोजना
     detected_date_col = None
@@ -554,21 +554,36 @@ if uploaded_file is not None:
         
         temp_df['YearMonth'] = temp_df['dt'].dt.to_period('M')
         temp_df['Month_Num'] = temp_df['dt'].dt.month
+        # 2 महीने की ब्लॉक अवधि (2-Month Block ID)
+        temp_df['Block_2M'] = (temp_df['dt'].dt.year * 12 + temp_df['dt'].dt.month) // 2
         
         total_unique_months = temp_df['YearMonth'].nunique()
+        total_2m_blocks = temp_df['Block_2M'].nunique()
         
-        st.write(f"📅 **स्कैन किया गया तारीख़ कॉलम:** `{detected_date_col}` | **कुल महीने:** `{total_unique_months}`")
+        st.write(f"📅 **स्कैन किया गया तारीख़ कॉलम:** `{detected_date_col}` | **कुल रिकॉर्ड:** `{total_unique_months} महीने` (`{total_2m_blocks} द्वि-मासिक ब्लॉक`)")
 
-        tab1, tab2 = st.tabs(["👑 हर महीने आने वाले 'सदाबहार' नंबर (Location-Wise)", "📆 चालू महीने (Month-wise) के हॉट नंबर"])
+        tab1, tab2 = st.tabs(["👑 सदाबहार कंसिस्टेंट नंबर (1 या 2 महीने का गैप)", "📆 चालू महीने (Month-wise) के हॉट नंबर"])
 
-        # TAB 1: हर महीने पास होने वाले नंबर
+        # TAB 1: हर 1 या 2 महीने में पास होने वाले नंबर
         with tab1:
-            st.markdown("📌 **हर लोकेशन (गेम) में ऐसा नंबर जो लगभग हर महीने पास होता है:**")
+            window_choice = st.radio(
+                "कंसिस्टेंसी चेक करने की समयावधि चुनें:",
+                ["1 महीना (हर महीने पास होने वाले)", "2 महीने (हर 2 महीने के अंदर आने वाले)"],
+                horizontal=True,
+                key="f11_window_radio"
+            )
+            
+            is_2m = "2 महीने" in window_choice
+            target_period_col = 'Block_2M' if is_2m else 'YearMonth'
+            total_periods = total_2m_blocks if is_2m else total_unique_months
+            period_label = "2-महीने के ब्लॉकों" if is_2m else "महीनों"
+
+            st.markdown(f"📌 **हर लोकेशन में ऐसा नंबर जो लगभग हर {2 if is_2m else 1} महीने के गैप में पास होता है:**")
             
             location_consistency = []
             
             for col in available_cols:
-                num_month_map = {n: set() for n in range(100)}
+                num_period_map = {n: set() for n in range(100)}
                 num_total_count = {n: 0 for n in range(100)}
                 
                 for idx, row in temp_df.iterrows():
@@ -577,27 +592,30 @@ if uploaded_file is not None:
                         try:
                             n = int(val)
                             if 0 <= n <= 99:
-                                num_month_map[n].add(row['YearMonth'])
+                                num_period_map[n].add(row[target_period_col])
                                 num_total_count[n] += 1
                         except:
                             continue
                 
-                sorted_nums = sorted(num_month_map.keys(), key=lambda x: len(num_month_map[x]), reverse=True)
+                sorted_nums = sorted(num_period_map.keys(), key=lambda x: len(num_period_map[x]), reverse=True)
                 
                 top_1 = sorted_nums[0]
-                top_1_m = len(num_month_map[top_1])
+                top_1_p = len(num_period_map[top_1])
                 top_1_tot = num_total_count[top_1]
-                consistency_rate_1 = round((top_1_m / total_unique_months) * 100, 1) if total_unique_months > 0 else 0
+                consistency_rate_1 = round((top_1_p / total_periods) * 100, 1) if total_periods > 0 else 0
                 
                 top_2 = sorted_nums[1]
-                top_2_m = len(num_month_map[top_2])
+                top_2_p = len(num_period_map[top_2])
+                top_2_tot = num_total_count[top_2]
+                consistency_rate_2 = round((top_2_p / total_periods) * 100, 1) if total_periods > 0 else 0
                 
                 location_consistency.append({
                     "लोकेशन / गेम": col,
                     "👑 #1 सदाबहार नंबर": f"{top_1:02d}",
-                    "कितने महीनों में आया": f"{top_1_m} / {total_unique_months} महीने ({consistency_rate_1}%)",
+                    f"कंसिस्टेंसी ({period_label} में)": f"{top_1_p} / {total_periods} {period_label} ({consistency_rate_1}%)",
                     "कुल कितनी बार गिरा": f"{top_1_tot} बार",
-                    "🥈 #2 दूसरा बेस्ट नंबर": f"{top_2:02d} ({top_2_m} महीनों में)",
+                    "🥈 #2 दूसरा बेस्ट नंबर": f"{top_2:02d}",
+                    "कंसिस्टेंसी (#2)": f"{top_2_p} / {total_periods} ({consistency_rate_2}%)"
                 })
             
             st.dataframe(pd.DataFrame(location_consistency), use_container_width=True)
@@ -630,4 +648,4 @@ if uploaded_file is not None:
             st.dataframe(pd.DataFrame(m_results), use_container_width=True)
 
     else:
-        st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें कि उसमें तारीख़ वाला कॉलम किस नाम से है।")
+        st.error("⚠️ तारीख़ का कॉलम (Date) नहीं मिला। कृपया अपनी CSV फ़ाइल चेक करें।")

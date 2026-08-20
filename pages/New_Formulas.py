@@ -681,3 +681,58 @@ if uploaded_file is not None:
         st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
     else:
         st.warning("⚠️ विश्लेषण के लिए डेटा उपलब्ध नहीं है।")
+# ================= FORMULA 13 =================
+    st.markdown("---")
+    st.subheader("1️⃣3️⃣ Premium Selected Numbers Engine (Formulas 3 & 4 Combined)")
+
+    summary_data_13 = []
+
+    for col in available_cols:
+        vals = df[col].dropna().astype(int).tolist()
+        valid_vals = [x for x in vals if 0 <= x <= 99]
+        
+        if len(valid_vals) >= 5:
+            # 1. फ़ॉर्मूला 3/5 लॉजिक: सबसे ज़्यादा बार आने वाले नंबरों का स्कोर
+            freq_counts = pd.Series(valid_vals).value_counts()
+            
+            # 2. फ़ॉर्मूला 4 लॉजिक: पिछले रिज़ल्ट के बाद अगले 2 दिनों में सबसे ज़्यादा बार आने वाले फ़ॉलो-अप नंबर
+            last_num = valid_vals[-1]  # सबसे हाल का रिज़ल्ट
+            follow_up_nums = []
+            
+            for i in range(len(valid_vals) - 2):
+                if valid_vals[i] == last_num:
+                    follow_up_nums.append(valid_vals[i + 1])
+                    follow_up_nums.append(valid_vals[i + 2])
+            
+            follow_counts = pd.Series(follow_up_nums).value_counts() if follow_up_nums else pd.Series(dtype=int)
+            
+            # दोनों फ़ॉर्मूलों का संयुक्त स्कोर (Combined Score)
+            combined_scores = {n: 0 for n in range(100)}
+            
+            for n in range(100):
+                # फ़्रीक्वेंसी स्कोर
+                if n in freq_counts:
+                    combined_scores[n] += freq_counts[n] * 1
+                # फ़ॉलो-अप स्कोर (3-4 पैटर्न वेटेज)
+                if n in follow_counts:
+                    combined_scores[n] += follow_counts[n] * 3
+
+            # स्कोर के अनुसार रैंकिंग
+            ranked_nums = sorted(combined_scores.keys(), key=lambda x: combined_scores[x], reverse=True)
+            
+            # सबसे ख़ास फ़िल्टर्ड नंबर
+            top_1_special = ranked_nums[0]
+            top_20_main = ranked_nums[:20]
+            top_70_total = ranked_nums[:70]
+            
+            summary_data_13.append({
+                "लोकेशन / गेम": col,
+                "👑 #1 सबसे ख़ास सिंगल नंबर": f"{top_1_special:02d}",
+                "🔥 20 सबसे ख़ास मेन नंबर": ", ".join([f"{n:02d}" for n in top_20_main]),
+                "📋 बाकी ख़ास सपोर्ट नंबर (कुल 70)": ", ".join([f"{n:02d}" for n in top_70_total[20:]])
+            })
+
+    if summary_data_13:
+        st.dataframe(pd.DataFrame(summary_data_13), use_container_width=True)
+    else:
+        st.warning("⚠️ विश्लेषण के लिए डेटा उपलब्ध नहीं है।")

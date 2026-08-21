@@ -269,18 +269,42 @@ if uploaded_file is not None:
             st.success(f"✅ **सटीक (Unique) मैच पाए गए: `{len(matched_records)}` बार (कोई डुप्लीकेट/ओवरलैप नहीं)**")
             st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
             
-            # --- नया फीचर: Next Result के सभी यूनिक (बिना डुप्लीकेट) नंबर कॉमा के साथ ---
-            unique_next_nums = sorted(list(set(next_nums_list)))
-            formatted_numbers_str = ", ".join([f"{num:02d}" for num in unique_next_nums])
-            
-            st.markdown("📋 **`Next Result` के सभी यूनिक नंबर (आसानी से कॉपी करने के लिए):**")
-            st.text_area(
-                label="कॉपी-पेस्ट करने के लिए नीचे दिए बॉक्स से नंबर कॉपी करें:", 
-                value=formatted_numbers_str, 
-                height=100, 
-                key=f"copy_box_{mode_id}"
-            )
-            
+            # --- 3️⃣ सेम टू सेम (Exact Match): डुप्लीकेट हटाकर (No Duplicates) ---
+            if mode_id == "3":
+                # dict.fromkeys क्रम बनाए रखता है और सारे डुप्लीकेट नंबर हटा देता है
+                unique_exact_nums = list(dict.fromkeys(next_nums_list))
+                exact_box_str = ", ".join([f"{num:02d}" for num in unique_exact_nums])
+                
+                st.markdown("📋 **`Next Result` के सभी नंबर (बिना डुप्लीकेट - कॉपी करने हेतु):**")
+                st.text_area(
+                    label="यहाँ से नंबर कॉपी करें:", 
+                    value=exact_box_str, 
+                    height=90, 
+                    key=f"copy_box_exact_{mode_id}"
+                )
+
+            # --- 2️⃣ केवल हर्फ़ (Direct Haruf): डुप्लीकेट हटाकर (No Duplicates) ---
+            elif mode_id == "2":
+                haruf_list = []
+                for num in next_nums_list:
+                    h_in, h_out = get_haruf(num)
+                    if h_in is not None and h_in not in haruf_list:
+                        haruf_list.append(h_in)
+                    if h_out is not None and h_out not in haruf_list:
+                        haruf_list.append(h_out)
+                
+                # केवल यूनिक हर्फ़ बिना किसी रिपीट/डुप्लीकेट के
+                haruf_box_str = ", ".join(map(str, sorted(haruf_list)))
+                
+                st.markdown("🎲 **आए हुए सभी हर्फ़ (बिना डुप्लीकेट - कॉपी करने हेतु):**")
+                st.text_area(
+                    label="यहाँ से हर्फ़ कॉपी करें:", 
+                    value=haruf_box_str, 
+                    height=70, 
+                    key=f"copy_box_haruf_{mode_id}"
+                )
+
+            # मुख्य टेबल - जैसा था वैसा ही रहेगा (इसमें सारे रिकॉर्ड दिखेंगे, कोई डुप्लीकेट नहीं हटेगा)
             st.dataframe(match_result_df, use_container_width=True)
         else:
             st.warning("⚠️ इस सटीक लड़ी के लिए इतिहास में कोई नया/यूनिक पैटर्न नहीं मिला।")

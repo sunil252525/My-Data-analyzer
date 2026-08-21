@@ -191,7 +191,7 @@ if uploaded_file is not None:
         
         mode_seq_days = st.slider(
             f"लड़ी के दिनों की संख्या (Sequence Days) - {mode_name}:", 
-            min_value=2, 
+            min_value=1, 
             max_value=20, 
             value=5, 
             key=f"{key_prefix}_days"

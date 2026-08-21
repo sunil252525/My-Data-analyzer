@@ -115,53 +115,7 @@ if uploaded_file is not None:
     with c2:
         target_num = st.number_input("टारगेट नंबर दर्ज करें:", 0, 99, 58)
 
-    # ================= EXACT CURRENT MONTH (AUGUST 2026) DIGIT COUNTER =================
-    st.markdown("---")
-    st.subheader("📊 8वें महीने (अगस्त 2026) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड")
-
-    month_df = df.copy()
-
-    if date_col and date_col in month_df.columns:
-        month_df['dt_temp'] = pd.to_datetime(month_df[date_col], dayfirst=True, errors='coerce')
-        aug_mask = (month_df['dt_temp'].dt.month == 8) & (month_df['dt_temp'].dt.year == 2026)
-        filtered_df = month_df[aug_mask].reset_index(drop=True)
-        
-        if len(filtered_df) > 0:
-            month_df = filtered_df
-            st.caption("📅 **सटीक फ़िल्टर:** केवल अगस्त 2026 (1 से 19 तारीख तक) का डेटा स्कैन हुआ है।")
-        else:
-            month_df = month_df.tail(19).reset_index(drop=True)
-            st.caption("📅 **फ़िल्टर:** चालू महीने के हालिया 19 दिनों का डेटा स्कैन हुआ है।")
-    else:
-        month_df = month_df.tail(19).reset_index(drop=True)
-        st.caption("📅 **फ़िल्टर:** हालिया 19 दिनों का डेटा:")
-
-    digit_counts = {str(d): 0 for d in range(10)}
-
-    for col in available_cols:
-        if col in month_df.columns:
-            for val in month_df[col].dropna():
-                try:
-                    val_int = int(val)
-                    val_str = f"{val_int:02d}"
-                    for char in val_str:
-                        if char in digit_counts:
-                            digit_counts[char] += 1
-                except:
-                    continue
-
-    cols = st.columns(10)
-    for i in range(10):
-        digit_key = str(i)
-        count_val = digit_counts[digit_key]
-        with cols[i]:
-            st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
-
-    sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
-    hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
-    cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
-
-    st.info(f"🔥 **अगस्त में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")
+    
 
     # ================= FORMULAS 1 & 2 =================
     st.markdown("---")
@@ -293,7 +247,7 @@ if uploaded_file is not None:
                                 "तारीख / रो (Date/Row)": rec_date,
                                 "गेम का नाम": col,
                                 "सटीक लड़ी": str(sub_seq),
-                                "अगले दिन आया रिजल्ट (Next Result)": int(next_val),
+                                "Next Result": int(next_val),
                                 "अगले नंबर की फैमिली": str(get_family(next_val))
                             })
 
@@ -863,3 +817,50 @@ if uploaded_file is not None:
         st.dataframe(pd.DataFrame(summary_3days_f15), use_container_width=True)
     else:
         st.warning("⚠️ बैकटेस्टिंग के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
+# ================= EXACT CURRENT MONTH (AUGUST 2026) DIGIT COUNTER =================
+    st.markdown("---")
+    st.subheader("📊 8वें महीने (अगस्त 2026) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड")
+
+    month_df = df.copy()
+
+    if date_col and date_col in month_df.columns:
+        month_df['dt_temp'] = pd.to_datetime(month_df[date_col], dayfirst=True, errors='coerce')
+        aug_mask = (month_df['dt_temp'].dt.month == 8) & (month_df['dt_temp'].dt.year == 2026)
+        filtered_df = month_df[aug_mask].reset_index(drop=True)
+        
+        if len(filtered_df) > 0:
+            month_df = filtered_df
+            st.caption("📅 **सटीक फ़िल्टर:** केवल अगस्त 2026 (1 से 19 तारीख तक) का डेटा स्कैन हुआ है।")
+        else:
+            month_df = month_df.tail(19).reset_index(drop=True)
+            st.caption("📅 **फ़िल्टर:** चालू महीने के हालिया 19 दिनों का डेटा स्कैन हुआ है।")
+    else:
+        month_df = month_df.tail(19).reset_index(drop=True)
+        st.caption("📅 **फ़िल्टर:** हालिया 19 दिनों का डेटा:")
+
+    digit_counts = {str(d): 0 for d in range(10)}
+
+    for col in available_cols:
+        if col in month_df.columns:
+            for val in month_df[col].dropna():
+                try:
+                    val_int = int(val)
+                    val_str = f"{val_int:02d}"
+                    for char in val_str:
+                        if char in digit_counts:
+                            digit_counts[char] += 1
+                except:
+                    continue
+
+    cols = st.columns(10)
+    for i in range(10):
+        digit_key = str(i)
+        count_val = digit_counts[digit_key]
+        with cols[i]:
+            st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
+
+    sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
+    hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
+    cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
+
+    st.info(f"🔥 **अगस्त में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")

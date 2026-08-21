@@ -12,12 +12,16 @@ uploaded_file = st.file_uploader("अपनी CSV फ़ाइल यहाँ 
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
 
 def get_rashi_digit(d):
-    return RASHI_MAP.get(int(d), int(d))
+    try:
+        return RASHI_MAP.get(int(d), int(d))
+    except:
+        return 0
 
 def get_family(num):
     try:
         if pd.isna(num): return []
         num = int(num)
+        if not (0 <= num <= 99): return []
         d1, d2 = num // 10, num % 10
         r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
         fam = set()
@@ -32,6 +36,7 @@ def get_haruf(num):
     try:
         if pd.isna(num): return None, None
         num = int(num)
+        if not (0 <= num <= 99): return None, None
         return num // 10, num % 10
     except:
         return None, None
@@ -40,6 +45,7 @@ def get_haruf_and_rashi_set(num):
     try:
         if pd.isna(num): return set()
         num = int(num)
+        if not (0 <= num <= 99): return set()
         d1, d2 = num // 10, num % 10
         r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
         return {d1, d2, r1, r2}
@@ -71,24 +77,31 @@ def get_digit_gap(num):
 
 def get_signed_diff(val_from, val_to):
     """प्लस/माइनस अंतर (-50 से +50 की रेंज) निकालता है"""
-    diff = (int(val_to) - int(val_from)) % 100
-    if diff > 50:
-        diff -= 100
-    return diff
+    try:
+        diff = (int(val_to) - int(val_from)) % 100
+        if diff > 50:
+            diff -= 100
+        return diff
+    except:
+        return 0
 
 def check_single_match(mode_id, hist_val, rec_pattern):
-    if mode_id == "1":
-        return bool(rec_pattern & get_haruf_and_rashi_set(hist_val))
-    elif mode_id == "2":
-        h_i, h_o = get_haruf(hist_val)
-        hist_set = {h_i, h_o} if h_i is not None else set()
-        return bool(rec_pattern & hist_set)
-    elif mode_id == "3":
-        return hist_val == rec_pattern
-    elif mode_id == "4":
-        return hist_val in rec_pattern
-    elif mode_id == "5":
-        return bool(rec_pattern & set(get_family(hist_val)))
+    try:
+        hist_val = int(hist_val)
+        if mode_id == "1":
+            return bool(rec_pattern & get_haruf_and_rashi_set(hist_val))
+        elif mode_id == "2":
+            h_i, h_o = get_haruf(hist_val)
+            hist_set = {h_i, h_o} if h_i is not None else set()
+            return bool(rec_pattern & hist_set)
+        elif mode_id == "3":
+            return hist_val == rec_pattern
+        elif mode_id == "4":
+            return hist_val in rec_pattern
+        elif mode_id == "5":
+            return bool(rec_pattern & set(get_family(hist_val)))
+    except:
+        return False
     return False
 
 # ================= MAIN DASHBOARD =================
@@ -114,8 +127,6 @@ if uploaded_file is not None:
         g_sel = st.selectbox("मुख्य गेम चुनें (करंट पैटर्न हेतु):", available_cols)
     with c2:
         target_num = st.number_input("टारगेट नंबर दर्ज करें:", 0, 99, 58)
-
-    
 
     # ================= FORMULAS 1 & 2 =================
     st.markdown("---")
@@ -253,7 +264,7 @@ if uploaded_file is not None:
 
         if matched_records:
             match_result_df = pd.DataFrame(matched_records)
-            next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
+            next_nums_list = match_result_df["Next Result"].tolist()
             top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
             
             st.success(f"✅ **सटीक (Unique) मैच पाए गए: `{len(matched_records)}` बार (कोई डुप्लीकेट/ओवरलैप नहीं)**")
@@ -376,7 +387,7 @@ if uploaded_file is not None:
 
     c_target, c_days = st.columns(2)
     with c_target:
-        scan_target = st.number_input("जिस रेयर/टारगेट नंबर का 13 साल का रिकॉर्ड चेक करना है (उदा. 20, 34, 35):", 0, 99, 20, key="scan_target_num")
+        scan_target = st.number_input("जिस रेयर/टारगेट नंबर का रिकॉर्ड चेक करना है:", 0, 99, 20, key="scan_target_num")
     with c_days:
         follow_days = st.radio("कितने दिनों के अंदर का ट्रैक रिकॉर्ड देखना है?", [1, 2], index=1, key="follow_days_radio")
 
@@ -385,7 +396,6 @@ if uploaded_file is not None:
         direct_hits = []
         family_hits = []
         location_hits = []
-        fam_location_dict = {}
 
         for col in available_cols:
             col_series = df[col].dropna().reset_index(drop=True)
@@ -404,21 +414,13 @@ if uploaded_file is not None:
                                     val_int = int(val)
                                     next_found_nums.append(val_int)
                                     hit_games.append(f"{g_col} (D+{day_offset}): {val_int:02d}")
-                                    
-                                    # लोकेशन और फैमिली का ट्रैक रखना
                                     location_hits.append(g_col)
-                                    fam_list = get_family(val_int)
-                                    if fam_list:
-                                        fam_name = f"फैमिली {fam_list[0]:02d} ({fam_list})"
-                                        if fam_name not in fam_location_dict:
-                                            fam_location_dict[fam_name] = {}
-                                        fam_location_dict[fam_name][g_col] = fam_location_dict[fam_name].get(g_col, 0) + 1
 
                     for n in next_found_nums:
                         direct_hits.append(n)
                         fam_list = get_family(n)
                         if fam_list:
-                            family_hits.append(f"फैमिली {fam_list[0]:02d} ({fam_list})")
+                            family_hits.append(f"फैमिली {fam_list[0]:02d}")
 
                     rec_date = df.loc[idx, 'Date'] if 'Date' in df.columns else f"Row #{idx}"
                     unique_next_nums = sorted(list(set(next_found_nums)))
@@ -427,12 +429,11 @@ if uploaded_file is not None:
                         "तारीख / रो": rec_date,
                         "जिस गेम में आया": col,
                         "टारगेट नंबर": f"{scan_target:02d}",
-                        "अगले दिनों में आए नंबर (सभी 6 गेम)": str(unique_next_nums[:8]) + ("..." if len(unique_next_nums) > 8 else ""),
-                        "6 गेमों के रिजल्ट (Game Breakdown)": ", ".join(hit_games[:5]) + "..."
+                        "अगले दिनों में आए नंबर": str(unique_next_nums[:8]) + ("..." if len(unique_next_nums) > 8 else "")
                     })
 
         if hist_records:
-            st.success(f"🎯 **13 साल के रिकॉर्ड में नंबर `{scan_target:02d}` कुल `{len(hist_records)}` बार आया है!**")
+            st.success(f"🎯 **डेटाबेस में नंबर `{scan_target:02d}` कुल `{len(hist_records)}` बार आया है!**")
             
             top_direct_series = pd.Series(direct_hits).value_counts()
             top_family_series = pd.Series(family_hits).value_counts()
@@ -447,10 +448,9 @@ if uploaded_file is not None:
             best_location = top_location_series.index[0] if not top_location_series.empty else "N/A"
             best_location_count = top_location_series.iloc[0] if not top_location_series.empty else 0
 
-            # साफ़ मुख्य परिणाम हाइलाइट बॉक्स
             st.info(f"""
             🏆 **मुख्य निष्कर्ष (Summary):**
-            * 💥 **सबसे ज़्यादा बार आने वाला सिंगल नंबर:** `{best_number:02d}` (कुल **{best_number_count}** बार)
+            * 💥 **सबसे ज़्यादा बार आने वाला सिंगल नंबर:** `{best_number}` (कुल **{best_number_count}** बार)
             * 👑 **सबसे ज़्यादा पास होने वाली फैमिली:** `{best_family}` (कुल **{best_family_count}** बार)
             * 📍 **सबसे ज़्यादा पासिंग देने वाली लोकेशन/गेम:** `{best_location}` (कुल **{best_location_count}** पासिंग)
             """)
@@ -460,407 +460,14 @@ if uploaded_file is not None:
                 st.markdown("🔥 **टॉप 5 सिंगल नंबर:**")
                 st.table(top_direct_series.head(5).rename("बार आया"))
             with col_res2:
-                st.markdown("💥 **टॉप 5 फैमिली:**")
-                st.table(top_family_series.head(5).rename("बार पास हुई"))
+                st.markdown("👑 **टॉप 5 फैमिली:**")
+                st.table(top_family_series.head(5).rename("बार आया"))
             with col_res3:
-                st.markdown("📍 **गेम/लोकेशन अनुसार कुल पासिंग:**")
-                st.table(top_location_series.rename("कुल हिट्स"))
+                st.markdown("📍 **टॉप लोकेशन:**")
+                st.table(top_location_series.head(5).rename("पासिंग"))
 
-            # फैमिली अनुसार लोकेशन का ब्रेकडाउन टेबल
-            fam_loc_rows = []
-            for fam_name, loc_counts in fam_location_dict.items():
-                total_hits = sum(loc_counts.values())
-                loc_summary = ", ".join([f"{loc}: {cnt} बार" for loc, cnt in sorted(loc_counts.items(), key=lambda x: x[1], reverse=True)])
-                fam_loc_rows.append({
-                    "फैमिली": fam_name,
-                    "कुल पासिंग": total_hits,
-                    "किस-किस लोकेशन पर कितनी बार आई (Location Breakdown)": loc_summary
-                })
-            
-            fam_loc_df = pd.DataFrame(fam_loc_rows).sort_values(by="कुल पासिंग", ascending=False).reset_index(drop=True)
-
-            st.markdown("📊 **फैमिली अनुसार लोकेशन का ब्रेकडाउन (किस गेम में कितनी बार पास हुई):**")
-            st.dataframe(fam_loc_df, use_container_width=True)
-
-            st.markdown("📋 **13 साल का पूरा ब्रेकडाउन रिकॉर्ड:**")
             st.dataframe(pd.DataFrame(hist_records), use_container_width=True)
-        else:
-            st.warning(f"⚠️ 13 साल के इतिहास में नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")
-            # ================= FORMULA 11 =================
+
+    # ================= FORMULA 13 =================
     st.markdown("---")
-    st.subheader("1️⃣1️⃣ Time-Frame Cycle & Repeat Guarantee Engine (1, 2, 3, 4 महीने का गैप फ़िल्टर)")
-
-    timeframe_option = st.selectbox(
-        "समय सीमा (Cycle Window) चुनें:",
-        ["1 महीना (30 दिन)", "2 महीने (60 दिन)", "3 महीने (90 दिन)", "4 महीने (120 दिन)"],
-        index=1,
-        key="f11_tf_select"
-    )
-
-    days_map = {
-        "1 महीना (30 दिन)": 30,
-        "2 महीने (60 दिन)": 60,
-        "3 महीने (90 दिन)": 90,
-        "4 महीने (120 दिन)": 120
-    }
-    target_days = days_map[timeframe_option]
-
-    detected_date_col = None
-    for c in df.columns:
-        if any(term in str(c).lower() for term in ['date', 'dt', 'tarikh', 'tariq', 'time', 'दिन', 'तारीख']):
-            detected_date_col = c
-            break
-
-    if detected_date_col is None and date_col and date_col in df.columns:
-        detected_date_col = date_col
-
-    temp_df = df.copy()
-    has_valid_dates = False
-
-    if detected_date_col:
-        temp_df['dt_parsed'] = pd.to_datetime(temp_df[detected_date_col], dayfirst=True, errors='coerce')
-        temp_df = temp_df.dropna(subset=['dt_parsed']).sort_values('dt_parsed').reset_index(drop=True)
-        if len(temp_df) > 0:
-            has_valid_dates = True
-
-    f11_summary = []
-    detailed_tables = {}
-
-    for col in available_cols:
-        col_res = []
-        
-        for num in range(100):
-            if has_valid_dates:
-                num_rows = temp_df[temp_df[col] == num]
-                dates = num_rows['dt_parsed'].tolist()
-                
-                if len(dates) >= 2:
-                    gaps = [(dates[i] - dates[i-1]).days for i in range(1, len(dates))]
-                    last_gap = (temp_df['dt_parsed'].max() - dates[-1]).days
-                    max_gap = max(gaps)
-                    passed_within_target = sum(1 for g in gaps if g <= target_days)
-                    total_gaps = len(gaps)
-                    pass_rate = round((passed_within_target / total_gaps) * 100, 1) if total_gaps > 0 else 0
-                    
-                    col_res.append({
-                        "नंबर": f"{num:02d}",
-                        "13 साल में अधिकतम गैप (दिन)": max_gap,
-                        f"तय {target_days} दिनों में आने की दर (%)": pass_rate,
-                        "वर्तमान पेंडिंग (दिन)": last_gap,
-                        "कुल बार आया": len(dates),
-                        "is_perfect": max_gap <= target_days
-                    })
-            else:
-                num_indices = temp_df[temp_df[col] == num].index.tolist()
-                if len(num_indices) >= 2:
-                    gaps = [num_indices[i] - num_indices[i-1] for i in range(1, len(num_indices))]
-                    last_gap = len(temp_df) - 1 - num_indices[-1]
-                    max_gap = max(gaps)
-                    passed_within_target = sum(1 for g in gaps if g <= target_days)
-                    total_gaps = len(gaps)
-                    pass_rate = round((passed_within_target / total_gaps) * 100, 1) if total_gaps > 0 else 0
-                    
-                    col_res.append({
-                        "नंबर": f"{num:02d}",
-                        "13 साल में अधिकतम गैप (दिन/रो)": max_gap,
-                        f"तय {target_days} दिनों में आने की दर (%)": pass_rate,
-                        "वर्तमान पेंडिंग (दिन/रो)": last_gap,
-                        "कुल बार आया": len(num_indices),
-                        "is_perfect": max_gap <= target_days
-                    })
-
-        if col_res:
-            col_res_df = pd.DataFrame(col_res)
-            col_res_df = col_res_df.sort_values(by=[f"तय {target_days} दिनों में आने की दर (%)", "13 साल में अधिकतम गैप (दिन)" if has_valid_dates else "13 साल में अधिकतम गैप (दिन/रो)"], ascending=[False, True])
-            
-            detailed_tables[col] = col_res_df
-            top_best = col_res_df.iloc[0]
-            perfect_nums = col_res_df[col_res_df['is_perfect']]['नंबर'].tolist()
-            
-            f11_summary.append({
-                "लोकेशन / गेम": col,
-                f"🏆 #1 सबसे गारंटेड नंबर (हर {target_days} दिन)": top_best['नंबर'],
-                "13 साल में सबसे लंबा गैप": f"{top_best['13 साल में अधिकतम गैप (दिन)' if has_valid_dates else '13 साल में अधिकतम गैप (दिन/रो)']} दिन",
-                "सफलता दर (%)": f"{top_best[f'तय {target_days} दिनों में आने की दर (%)']}%",
-                f"100% गारंटेड नंबर (जो कभी {target_days} दिन से ऊपर नहीं गए)": ", ".join(perfect_nums) if perfect_nums else "कोई नहीं (टॉप पासिंग रेट देखें)"
-            })
-
-    if f11_summary:
-        st.success(f"📊 **{timeframe_option} के गैप एनालिसिस के आधार पर सबसे भरोसेमंद नंबर:**")
-        st.dataframe(pd.DataFrame(f11_summary), use_container_width=True)
-
-        st.markdown("---")
-        st.subheader("🔍 हर लोकेशन के लिए सभी 100 नंबरों की विस्तृत सूची (Ranked Table)")
-        selected_loc = st.selectbox("लोकेशन / गेम चुनें:", available_cols, key="f11_loc_detail")
-        if selected_loc in detailed_tables:
-            st.dataframe(detailed_tables[selected_loc].drop(columns=['is_perfect']), use_container_width=True)
-    else:
-        st.warning("⚠️ गैप एनालिसिस निकालने के लिए पर्याप्त डेटा नहीं मिला।")
-# ================= FORMULA 12 =================
-    st.markdown("---")
-    st.subheader("1️⃣2️⃣ Top Single, Main 20 & Top 70 Numbers Engine")
-
-    summary_data = []
-
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        valid_vals = [x for x in vals if 0 <= x <= 99]
-        
-        if valid_vals:
-            counts = pd.Series(valid_vals).value_counts()
-            
-            # 1. #1 सबसे हॉट सिंगल नंबर
-            top_1_single = counts.index[0]
-            top_1_count = counts.iloc[0]
-            
-            # 2. टॉप 20 मेन नंबर
-            top_20_main = counts.head(20).index.tolist()
-            
-            # 3. कुल टॉप 70 नंबर
-            top_70 = counts.head(70).index.tolist()
-            
-            # 13 साल की ऐतिहासिक पासिंग दर (%)
-            passed_count = sum(counts.head(70))
-            coverage_pct = round((passed_count / len(valid_vals)) * 100, 1)
-
-            summary_data.append({
-                "लोकेशन / गेम": col,
-                "👑 #1 सबसे हॉट सिंगल नंबर": f"{top_1_single:02d} ({top_1_count} बार)",
-                "🔥 टॉप 20 मेन नंबर": ", ".join([f"{n:02d}" for n in top_20_main]),
-                "📊 70 नंबरों की ऐतिहासिक पासिंग (%)": f"{coverage_pct}%",
-                "📋 बाकी 50 सपोर्ट नंबर": ", ".join([f"{n:02d}" for n in top_70[20:]])
-            })
-
-    if summary_data:
-        st.dataframe(pd.DataFrame(summary_data), use_container_width=True)
-    else:
-        st.warning("⚠️ विश्लेषण के लिए डेटा उपलब्ध नहीं है।")
-# ================= FORMULA 13 =================
-    st.markdown("---")
-    st.subheader("1️⃣3️⃣ Premium Selected Numbers Engine (Formulas 3 & 4 Combined)")
-
-    summary_data_13 = []
-
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        valid_vals = [x for x in vals if 0 <= x <= 99]
-        
-        if len(valid_vals) >= 5:
-            # 1. फ़ॉर्मूला 3/5 लॉजिक: सबसे ज़्यादा बार आने वाले नंबरों का स्कोर
-            freq_counts = pd.Series(valid_vals).value_counts()
-            
-            # 2. फ़ॉर्मूला 4 लॉजिक: पिछले रिज़ल्ट के बाद अगले 2 दिनों में सबसे ज़्यादा बार आने वाले फ़ॉलो-अप नंबर
-            last_num = valid_vals[-1]  # सबसे हाल का रिज़ल्ट
-            follow_up_nums = []
-            
-            for i in range(len(valid_vals) - 2):
-                if valid_vals[i] == last_num:
-                    follow_up_nums.append(valid_vals[i + 1])
-                    follow_up_nums.append(valid_vals[i + 2])
-            
-            follow_counts = pd.Series(follow_up_nums).value_counts() if follow_up_nums else pd.Series(dtype=int)
-            
-            # दोनों फ़ॉर्मूलों का संयुक्त स्कोर (Combined Score)
-            combined_scores = {n: 0 for n in range(100)}
-            
-            for n in range(100):
-                # फ़्रीक्वेंसी स्कोर
-                if n in freq_counts:
-                    combined_scores[n] += freq_counts[n] * 1
-                # फ़ॉलो-अप स्कोर (3-4 पैटर्न वेटेज)
-                if n in follow_counts:
-                    combined_scores[n] += follow_counts[n] * 3
-
-            # स्कोर के अनुसार रैंकिंग
-            ranked_nums = sorted(combined_scores.keys(), key=lambda x: combined_scores[x], reverse=True)
-            
-            # सबसे ख़ास फ़िल्टर्ड नंबर
-            top_1_special = ranked_nums[0]
-            top_20_main = ranked_nums[:20]
-            top_70_total = ranked_nums[:70]
-            
-            summary_data_13.append({
-                "लोकेशन / गेम": col,
-                "👑 #1 सबसे ख़ास सिंगल नंबर": f"{top_1_special:02d}",
-                "🔥 20 सबसे ख़ास मेन नंबर": ", ".join([f"{n:02d}" for n in top_20_main]),
-                "📋 बाकी ख़ास सपोर्ट नंबर (कुल 70)": ", ".join([f"{n:02d}" for n in top_70_total[20:]])
-            })
-
-    if summary_data_13:
-        st.dataframe(pd.DataFrame(summary_data_13), use_container_width=True)
-    else:
-        st.warning("⚠️ विश्लेषण के लिए डेटा उपलब्ध नहीं है।")
-# ================= FORMULA 14 =================
-    st.markdown("---")
-    st.subheader("1️⃣4️⃣ Top 6 Haruf Crossing Engine (Formulas 3 & 4 Combined)")
-
-    crossing_summary = []
-
-    for col in available_cols:
-        vals = df[col].dropna().astype(int).tolist()
-        valid_vals = [x for x in vals if 0 <= x <= 99]
-        
-        if len(valid_vals) >= 5:
-            last_num = valid_vals[-1]  # ताज़ा रिज़ल्ट
-            
-            # 1. फ़ॉर्मूला 3 लॉजिक: पूरे इतिहास में हरूफ़ की फ़्रीक्वेंसी (1 पॉइंट)
-            haruf_scores = {d: 0 for d in range(10)}
-            for num in valid_vals:
-                haruf_scores[num // 10] += 1  # अंदर का हरूफ़
-                haruf_scores[num % 10] += 1   # बाहर का हरूफ़
-
-            # 2. फ़ॉर्मूला 4 लॉजिक: ताज़ा रिज़ल्ट के बाद अगले 2 दिनों में आए फ़ॉलो-अप हरूफ़
-            follow_up_harufs = []
-            for i in range(len(valid_vals) - 2):
-                if valid_vals[i] == last_num:
-                    f1 = valid_vals[i + 1]
-                    f2 = valid_vals[i + 2]
-                    follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
-
-            # फ़ॉलो-अप हरूफ़ को 3 गुना ज़्यादा वज़न देना (+3 पॉइंट्स)
-            for h in follow_up_harufs:
-                haruf_scores[h] += 3
-
-            # सबसे ज़्यादा स्कोर वाले टॉप 8 हरूफ़ चुनना
-            top_8_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)[:8]
-            top_8_harufs.sort()  # बढ़ते क्रम में लगाने के लिए
-            
-            crossing_haruf_str = ", ".join(map(str, top_8_harufs))
-            
-            crossing_summary.append({
-                "लोकेशन / गेम": col,
-                "🎯 ताज़ा रिज़ल्ट": f"{last_num:02d}",
-                "🔥 8 हरूफ़ की ख़ास क्रॉसिंग": crossing_haruf_str,
-                "👑 टॉप 3 मेन हरूफ़": ", ".join(map(str, top_8_harufs[:3])),
-                "💡 कुल जोड़ियाँ": "36 जोड़ियाँ (6x6)"
-            })
-
-    if crossing_summary:
-        st.dataframe(pd.DataFrame(crossing_summary), use_container_width=True)
-    else:
-        st.warning("⚠️ विश्लेषण के लिए पर्याप्त डेटा नहीं मिला।")
-# ================= FORMULA 15 =================
-    st.markdown("---")
-    # ================= FORMULA 15 =================
-    st.markdown("---")
-    # ================= FORMULA 15 =================
-    st.markdown("---")
-    st.subheader("1️⃣5️⃣ 3-Day Backtest & Crossing History Tracker (Formulas 3 & 4)")
-
-    summary_3days_f15 = []
-
-    for col in available_cols:
-        # केवल 0 से 99 तक के वैध नंबरों को फ़िल्टर करना
-        raw_vals = df[col].dropna().tolist()
-        vals = []
-        for x in raw_vals:
-            try:
-                val_int = int(x)
-                if 0 <= val_int <= 99:
-                    vals.append(val_int)
-            except:
-                continue
-
-        date_list = df['Date'].tolist() if 'Date' in df.columns else [f"Row #{i}" for i in range(len(df))]
-        
-        if len(vals) >= 8:
-            row_data = {"लोकेशन / गेम": col}
-            pass_count = 0
-
-            for offset in [3, 2, 1]:
-                target_idx = len(vals) - offset
-                
-                if target_idx >= 5:
-                    day_date = date_list[target_idx] if target_idx < len(date_list) else f"T-{offset}"
-                    actual_result = vals[target_idx]
-                    
-                    past_vals = vals[:target_idx]
-                    last_trigger_num = past_vals[-1]
-                    
-                    haruf_scores = {d: 0 for d in range(10)}
-                    for num in past_vals:
-                        d1, d2 = num // 10, num % 10
-                        if 0 <= d1 <= 9:
-                            haruf_scores[d1] += 1
-                        if 0 <= d2 <= 9:
-                            haruf_scores[d2] += 1
-
-                    follow_up_harufs = []
-                    for i in range(len(past_vals) - 2):
-                        if past_vals[i] == last_trigger_num:
-                            f1 = past_vals[i + 1]
-                            f2 = past_vals[i + 2]
-                            follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
-
-                    for h in follow_up_harufs:
-                        if 0 <= h <= 9:
-                            haruf_scores[h] += 3
-
-                    top_6 = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)[:6]
-                    top_6.sort()
-                    crossing_str = "".join(map(str, top_6))
-
-                    d1, d2 = actual_result // 10, actual_result % 10
-                    is_pass = (d1 in top_6) and (d2 in top_6)
-                    
-                    status_tag = "✅ पास" if is_pass else "❌ फेल"
-                    if is_pass:
-                        pass_count += 1
-
-                    col_header = f"📅 {day_date}"
-                    row_data[col_header] = f"🎯 {actual_result:02d} | 🎲 ({crossing_str}) | {status_tag}"
-
-            row_data["📊 3 दिन का स्कोर"] = f"{pass_count}/3 पास"
-            summary_3days_f15.append(row_data)
-
-    if summary_3days_f15:
-        st.dataframe(pd.DataFrame(summary_3days_f15), use_container_width=True)
-    else:
-        st.warning("⚠️ बैकटेस्टिंग के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
-# ================= EXACT CURRENT MONTH (AUGUST 2026) DIGIT COUNTER =================
-    st.markdown("---")
-    st.subheader("📊 8वें महीने (अगस्त 2026) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड")
-
-    month_df = df.copy()
-
-    if date_col and date_col in month_df.columns:
-        month_df['dt_temp'] = pd.to_datetime(month_df[date_col], dayfirst=True, errors='coerce')
-        aug_mask = (month_df['dt_temp'].dt.month == 8) & (month_df['dt_temp'].dt.year == 2026)
-        filtered_df = month_df[aug_mask].reset_index(drop=True)
-        
-        if len(filtered_df) > 0:
-            month_df = filtered_df
-            st.caption("📅 **सटीक फ़िल्टर:** केवल अगस्त 2026 (1 से 19 तारीख तक) का डेटा स्कैन हुआ है।")
-        else:
-            month_df = month_df.tail(19).reset_index(drop=True)
-            st.caption("📅 **फ़िल्टर:** चालू महीने के हालिया 19 दिनों का डेटा स्कैन हुआ है।")
-    else:
-        month_df = month_df.tail(19).reset_index(drop=True)
-        st.caption("📅 **फ़िल्टर:** हालिया 19 दिनों का डेटा:")
-
-    digit_counts = {str(d): 0 for d in range(10)}
-
-    for col in available_cols:
-        if col in month_df.columns:
-            for val in month_df[col].dropna():
-                try:
-                    val_int = int(val)
-                    val_str = f"{val_int:02d}"
-                    for char in val_str:
-                        if char in digit_counts:
-                            digit_counts[char] += 1
-                except:
-                    continue
-
-    cols = st.columns(10)
-    for i in range(10):
-        digit_key = str(i)
-        count_val = digit_counts[digit_key]
-        with cols[i]:
-            st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
-
-    sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
-    hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
-    cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
-
-    st.info(f"🔥 **अगस्त में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")
+    st.subheader("1️⃣3️⃣ Premium Selected Numbers Engine (F

@@ -268,6 +268,19 @@ if uploaded_file is not None:
             
             st.success(f"✅ **सटीक (Unique) मैच पाए गए: `{len(matched_records)}` बार (कोई डुप्लीकेट/ओवरलैप नहीं)**")
             st.markdown(f"🔥 **इसके बाद अगले दिन सबसे ज्यादा बार आए टॉप 5 नंबर:** `{top_5_next}`")
+            
+            # --- नया फीचर: Next Result के सभी यूनिक (बिना डुप्लीकेट) नंबर कॉमा के साथ ---
+            unique_next_nums = sorted(list(set(next_nums_list)))
+            formatted_numbers_str = ", ".join([f"{num:02d}" for num in unique_next_nums])
+            
+            st.markdown("📋 **`Next Result` के सभी यूनिक नंबर (आसानी से कॉपी करने के लिए):**")
+            st.text_area(
+                label="कॉपी-पेस्ट करने के लिए नीचे दिए बॉक्स से नंबर कॉपी करें:", 
+                value=formatted_numbers_str, 
+                height=100, 
+                key=f"copy_box_{mode_id}"
+            )
+            
             st.dataframe(match_result_df, use_container_width=True)
         else:
             st.warning("⚠️ इस सटीक लड़ी के लिए इतिहास में कोई नया/यूनिक पैटर्न नहीं मिला।")

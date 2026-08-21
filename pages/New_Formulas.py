@@ -12,16 +12,12 @@ uploaded_file = st.file_uploader("अपनी CSV फ़ाइल यहाँ 
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
 
 def get_rashi_digit(d):
-    try:
-        return RASHI_MAP.get(int(d), int(d))
-    except:
-        return 0
+    return RASHI_MAP.get(int(d), int(d))
 
 def get_family(num):
     try:
         if pd.isna(num): return []
         num = int(num)
-        if not (0 <= num <= 99): return []
         d1, d2 = num // 10, num % 10
         r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
         fam = set()
@@ -36,7 +32,6 @@ def get_haruf(num):
     try:
         if pd.isna(num): return None, None
         num = int(num)
-        if not (0 <= num <= 99): return None, None
         return num // 10, num % 10
     except:
         return None, None
@@ -45,7 +40,6 @@ def get_haruf_and_rashi_set(num):
     try:
         if pd.isna(num): return set()
         num = int(num)
-        if not (0 <= num <= 99): return set()
         d1, d2 = num // 10, num % 10
         r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
         return {d1, d2, r1, r2}
@@ -77,31 +71,24 @@ def get_digit_gap(num):
 
 def get_signed_diff(val_from, val_to):
     """प्लस/माइनस अंतर (-50 से +50 की रेंज) निकालता है"""
-    try:
-        diff = (int(val_to) - int(val_from)) % 100
-        if diff > 50:
-            diff -= 100
-        return diff
-    except:
-        return 0
+    diff = (int(val_to) - int(val_from)) % 100
+    if diff > 50:
+        diff -= 100
+    return diff
 
 def check_single_match(mode_id, hist_val, rec_pattern):
-    try:
-        hist_val = int(hist_val)
-        if mode_id == "1":
-            return bool(rec_pattern & get_haruf_and_rashi_set(hist_val))
-        elif mode_id == "2":
-            h_i, h_o = get_haruf(hist_val)
-            hist_set = {h_i, h_o} if h_i is not None else set()
-            return bool(rec_pattern & hist_set)
-        elif mode_id == "3":
-            return hist_val == rec_pattern
-        elif mode_id == "4":
-            return hist_val in rec_pattern
-        elif mode_id == "5":
-            return bool(rec_pattern & set(get_family(hist_val)))
-    except:
-        return False
+    if mode_id == "1":
+        return bool(rec_pattern & get_haruf_and_rashi_set(hist_val))
+    elif mode_id == "2":
+        h_i, h_o = get_haruf(hist_val)
+        hist_set = {h_i, h_o} if h_i is not None else set()
+        return bool(rec_pattern & hist_set)
+    elif mode_id == "3":
+        return hist_val == rec_pattern
+    elif mode_id == "4":
+        return hist_val in rec_pattern
+    elif mode_id == "5":
+        return bool(rec_pattern & set(get_family(hist_val)))
     return False
 
 # ================= MAIN DASHBOARD =================
@@ -127,6 +114,54 @@ if uploaded_file is not None:
         g_sel = st.selectbox("मुख्य गेम चुनें (करंट पैटर्न हेतु):", available_cols)
     with c2:
         target_num = st.number_input("टारगेट नंबर दर्ज करें:", 0, 99, 58)
+
+    # ================= EXACT CURRENT MONTH (AUGUST 2026) DIGIT COUNTER =================
+    st.markdown("---")
+    st.subheader("📊 8वें महीने (अगस्त 2026) का अंक/हरूफ़ फ्रीक्वेंसी बोर्ड")
+
+    month_df = df.copy()
+
+    if date_col and date_col in month_df.columns:
+        month_df['dt_temp'] = pd.to_datetime(month_df[date_col], dayfirst=True, errors='coerce')
+        aug_mask = (month_df['dt_temp'].dt.month == 8) & (month_df['dt_temp'].dt.year == 2026)
+        filtered_df = month_df[aug_mask].reset_index(drop=True)
+        
+        if len(filtered_df) > 0:
+            month_df = filtered_df
+            st.caption("📅 **सटीक फ़िल्टर:** केवल अगस्त 2026 (1 से 19 तारीख तक) का डेटा स्कैन हुआ है।")
+        else:
+            month_df = month_df.tail(19).reset_index(drop=True)
+            st.caption("📅 **फ़िल्टर:** चालू महीने के हालिया 19 दिनों का डेटा स्कैन हुआ है।")
+    else:
+        month_df = month_df.tail(19).reset_index(drop=True)
+        st.caption("📅 **फ़िल्टर:** हालिया 19 दिनों का डेटा:")
+
+    digit_counts = {str(d): 0 for d in range(10)}
+
+    for col in available_cols:
+        if col in month_df.columns:
+            for val in month_df[col].dropna():
+                try:
+                    val_int = int(val)
+                    val_str = f"{val_int:02d}"
+                    for char in val_str:
+                        if char in digit_counts:
+                            digit_counts[char] += 1
+                except:
+                    continue
+
+    cols = st.columns(10)
+    for i in range(10):
+        digit_key = str(i)
+        count_val = digit_counts[digit_key]
+        with cols[i]:
+            st.metric(label=f"अंक '{digit_key}'", value=f"{count_val} बार")
+
+    sorted_digits = sorted(digit_counts.items(), key=lambda x: x[1], reverse=True)
+    hot_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[:3]])
+    cold_digits = ", ".join([f"'{k}' ({v} बार)" for k, v in sorted_digits[-3:]])
+
+    st.info(f"🔥 **अगस्त में सबसे ज़्यादा आए अंक:** {hot_digits} | 🧊 **सबसे कम आए अंक:** {cold_digits}")
 
     # ================= FORMULAS 1 & 2 =================
     st.markdown("---")
@@ -258,13 +293,13 @@ if uploaded_file is not None:
                                 "तारीख / रो (Date/Row)": rec_date,
                                 "गेम का नाम": col,
                                 "सटीक लड़ी": str(sub_seq),
-                                "Next Result": int(next_val),
+                                "अगले दिन आया रिजल्ट (Next Result)": int(next_val),
                                 "अगले नंबर की फैमिली": str(get_family(next_val))
                             })
 
         if matched_records:
             match_result_df = pd.DataFrame(matched_records)
-            next_nums_list = match_result_df["Next Result"].tolist()
+            next_nums_list = match_result_df["अगले दिन आया रिजल्ट (Next Result)"].tolist()
             top_5_next = pd.Series(next_nums_list).value_counts().head(5).to_dict()
             
             st.success(f"✅ **सटीक (Unique) मैच पाए गए: `{len(matched_records)}` बार (कोई डुप्लीकेट/ओवरलैप नहीं)**")
@@ -387,7 +422,7 @@ if uploaded_file is not None:
 
     c_target, c_days = st.columns(2)
     with c_target:
-        scan_target = st.number_input("जिस रेयर/टारगेट नंबर का रिकॉर्ड चेक करना है:", 0, 99, 20, key="scan_target_num")
+        scan_target = st.number_input("जिस रेयर/टारगेट नंबर का 13 साल का रिकॉर्ड चेक करना है (उदा. 20, 34, 35):", 0, 99, 20, key="scan_target_num")
     with c_days:
         follow_days = st.radio("कितने दिनों के अंदर का ट्रैक रिकॉर्ड देखना है?", [1, 2], index=1, key="follow_days_radio")
 
@@ -396,6 +431,7 @@ if uploaded_file is not None:
         direct_hits = []
         family_hits = []
         location_hits = []
+        fam_location_dict = {}
 
         for col in available_cols:
             col_series = df[col].dropna().reset_index(drop=True)
@@ -414,60 +450,23 @@ if uploaded_file is not None:
                                     val_int = int(val)
                                     next_found_nums.append(val_int)
                                     hit_games.append(f"{g_col} (D+{day_offset}): {val_int:02d}")
+                                    
+                                    # लोकेशन और फैमिली का ट्रैक रखना
                                     location_hits.append(g_col)
+                                    fam_list = get_family(val_int)
+                                    if fam_list:
+                                        fam_name = f"फैमिली {fam_list[0]:02d} ({fam_list})"
+                                        if fam_name not in fam_location_dict:
+                                            fam_location_dict[fam_name] = {}
+                                        fam_location_dict[fam_name][g_col] = fam_location_dict[fam_name].get(g_col, 0) + 1
 
                     for n in next_found_nums:
                         direct_hits.append(n)
                         fam_list = get_family(n)
                         if fam_list:
-                            family_hits.append(f"फैमिली {fam_list[0]:02d}")
+                            family_hits.append(f"फैमिली {fam_list[0]:02d} ({fam_list})")
 
                     rec_date = df.loc[idx, 'Date'] if 'Date' in df.columns else f"Row #{idx}"
                     unique_next_nums = sorted(list(set(next_found_nums)))
                     
                     hist_records.append({
-                        "तारीख / रो": rec_date,
-                        "जिस गेम में आया": col,
-                        "टारगेट नंबर": f"{scan_target:02d}",
-                        "अगले दिनों में आए नंबर": str(unique_next_nums[:8]) + ("..." if len(unique_next_nums) > 8 else "")
-                    })
-
-        if hist_records:
-            st.success(f"🎯 **डेटाबेस में नंबर `{scan_target:02d}` कुल `{len(hist_records)}` बार आया है!**")
-            
-            top_direct_series = pd.Series(direct_hits).value_counts()
-            top_family_series = pd.Series(family_hits).value_counts()
-            top_location_series = pd.Series(location_hits).value_counts()
-
-            best_number = top_direct_series.index[0] if not top_direct_series.empty else "N/A"
-            best_number_count = top_direct_series.iloc[0] if not top_direct_series.empty else 0
-
-            best_family = top_family_series.index[0] if not top_family_series.empty else "N/A"
-            best_family_count = top_family_series.iloc[0] if not top_family_series.empty else 0
-
-            best_location = top_location_series.index[0] if not top_location_series.empty else "N/A"
-            best_location_count = top_location_series.iloc[0] if not top_location_series.empty else 0
-
-            st.info(f"""
-            🏆 **मुख्य निष्कर्ष (Summary):**
-            * 💥 **सबसे ज़्यादा बार आने वाला सिंगल नंबर:** `{best_number}` (कुल **{best_number_count}** बार)
-            * 👑 **सबसे ज़्यादा पास होने वाली फैमिली:** `{best_family}` (कुल **{best_family_count}** बार)
-            * 📍 **सबसे ज़्यादा पासिंग देने वाली लोकेशन/गेम:** `{best_location}` (कुल **{best_location_count}** पासिंग)
-            """)
-
-            col_res1, col_res2, col_res3 = st.columns(3)
-            with col_res1:
-                st.markdown("🔥 **टॉप 5 सिंगल नंबर:**")
-                st.table(top_direct_series.head(5).rename("बार आया"))
-            with col_res2:
-                st.markdown("👑 **टॉप 5 फैमिली:**")
-                st.table(top_family_series.head(5).rename("बार आया"))
-            with col_res3:
-                st.markdown("📍 **टॉप लोकेशन:**")
-                st.table(top_location_series.head(5).rename("पासिंग"))
-
-            st.dataframe(pd.DataFrame(hist_records), use_container_width=True)
-
-    # ================= FORMULA 13 =================
-    st.markdown("---")
-    st.subheader("1️⃣3️⃣ Premium Selected Numbers Engine (F

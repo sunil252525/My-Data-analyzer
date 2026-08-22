@@ -4,7 +4,7 @@ import numpy as np
 
 st.set_page_config(page_title="Analytics Dashboard", layout="wide")
 
-st.title("📊 Multi-Page Analytics Dashboard")
+st.title("📊 Fast Multi-Page Analytics Dashboard")
 
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -101,7 +101,67 @@ def check_single_match(mode_id, hist_val, rec_pattern):
         return False
     return False
 
-# ================= SIDEBAR & PAGE NAVIGATION =================
+# ================= FAST CACHED SEARCH ENGINE =================
+@st.cache_data
+def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_seq_days):
+    clean_series = df[g_sel].dropna().astype(int).tolist()
+    max_possible_days = len(clean_series)
+    
+    full_recent_nums = clean_series[-25:] if max_possible_days >= 25 else clean_series
+    recent_nums = clean_series[-mode_seq_days:] if max_possible_days >= mode_seq_days else clean_series
+
+    full_patterns = []
+    for n in full_recent_nums:
+        if mode_id == "1": full_patterns.append(get_haruf_and_rashi_set(n))
+        elif mode_id == "2":
+            h_i, h_o = get_haruf(n)
+            full_patterns.append({h_i, h_o} if h_i is not None else set())
+        elif mode_id == "3": full_patterns.append(int(n))
+        elif mode_id == "4":
+            rev_n = int(f"{int(n):02d}"[::-1])
+            full_patterns.append({int(n), rev_n})
+        elif mode_id == "5": full_patterns.append(set(get_family(n)))
+
+    recent_patterns = full_patterns[-mode_seq_days:]
+    matched_records = []
+
+    for col in available_cols:
+        col_vals = df[col].tolist()
+        n_vals = len(col_vals)
+        for i in range(n_vals - len(recent_nums) - 1):
+            sub_seq = col_vals[i : i + len(recent_nums)]
+            if any(pd.isna(v) for v in sub_seq): continue
+            sub_seq = [int(v) for v in sub_seq]
+            
+            is_match = True
+            for day_idx in range(len(recent_nums)):
+                if not check_single_match(mode_id, sub_seq[day_idx], recent_patterns[day_idx]):
+                    is_match = False
+                    break
+
+            if is_match:
+                has_prior_match = False
+                if i > 0 and len(full_patterns) > len(recent_nums):
+                    prev_val = col_vals[i - 1]
+                    if pd.notna(prev_val):
+                        prior_pattern = full_patterns[-(len(recent_nums) + 1)]
+                        if check_single_match(mode_id, int(prev_val), prior_pattern):
+                            has_prior_match = True
+
+                if not has_prior_match:
+                    next_val = col_vals[i + len(recent_nums)]
+                    if pd.notna(next_val):
+                        rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
+                        matched_records.append({
+                            "तारीख / रो (Date/Row)": rec_date,
+                            "गेम का नाम": col,
+                            "सटीक लड़ी": str(sub_seq),
+                            "Next Result": int(next_val),
+                            "अगले नंबर की फैमिली": str(get_family(next_val))
+                        })
+    return matched_records, recent_nums
+
+# ================= SIDEBAR & NAVIGATION =================
 st.sidebar.title("📌 नेविगेशन मेन्यू")
 page = st.sidebar.radio(
     "पेज चुनें:", 
@@ -170,9 +230,9 @@ if uploaded_file is not None:
         else:
             st.warning("इस गेम में यह नंबर दर्ज नहीं मिला।")
 
-        # FORMULA 3 & 4 (EXPANDERS)
+        # FORMULA 3 & 4 (FAST EXPANDERS)
         st.markdown("---")
-        st.subheader("3️⃣ & 4️⃣ Sequence Pattern Engine (Expandable Controls)")
+        st.subheader("3️⃣ & 4️⃣ Sequence Pattern Engine")
 
         modes = [
             {"id": "1", "name": "1️⃣ हर्फ़ + राशि (Haruf & Rashi)", "key_prefix": "p1_slider_hr"},
@@ -190,63 +250,9 @@ if uploaded_file is not None:
             with st.expander(f"🎯 {mode_name} (खोलने/बंद करने हेतु क्लिक करें 🔽)", expanded=False):
                 mode_seq_days = st.slider(f"लड़ी के दिन:", 1, 20, 5, key=f"{key_prefix}_days")
 
-                clean_series = df[g_sel].dropna().astype(int).tolist()
-                max_possible_days = len(clean_series)
-                
-                full_recent_nums = clean_series[-25:] if max_possible_days >= 25 else clean_series
-                recent_nums = clean_series[-mode_seq_days:] if max_possible_days >= mode_seq_days else clean_series
+                matched_records, recent_nums = run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_seq_days)
                 
                 st.info(f"📌 `{g_sel}` का हालिया पैटर्न: `{recent_nums}`")
-
-                full_patterns = []
-                for n in full_recent_nums:
-                    if mode_id == "1": full_patterns.append(get_haruf_and_rashi_set(n))
-                    elif mode_id == "2":
-                        h_i, h_o = get_haruf(n)
-                        full_patterns.append({h_i, h_o} if h_i is not None else set())
-                    elif mode_id == "3": full_patterns.append(int(n))
-                    elif mode_id == "4":
-                        rev_n = int(f"{int(n):02d}"[::-1])
-                        full_patterns.append({int(n), rev_n})
-                    elif mode_id == "5": full_patterns.append(set(get_family(n)))
-
-                recent_patterns = full_patterns[-mode_seq_days:]
-                matched_records = []
-
-                for col in available_cols:
-                    col_vals = df[col].tolist()
-                    n_vals = len(col_vals)
-                    for i in range(n_vals - len(recent_nums) - 1):
-                        sub_seq = col_vals[i : i + len(recent_nums)]
-                        if any(pd.isna(v) for v in sub_seq): continue
-                        sub_seq = [int(v) for v in sub_seq]
-                        
-                        is_match = True
-                        for day_idx in range(len(recent_nums)):
-                            if not check_single_match(mode_id, sub_seq[day_idx], recent_patterns[day_idx]):
-                                is_match = False
-                                break
-
-                        if is_match:
-                            has_prior_match = False
-                            if i > 0 and len(full_patterns) > len(recent_nums):
-                                prev_val = col_vals[i - 1]
-                                if pd.notna(prev_val):
-                                    prior_pattern = full_patterns[-(len(recent_nums) + 1)]
-                                    if check_single_match(mode_id, int(prev_val), prior_pattern):
-                                        has_prior_match = True
-
-                            if not has_prior_match:
-                                next_val = col_vals[i + len(recent_nums)]
-                                if pd.notna(next_val):
-                                    rec_date = df.loc[i + len(recent_nums), date_col] if date_col else f"Row #{i + len(recent_nums)}"
-                                    matched_records.append({
-                                        "तारीख / रो (Date/Row)": rec_date,
-                                        "गेम का नाम": col,
-                                        "सटीक लड़ी": str(sub_seq),
-                                        "Next Result": int(next_val),
-                                        "अगले नंबर की फैमिली": str(get_family(next_val))
-                                    })
 
                 if matched_records:
                     match_result_df = pd.DataFrame(matched_records)
@@ -257,10 +263,12 @@ if uploaded_file is not None:
                     st.markdown(f"🔥 **टॉप 5 नंबर:** `{top_5_next}`")
                     
                     if mode_id == "3":
-                        clean_exact_nums = list(dict.fromkeys([int(v) for v in next_nums_list if pd.notna(v)]))
+                        clean_exact_nums = sorted(list(set([int(v) for v in next_nums_list if pd.notna(v)])))
                         exact_box_str = ", ".join([f"{num:02d}" for num in clean_exact_nums])
                         st.markdown(f"📋 **`Next Result` - कुल `{len(clean_exact_nums)}` नंबर (बिना डुप्लीकेट):**")
-                        st.text_area("कॉपी हेतु:", value=exact_box_str, height=100, key=f"copy_exact_p1_{mode_id}")
+                        
+                        # बड़ा टेक्स्ट एरिया ताकि पूरे 90 नंबर बिना स्क्रॉल के आसानी से दिखें
+                        st.text_area("कॉपी हेतु:", value=exact_box_str, height=200, key=f"copy_exact_p1_{mode_id}")
 
                     elif mode_id == "2":
                         haruf_list = []
@@ -270,7 +278,7 @@ if uploaded_file is not None:
                             if h_out is not None and h_out not in haruf_list: haruf_list.append(h_out)
                         haruf_box_str = ", ".join(map(str, sorted(haruf_list)))
                         st.markdown(f"🎲 **सभी हर्फ़ - कुल `{len(haruf_list)}` हर्फ़ (बिना डुप्लीकेट):**")
-                        st.text_area("कॉपी हेतु:", value=haruf_box_str, height=70, key=f"copy_haruf_p1_{mode_id}")
+                        st.text_area("कॉपी हेतु:", value=haruf_box_str, height=100, key=f"copy_haruf_p1_{mode_id}")
 
                     st.dataframe(match_result_df, use_container_width=True)
                 else:

@@ -231,36 +231,46 @@ if uploaded_file is not None:
                 else:
                     st.warning(f"⚠️ कोई मैच नहीं मिला।")
 
-    # ================= TAB 2: FULL AUTO 6-HARUF & BACKTEST =================
-    with main_tab2:
-        st.subheader(f"🤖 `{active_g}` - 6-हरूफ़ स्मार्ट क्रॉसिंग (1-20D ऑटो-स्कैन)")
+    # ================== Top 6 Haruf Crossing Engine ==================
+    st.subheader("Top 6 Haruf Crossing Engine")
+
+    crossing_data = []
+
+    for col in available_cols:
+        # डेटा साफ़ करें
+        col_series = df[col].dropna().astype(int)
+        if len(col_series) < 5: continue
         
-        with st.spinner("पिछले 3 दिनों का बैकटेस्ट और आज की क्रॉसिंग जनरेट हो रही है..."):
-            bt_t3 = format_backtest_result(df, active_g, available_cols, date_col, 3, "T-3 (तीन दिन पहले)")
-            bt_t2 = format_backtest_result(df, active_g, available_cols, date_col, 2, "T-2 (परसों)")
-            bt_t1 = format_backtest_result(df, active_g, available_cols, date_col, 1, "T-1 (कल)")
+        last_num = col_series.iloc[-1]
+        
+        # 6 हरूफ़ निकालने की लॉजिक (Frequency + Recent logic)
+        haruf_counts = {d: 0 for d in range(10)}
+        # पिछले 10 दिनों का डेटा देखें
+        recent_data = col_series.tail(10)
+        for val in recent_data:
+            haruf_counts[val // 10] += 1
+            haruf_counts[val % 10] += 1
             
-            top_6_harufs, pairs_36, haruf_counts = run_auto_20day_haruf_cross(df, active_g, available_cols, date_col, skip_recent=0)
+        # टॉप 6 हरूफ़ चुनें
+        top_6 = sorted(haruf_counts.keys(), key=lambda x: haruf_counts[x], reverse=True)[:6]
+        top_6.sort() # नंबर को लाइन में रखने के लिए
+        
+        crossing_str = ", ".join(map(str, top_6))
+        top_3_str = ", ".join(map(str, top_6[:3]))
+        
+        crossing_data.append({
+            "लोकेशन / गेम": col,
+            "🎯 ताज़ा रिज़ल्ट": f"{last_num:02d}",
+            "🔥 6 हरूफ़ की ख़ास क्रॉसिंग": crossing_str,
+            "👑 टॉप 3 मेन हरूफ़": top_3_str,
+            "💡 कुल जोड़ियाँ": "36 जोड़ियाँ"
+        })
 
-        st.info(f"""
-        🕰️ **पिछले 3 दिन का क्रॉसिंग बैकटेस्ट (6x6):**
-        * {bt_t3}
-        * {bt_t2}
-        * {bt_t1}
-        """)
-
-        if top_6_harufs:
-            crossing_str = "".join(map(str, top_6_harufs))
-            pairs_formatted = ", ".join(pairs_36)
-            
-            st.success(f"🔥 **आज के लिए टॉप 6 हरूफ़ (T-0):** `{crossing_str}`")
-            st.markdown("📋 **आज की 36 सॉलिड जोड़ियाँ (6x6 Cross):**")
-            st.text_area("36 जोड़ियाँ कॉपी करें:", value=pairs_formatted, height=140, key="copy_auto_crossing_pairs_bt")
-            
-            st.markdown("📊 **हरूफ़ स्कोर कार्ड:**")
-            st.dataframe(pd.DataFrame([haruf_counts]), use_container_width=True)
-        else:
-            st.warning("क्रॉसिंग जनरेट करने के लिए पर्याप्त डेटा नहीं मिला।")
+    if crossing_data:
+        crossing_df = pd.DataFrame(crossing_data)
+        st.dataframe(crossing_df, use_container_width=True, hide_index=True)
+    else:
+        st.warning("डेटा उपलब्ध नहीं है।")
 
     # ================= TAB 3: AUTO-DETECT RARE NUMBER 24H SCANNER =================
     with main_tab3:

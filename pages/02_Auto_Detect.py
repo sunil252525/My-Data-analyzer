@@ -110,6 +110,29 @@ def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_
                     })
     return matched_records, recent_nums
 
+# ================= AUTO 1 TO 20 DAYS CROSSING ENGINE =================
+@st.cache_data
+def run_auto_20day_haruf_cross(df, active_g, available_cols, date_col):
+    haruf_counts = {d: 0 for d in range(10)}
+    total_matches_scanned = 0
+    
+    # Auto-scan sequence length from 1 to 20 days
+    for seq_len in range(1, 21):
+        for mode_id in ["1", "2", "3", "4", "5"]:
+            matched_recs, _ = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id, seq_len)
+            for r in matched_recs:
+                total_matches_scanned += 1
+                val = r["Next Result"]
+                hi, ho = get_haruf(val)
+                if hi is not None: haruf_counts[hi] += 1
+                if ho is not None: haruf_counts[ho] += 1
+
+    top_6_harufs = sorted(haruf_counts.keys(), key=lambda x: haruf_counts[x], reverse=True)[:6]
+    top_6_harufs.sort()
+    
+    pairs_36 = [f"{h1}{h2}" for h1 in top_6_harufs for h2 in top_6_harufs]
+    return top_6_harufs, pairs_36, haruf_counts, total_matches_scanned
+
 # ================= SIDEBAR & FILE UPLOAD =================
 st.sidebar.title("📌 फ़ाइल अपलोड")
 uploaded_file = st.sidebar.file_uploader("CSV फ़ाइल अपलोड करें", type=["csv"], key="dashboard_uploader")
@@ -147,17 +170,14 @@ if uploaded_file is not None:
     active_g = st.session_state["selected_game"]
     st.markdown("---")
     
-    c_title, c_slider = st.columns([1, 2])
-    with c_title:
-        st.success(f"🎯 चुना गया गेम: **{active_g}**")
-    with c_slider:
-        mode_seq_days = st.slider("🎛️ कितने दिन की लड़ी देखनी है? (1 से 20 दिन):", min_value=1, max_value=20, value=3, key="global_seq_slider")
+    st.success(f"🎯 ऑटो-सिस्टम एक्टिवेटेड: **{active_g}**")
 
     # ---------------- MAIN SECTION TABS ----------------
-    main_tab1, main_tab2, main_tab3 = st.tabs(["📊 लड़ी पैटर्न एनालाइजर", "🎯 6-हरूफ़ स्मार्ट क्रॉसिंग", "⚡ Rare Number 24H Scanner"])
+    main_tab1, main_tab2, main_tab3 = st.tabs(["📊 मैनुअल लड़ी पैटर्न (1-20D)", "🤖 ऑटो 6-हरूफ़ स्मार्ट क्रॉसिंग", "⚡ ऑटो-डिटेक्ट Rare Number 24H Scanner"])
 
-    # ================= TAB 1: SEQUENCE PATTERNS =================
+    # ================= TAB 1: MANUAL SEQUENCE PATTERNS =================
     with main_tab1:
+        mode_seq_days = st.slider("🎛️ मैनुअल लड़ी दिन चुनें:", min_value=1, max_value=20, value=3, key="global_seq_slider")
         sub_tab1, sub_tab2, sub_tab3, sub_tab4, sub_tab5 = st.tabs([
             "1️⃣ हर्फ़ + राशि", "2️⃣ केवल हर्फ़", "3️⃣ सेम टू सेम", "4️⃣ अलट-पलट", "5️⃣ फैमिली"
         ])
@@ -184,51 +204,39 @@ if uploaded_file is not None:
                 else:
                     st.warning(f"⚠️ `{active_g}` के इस {mode_seq_days}-दिन के पैटर्न के लिए कोई मैच नहीं मिला।")
 
-    # ================= TAB 2: COMBINED 6-HARUF CROSSING ENGINE =================
+    # ================= TAB 2: FULL AUTO 1 TO 20 DAYS CROSSING ENGINE =================
     with main_tab2:
-        st.subheader(f"🎲 `{active_g}` - लड़ी पैटर्न्स से निर्मित 6-हरूफ़ क्रॉसिंग")
-        
-        all_pattern_results = []
-        for m_id in ["1", "2", "3", "4", "5"]:
-            rec, _ = run_fast_sequence_search(df, active_g, available_cols, date_col, m_id, mode_seq_days)
-            for r in rec:
-                all_pattern_results.append(r["Next Result"])
-                
-        if all_pattern_results:
-            haruf_counts = {d: 0 for d in range(10)}
-            for val in all_pattern_results:
-                hi, ho = get_haruf(val)
-                if hi is not None: haruf_counts[hi] += 1
-                if ho is not None: haruf_counts[ho] += 1
-                
-            top_6_harufs = sorted(haruf_counts.keys(), key=lambda x: haruf_counts[x], reverse=True)[:6]
-            top_6_harufs.sort()
+        st.subheader(f"🤖 `{active_g}` - ऑटोमैटिक (1 से 20 दिन) 6-हरूफ़ क्रॉसिंग")
+        st.caption("यह इंजन खुद ही 1 से लेकर 20 दिन तक की सभी लड़ियों को एनालाइज़ करके टॉप 6 हरूफ़ निकालता है।")
+
+        with st.spinner("1 से 20 दिन की लड़ियों का ऑटो-एनालिसिस जारी है..."):
+            top_6_harufs, pairs_36, haruf_counts, total_matches = run_auto_20day_haruf_cross(df, active_g, available_cols, date_col)
+
+        if top_6_harufs:
             crossing_str = "".join(map(str, top_6_harufs))
-            
-            # Generate 36 Pairs
-            pairs_36 = []
-            for h1 in top_6_harufs:
-                for h2 in top_6_harufs:
-                    pairs_36.append(f"{h1}{h2}")
-            
             pairs_formatted = ", ".join(pairs_36)
             
-            st.success(f"🔥 **शीर्ष 6 हरूफ़:** `{crossing_str}`")
-            st.markdown("📋 **इन 6 हरूफ़ों से बनी 36 जोड़ियाँ (6x6 Cross):**")
-            st.text_area("36 जोड़ियाँ कॉपी हेतु:", value=pairs_formatted, height=120, key="copy_crossing_pairs")
+            st.success(f"🔥 **ऑटो-स्कैन किए गए कुल मैच:** `{total_matches}` | **टॉप 6 हरूफ़:** `{crossing_str}`")
             
-            st.markdown("📊 **हरूफ़ फ़्रीक्वेंसी स्कोर:**")
+            st.markdown("📋 **ऑटो-जनरेटेड 36 जोड़ियाँ (6x6 Cross):**")
+            st.text_area("36 जोड़ियाँ कॉपी करें:", value=pairs_formatted, height=120, key="copy_auto_crossing_pairs")
+            
+            st.markdown("📊 **1 से 20 दिन के ऑटो-स्कैन का हरूफ़ स्कोर कार्ड:**")
             st.dataframe(pd.DataFrame([haruf_counts]), use_container_width=True)
         else:
-            st.warning("लड़ी फ़ॉर्मूलों से हरूफ़ क्रॉसिंग निकालने के लिए पर्याप्त डेटा नहीं मिला।")
+            st.warning("1 से 20 दिन के ऑटो-स्कैन में कोई परिणाम नहीं मिला।")
 
-    # ================= TAB 3: RARE NUMBER 24H SCANNER (FORMULA 7/10) =================
+    # ================= TAB 3: AUTO-DETECT RARE NUMBER 24H SCANNER =================
     with main_tab3:
-        st.subheader("⚡ रेयर नंबर आने के बाद 24 घंटे का ट्रैक रिकॉर्ड")
+        st.subheader("⚡ ऑटो-डिटेक्ट रेयर नंबर 24H स्कैनर")
+        
+        # Auto Detect Last Target Number
+        latest_val = df[active_g].dropna().iloc[-1] if not df[active_g].dropna().empty else 20
+        auto_detected_num = int(latest_val)
         
         c_target_num, c_btn = st.columns([2, 1])
         with c_target_num:
-            scan_target = st.number_input("जिस रेयर/टारगेट नंबर का 24H रिकॉर्ड देखना है:", 0, 99, 20, key="scan_target_num_24h")
+            scan_target = st.number_input(f"टारगेट नंबर (ऑटो-डिटेक्टेड: `{auto_detected_num:02d}`):", 0, 99, auto_detected_num, key="scan_target_num_auto_24h")
         
         hist_records_24h = []
         direct_hits = []
@@ -268,7 +276,7 @@ if uploaded_file is not None:
                     })
 
         if hist_records_24h:
-            st.success(f"🎯 **डेटाबेस में नंबर `{scan_target:02d}` के बाद 24 घंटे की कुल `{len(hist_records_24h)}` घटनाएँ मिलीं!**")
+            st.success(f"🎯 **ऑटो-डिटेक्टेड नंबर `{scan_target:02d}` के 24 घंटे का ऐतिहासिक डेटा (कुल `{len(hist_records_24h)}` घटनाएँ):**")
             
             top_direct_series = pd.Series(direct_hits).value_counts()
             top_family_series = pd.Series(family_hits).value_counts()
@@ -284,7 +292,7 @@ if uploaded_file is not None:
             best_location_count = top_location_series.iloc[0] if not top_location_series.empty else 0
 
             st.info(f"""
-            🏆 **24 घंटे के मुख्य परिणाम:**
+            🏆 **24 घंटे के ऑटो-एनालिसिस परिणाम:**
             * 💥 **टॉप नंबर (24H):** `{best_number}` ({best_number_count} बार आया)
             * 👑 **टॉप फैमिली (24H):** `{best_family}` ({best_family_count} बार आई)
             * 📍 **टॉप लोकेशन (24H):** `{best_location}` ({best_location_count} पासिंग)
@@ -303,7 +311,7 @@ if uploaded_file is not None:
 
             st.dataframe(pd.DataFrame(hist_records_24h), use_container_width=True)
         else:
-            st.warning(f"नंबर `{scan_target:02d}` के 24 घंटे का कोई ऐतिहासिक रिकॉर्ड नहीं मिला।")
+            st.warning(f"नंबर `{scan_target:02d}` के 24 घंटे का कोई डेटाबेस रिकॉर्ड नहीं मिला।")
 
 else:
     st.info("👈 ऐप शुरू करने के लिए बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")

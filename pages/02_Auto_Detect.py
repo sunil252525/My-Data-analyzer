@@ -84,7 +84,7 @@ def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_
 
     recent_patterns = full_patterns[-mode_seq_days:]
     matched_records = []
-    seen_rows = set()  # नो-रिपीट ट्रैकर
+    seen_rows = set()
 
     for col in available_cols:
         col_vals = df[col].tolist()
@@ -97,7 +97,6 @@ def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_
         for i in range(end_idx_limit):
             target_idx = i + len(recent_nums)
             
-            # अगर यह रो पहले ही आ चुकी है तो रिपीट न करें
             if (col, target_idx) in seen_rows:
                 continue
 
@@ -125,19 +124,36 @@ def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_
 
     return matched_records, recent_nums
 
-# ================= CROSSING GENERATOR FOR TABLE =================
-def get_game_crossing_data(df, target_col, available_cols, date_col):
-    haruf_counts = {d: 0 for d in range(10)}
-    for seq_len in range(1, 21):
-        for mode_id in ["1", "2", "3", "4", "5"]:
-            matched_recs, _ = run_fast_sequence_search(df, target_col, available_cols, date_col, mode_id, seq_len)
-            for r in matched_recs:
-                val = r["Next Result"]
-                hi, ho = get_haruf(val)
-                if hi is not None: haruf_counts[hi] += 1
-                if ho is not None: haruf_counts[ho] += 1
+# ================= ADVANCED FORMULA 3 & 4 CROSSING ENGINE =================
+def get_advanced_crossing_harufs(df, col):
+    vals = df[col].dropna().astype(int).tolist()
+    if len(vals) < 5:
+        return []
 
-    top_6 = sorted(haruf_counts.keys(), key=lambda x: haruf_counts[x], reverse=True)[:6]
+    last_num = vals[-1]
+    haruf_scores = {d: 0 for d in range(10)}
+
+    # 1. हाल ही के रिज़ल्ट्स की फ्रीक्वेंसी (Base Weightage)
+    for num in vals[-15:]:
+        h1, h2 = num // 10, num % 10
+        haruf_scores[h1] += 1
+        haruf_scores[h2] += 1
+
+    # 2. फ़ॉर्मूला 3 और 4 (इतिहास में ताज़ा रिज़ल्ट के बाद क्या हरूफ़ आए थे - High Weightage)
+    for i in range(len(vals) - 2):
+        if vals[i] == last_num:
+            # अगले 2 दिनों के हरूफ़ निकालें
+            next1 = vals[i + 1]
+            next2 = vals[i + 2]
+            
+            f_harufs = [next1 // 10, next1 % 10, next2 // 10, next2 % 10]
+            for h in f_harufs:
+                if 0 <= h <= 9:
+                    haruf_scores[h] += 4  # फ़ॉलो-अप हरूफ़ को 4x वेटेज
+
+    # स्कोर के हिसाब से सॉर्ट करके TOP 6 चुनें
+    sorted_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)
+    top_6 = sorted_harufs[:6]
     top_6.sort()
     return top_6
 
@@ -218,7 +234,7 @@ if uploaded_file is not None:
             if not vals: continue
             
             last_num = vals[-1]
-            top_6_harufs = get_game_crossing_data(df, col, available_cols, date_col)
+            top_6_harufs = get_advanced_crossing_harufs(df, col)
             
             if top_6_harufs:
                 crossing_str = ", ".join(map(str, top_6_harufs))

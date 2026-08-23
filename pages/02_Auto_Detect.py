@@ -362,3 +362,58 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 ऐप शुरू करने के लिए बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")
+# ================= CUSTOM HYBRID FAMILY + MISSING FILTER FORMULA =================
+def render_custom_hybrid_formula(df, active_g, available_cols, date_col):
+    st.markdown("---")
+    st.subheader("⚙️ कस्टम हाइब्रिड फ़ॉर्मूला (फैमिली लास्ट-स्टेप + सेम-टू-सेम मिसिंग फ़िल्टर)")
+
+    # 1. फैमिली लड़ी मोड (Slider = 3 Days)
+    st.markdown("#### 1️⃣ स्टेप 1: फैमिली लड़ी (3 दिन पैटर्न) - लास्ट एक्टिव स्टेप")
+    fam_matched_recs, _ = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id="5", mode_seq_days=3)
+    
+    blocked_family_numbers = set()
+    last_step_results = []
+
+    if fam_matched_recs:
+        # लास्ट एक्टिव स्टेप का रिजल्ट निकालना
+        last_step_results = sorted(list(set([r["Next Result"] for r in fam_matched_recs])))
+        
+        # इन सभी नंबरों की पूरी फैमिली निकालना
+        for num in last_step_results:
+            blocked_family_numbers.update(get_family(num))
+            
+        st.info(f"📌 **3-दिन फैमिली लड़ी के लास्ट स्टेप के नंबर ({len(last_step_results)}):** `{last_step_results}`")
+        st.caption(f"🚫 इनसे बनी कुल फैमिली जोड़ियाँ: **{len(blocked_family_numbers)}** नंबर")
+    else:
+        st.warning("फैमिली लड़ी (3 दिन) में कोई मैच नहीं मिला।")
+
+    # 2. सेम टू सेम मोड (1 Day Slider)
+    st.markdown("#### 2️⃣ स्टेप 2: सेम-टू-सेम (1 दिन पैटर्न) - मिसिंग नंबर")
+    exact_matched_recs, _ = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id="3", mode_seq_days=1)
+    
+    missing_3_numbers = set()
+    if exact_matched_recs:
+        exact_found_nums = set([r["Next Result"] for r in exact_matched_recs])
+        all_100 = set(range(100))
+        missing_3_numbers = all_100 - exact_found_nums
+        
+        st.info(f"📌 **सेम-टू-सेम (1 दिन) में आए नंबर:** `{len(exact_found_nums)}` | **मिसिंग नंबर ({len(missing_3_numbers)}):** `{sorted(list(missing_3_numbers))}`")
+    else:
+        st.warning("सेम-टू-सेम (1 दिन) में कोई मैच नहीं मिला।")
+
+    # 3. फाइनल कंबाइंड रिजेक्शन
+    st.markdown("#### 3️⃣ स्टेप 3: फाइनल फ़िल्टर्ड रिज़ल्ट")
+    total_blocked = blocked_family_numbers.union(missing_3_numbers)
+    final_output_numbers = sorted(list(set(range(100)) - total_blocked))
+
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("🚫 **कुल हटाए गए नंबर (फैमिली + मिसिंग):**")
+        st.text_area("ब्लॉक लिस्ट:", value=", ".join([f"{n:02d}" for n in sorted(list(total_blocked))]), height=120, key="txt_hybrid_blocked")
+
+    with c2:
+        st.markdown("👑 **शुद्ध बचे हुए फाइनल नंबर (Final Remaining):**")
+        st.text_area("कॉपी करें:", value=", ".join([f"{n:02d}" for n in final_output_numbers]), height=120, key="txt_hybrid_final")
+
+# अपनी फ़ाइल के अंत में जहाँ active_g है, वहाँ इस फ़ंक्शन को कॉल कर दें:
+# render_custom_hybrid_formula(df, active_g, available_cols, date_col)

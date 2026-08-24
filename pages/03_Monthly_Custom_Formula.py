@@ -1,21 +1,65 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 
-st.set_page_config(page_title="Monthly Full Record Pattern", layout="wide")
+st.set_page_config(page_title="1-Day Same-to-Same Detector", layout="wide")
 
-st.title("📅 चालू महीना - पूरे 13 साल के रिकॉर्ड की ऑल नंबर लिस्ट")
+st.title("🎯 1-डे सेम-टू-सेम (DITTO) डिटेक्टर डैशबोर्ड")
+
+# ================= FAST SEARCH ENGINE (EXACT MATCH ONLY) =================
+@st.cache_data
+def run_exact_1day_search(df, g_sel, available_cols, date_col, skip_recent=0):
+    clean_series = df[g_sel].dropna().astype(int).tolist()
+    if skip_recent > 0:
+        clean_series = clean_series[:-skip_recent]
+        
+    if not clean_series:
+        return [], None
+
+    # केवल 1 दिन का ताज़ा रिज़ल्ट टारगेट पैटर्न बनेगा
+    recent_num = clean_series[-1]
+
+    matched_records = []
+    seen_rows = set()
+
+    for col in available_cols:
+        col_vals = df[col].tolist()
+        n_vals = len(col_vals)
+        
+        end_idx_limit = n_vals - 1 - skip_recent
+
+        for i in range(end_idx_limit):
+            target_idx = i + 1
+            
+            if (col, target_idx) in seen_rows:
+                continue
+
+            hist_val = col_vals[i]
+            if pd.isna(hist_val): 
+                continue
+
+            # सेम-टू-सेम (Ditto) मैचिंग चेक
+            if int(hist_val) == recent_num:
+                next_val = col_vals[target_idx]
+                if pd.notna(next_val):
+                    rec_date = df.loc[target_idx, date_col] if date_col and date_col in df.columns else f"Row #{target_idx}"
+                    matched_records.append({
+                        "तारीख / रो": rec_date,
+                        "गेम का नाम": col,
+                        "पिछला नंबर": f"{recent_num:02d}",
+                        "Next Result": int(next_val)
+                    })
+                    seen_rows.add((col, target_idx))
+
+    return matched_records, recent_num
+
 
 # ================= SIDEBAR & FILE UPLOAD =================
 st.sidebar.title("📌 फ़ाइल अपलोड")
-uploaded_file = st.sidebar.file_uploader("CSV फ़ाइल अपलोड करें", type=["csv"], key="monthly_uploader")
+uploaded_file = st.sidebar.file_uploader("CSV फ़ाइल अपलोड करें", type=["csv"], key="exact_page_uploader")
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     date_col = 'Date' if 'Date' in df.columns else None
-    
-    if date_col:
-        df['dt_temp'] = pd.to_datetime(df[date_col], errors='coerce')
     
     game_order = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     available_cols = [c for c in game_order if c in df.columns]
@@ -24,78 +68,62 @@ if uploaded_file is not None:
         df[c] = pd.to_numeric(df[c], errors='coerce')
     df = df.dropna(subset=available_cols, how='all').reset_index(drop=True)
 
-    if "selected_game_m" not in st.session_state or st.session_state["selected_game_m"] not in available_cols:
-        st.session_state["selected_game_m"] = available_cols[0]
+    if "selected_game_ditto" not in st.session_state or st.session_state["selected_game_ditto"] not in available_cols:
+        st.session_state["selected_game_ditto"] = available_cols[0]
 
-    st.subheader("🎯 गेम चुनें:")
+    st.subheader("📦 गेम चुनें (क्लिक करें):")
     cols = st.columns(len(available_cols))
     for idx, col_name in enumerate(available_cols):
-        recent_val = df[col_name].dropna().iloc[-1] if not df[col_name].dropna().empty else 0
+        recent_5 = df[col_name].dropna().tail(5).astype(int).tolist()
+        recent_str = " - ".join([f"{n:02d}" for n in recent_5])
+        
         with cols[idx]:
-            is_active = (st.session_state["selected_game_m"] == col_name)
-            btn_label = f"✅ {col_name} ({int(recent_val):02d})" if is_active else f"📌 {col_name} ({int(recent_val):02d})"
-            if st.button(btn_label, key=f"btn_m_{col_name}", use_container_width=True):
-                st.session_state["selected_game_m"] = col_name
+            is_active = (st.session_state["selected_game_ditto"] == col_name)
+            box_label = f"📌 {col_name}\n\n{recent_str}" if not is_active else f"✅ {col_name}\n\n{recent_str}"
+            if st.button(box_label, key=f"btn_ditto_{col_name}", use_container_width=True):
+                st.session_state["selected_game_ditto"] = col_name
 
-    active_g = st.session_state["selected_game_m"]
+    active_g = st.session_state["selected_game_ditto"]
     st.markdown("---")
 
-    # चालू महीने के इंडेक्स निकालना
-    total_rows = len(df)
-    if date_col and 'dt_temp' in df.columns and df['dt_temp'].notna().any():
-        latest_dt = df['dt_temp'].dropna().iloc[-1]
-        current_month_mask = (df['dt_temp'].dt.year == latest_dt.year) & (df['dt_temp'].dt.month == latest_dt.month)
-        curr_month_indices = df[current_month_mask].index.tolist()
+    # Slide Bar: Default fixed to 1 Day
+    mode_seq_days = st.slider("🎛️ दिन चुनें (डिफ़ॉल्ट 1 दिन):", min_value=1, max_value=10, value=1, key="ditto_slider")
+
+    matched_records, recent_num = run_exact_1day_search(df, active_g, available_cols, date_col)
+
+    if recent_num is not None:
+        st.info(f"📌 `{active_g}` का ताज़ा (1-Day) रिज़ल्ट नंबर: `{recent_num:02d}`")
+
+    if matched_records:
+        match_df = pd.DataFrame(matched_records)
+        
+        # 1. आए हुए नंबर (Matched / Found Numbers)
+        found_nums = sorted(list(set(match_df["Next Result"].tolist())))
+        found_box_str = ", ".join([f"{n:02d}" for n in found_nums])
+        
+        # 2. नहीं आए हुए नंबर (Missing Numbers from 00-99)
+        all_100_nums = set(range(100))
+        missing_nums = sorted(list(all_100_nums - set(found_nums)))
+        missing_box_str = ", ".join([f"{n:02d}" for n in missing_nums])
+
+        st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
+        
+        # UI Columns for Copy/Paste Display
+        col_f, col_m = st.columns(2)
+        
+        with col_f:
+            st.markdown(f"📋 **1. आए हुए नंबर (Matched / Found) - कुल `{len(found_nums)}`:**")
+            st.text_area("कॉपी करें (Found Numbers):", value=found_box_str, height=150, key="txt_found_ditto")
+
+        with col_m:
+            st.markdown(f"🚫 **2. छूटे हुए नंबर (Missing Numbers) - कुल `{len(missing_nums)}`:**")
+            st.text_area("कॉपी करें (Missing Numbers):", value=missing_box_str, height=150, key="txt_missing_ditto")
+
+        st.subheader("📊 सभी मिलान का विस्तृत रिकॉर्ड:")
+        st.dataframe(match_df, use_container_width=True)
     else:
-        curr_month_indices = list(range(max(0, total_rows - 31), total_rows))
-
-    # स्लाइडर (1 दिन, 2 दिन आदि चुनने के लिए)
-    same_days = st.slider("🎛️ लड़ी के दिन चुनें:", min_value=1, max_value=5, value=1, key="monthly_same_slider")
-
-    series_vals = df[active_g].tolist()
-    records = []
-
-    # केवल चालू महीने की हर तारीख का लूप
-    for idx in curr_month_indices:
-        if idx < same_days: continue
-        
-        curr_date = df.loc[idx, date_col] if date_col else f"Row #{idx}"
-        target_seq = series_vals[idx - same_days : idx]
-        
-        if any(pd.isna(v) for v in target_seq): continue
-        target_seq = [int(v) for v in target_seq]
-        
-        matched_next_results = []
-        # पूरे 13 साल के रिकॉर्ड में खोजना
-        for i in range(total_rows - same_days - 1):
-            if i == (idx - same_days): continue
-            
-            sub_seq = series_vals[i : i + same_days]
-            if any(pd.isna(v) for v in sub_seq): continue
-            sub_seq = [int(v) for v in sub_seq]
-            
-            if sub_seq == target_seq:
-                if pd.notna(series_vals[i + same_days]):
-                    matched_next_results.append(int(series_vals[i + same_days]))
-                    
-        # बिना किसी फ़िल्टर के सारे नंबर रखना
-        clean_nums = sorted(list(set(matched_next_results)))
-        nums_str = ", ".join([f"{n:02d}" for n in clean_nums]) if clean_nums else "कोई मैच नहीं"
-        
-        records.append({
-            "तारीख": curr_date,
-            "लड़ी पैटर्न": str(target_seq),
-            "कुल बार आया (Count)": len(matched_next_results),
-            "यूनिक नंबर (Count)": len(clean_nums),
-            "कॉपी हेतु सभी नंबर (All Results)": nums_str
-        })
-
-    if records:
-        res_df = pd.DataFrame(records)
-        res_df = res_df.iloc[::-1].reset_index(drop=True)
-        st.dataframe(res_df, use_container_width=True, height=600)
-    else:
-        st.warning("चालू महीने का डेटा उपलब्ध नहीं है।")
+        st.warning("⚠️ कोई मैच नहीं मिला।")
 
 else:
-    st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")
+    st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करके शुरू करें।")
+    

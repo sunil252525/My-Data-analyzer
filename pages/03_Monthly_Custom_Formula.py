@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-st.set_page_config(page_title="Monthly Pattern Analyzer", layout="wide")
+st.set_page_config(page_title="Monthly Full Record Pattern", layout="wide")
 
-st.title("📅 चालू महीने का सटीक पैटर्न (13 साल के रिकॉर्ड से मैचिंग)")
+st.title("📅 चालू महीना - पूरे 13 साल के रिकॉर्ड की ऑल नंबर लिस्ट")
 
 # ================= SIDEBAR & FILE UPLOAD =================
 st.sidebar.title("📌 फ़ाइल अपलोड")
@@ -49,13 +49,13 @@ if uploaded_file is not None:
     else:
         curr_month_indices = list(range(max(0, total_rows - 31), total_rows))
 
-    # स्लाइडर: लड़ी के दिन
-    same_days = st.slider("🎛️ लड़ी के दिन चुनें (सटीक नंबरों के लिए 2 या 3 दिन चुनें):", min_value=1, max_value=5, value=2, key="monthly_same_slider")
+    # स्लाइडर (1 दिन, 2 दिन आदि चुनने के लिए)
+    same_days = st.slider("🎛️ लड़ी के दिन चुनें:", min_value=1, max_value=5, value=1, key="monthly_same_slider")
 
     series_vals = df[active_g].tolist()
     records = []
 
-    # चालू महीने की हर तारीख पर लूप
+    # केवल चालू महीने की हर तारीख का लूप
     for idx in curr_month_indices:
         if idx < same_days: continue
         
@@ -66,7 +66,7 @@ if uploaded_file is not None:
         target_seq = [int(v) for v in target_seq]
         
         matched_next_results = []
-        # पूरे इतिहास में केवल वही लड़ी खोजना (चालू रो को छोड़कर)
+        # पूरे 13 साल के रिकॉर्ड में खोजना
         for i in range(total_rows - same_days - 1):
             if i == (idx - same_days): continue
             
@@ -78,23 +78,24 @@ if uploaded_file is not None:
                 if pd.notna(series_vals[i + same_days]):
                     matched_next_results.append(int(series_vals[i + same_days]))
                     
+        # बिना किसी फ़िल्टर के सारे नंबर रखना
         clean_nums = sorted(list(set(matched_next_results)))
         nums_str = ", ".join([f"{n:02d}" for n in clean_nums]) if clean_nums else "कोई मैच नहीं"
         
         records.append({
             "तारीख": curr_date,
-            "चालू महीने की लड़ी (Pattern)": str(target_seq),
-            "इतिहास में कुल मैच": len(matched_next_results),
-            "यूनिक नंबर": len(clean_nums),
-            "कॉपी हेतु नंबर (Next Results)": nums_str
+            "लड़ी पैटर्न": str(target_seq),
+            "कुल बार आया (Count)": len(matched_next_results),
+            "यूनिक नंबर (Count)": len(clean_nums),
+            "कॉपी हेतु सभी नंबर (All Results)": nums_str
         })
 
     if records:
         res_df = pd.DataFrame(records)
         res_df = res_df.iloc[::-1].reset_index(drop=True)
-        st.dataframe(res_df, use_container_width=True, height=550)
+        st.dataframe(res_df, use_container_width=True, height=600)
     else:
-        st.warning("डेटा उपलब्ध नहीं है।")
+        st.warning("चालू महीने का डेटा उपलब्ध नहीं है।")
 
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")

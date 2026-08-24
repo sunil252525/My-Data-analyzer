@@ -4,7 +4,7 @@ import numpy as np
 
 st.set_page_config(page_title="Monthly Single-Day & Family Formula", layout="wide")
 
-st.title("📅 मंथली पैटर्न फ़ॉर्मूला (1-Day Same-to-Same & Family)")
+st.title("📅 मंथली पैटर्न फ़ॉर्मूला (Same-to-Same & Family Pattern)")
 
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -60,53 +60,57 @@ if uploaded_file is not None:
 
     # ---------------- 2 MAIN SECTIONS TABS ----------------
     tab1, tab2 = st.tabs([
-        "1️⃣ सेम-टू-सेम (1-दिन) ऑल-डेट्स रिजल्ट्स", 
+        "1️⃣ सेम-टू-सेम लड़ी (कस्टम दिन)", 
         "2️⃣ फैमिली पैटर्न (कस्टम दिन)"
     ])
 
-    # ================= FEATURE 1: 1-DAY SAME TO SAME =================
+    # ================= FEATURE 1: SAME TO SAME WITH SLIDER =================
     with tab1:
-        st.subheader(f"📊 `{active_g}` - 1-Day Same-to-Same (हर तारीख/रो का रिजल्ट)")
-        
+        st.subheader(f"📊 `{active_g}` - सेम-टू-सेम लड़ी पैटर्न")
+        same_days = st.slider("🎛️ सेम-टू-सेम लड़ी के दिन चुनें:", min_value=1, max_value=10, value=1, key="monthly_same_slider")
+
         series_vals = df[active_g].tolist()
         total_rows = len(df)
         
-        # टेबल डेटा लिस्ट
         records = []
-        for idx in range(1, total_rows):
+        for idx in range(same_days, total_rows):
             curr_date = df.loc[idx, date_col] if date_col else f"Row #{idx}"
-            prev_val = series_vals[idx - 1]
+            target_seq = series_vals[idx - same_days : idx]
             
-            if pd.isna(prev_val): continue
-            prev_val = int(prev_val)
+            if any(pd.isna(v) for v in target_seq): continue
+            target_seq = [int(v) for v in target_seq]
             
             matched_next_results = []
-            for i in range(idx - 1):
-                if pd.notna(series_vals[i]) and int(series_vals[i]) == prev_val:
-                    if pd.notna(series_vals[i + 1]):
-                        matched_next_results.append(int(series_vals[i + 1]))
+            for i in range(total_rows - same_days - 1):
+                sub_seq = series_vals[i : i + same_days]
+                if any(pd.isna(v) for v in sub_seq): continue
+                sub_seq = [int(v) for v in sub_seq]
+                
+                # सेम-टू-सेम लड़ी मैचिंग
+                if sub_seq == target_seq:
+                    if pd.notna(series_vals[i + same_days]):
+                        matched_next_results.append(int(series_vals[i + same_days]))
                         
             clean_nums = sorted(list(set(matched_next_results)))
             nums_str = ", ".join([f"{n:02d}" for n in clean_nums]) if clean_nums else "कोई मैच नहीं"
             
             records.append({
                 "तारीख / रो": curr_date,
-                "पिछला नंबर": f"{prev_val:02d}",
+                "लड़ी पैटर्न": str(target_seq),
                 "कॉपी वाले कुल नंबर (Count)": len(clean_nums),
                 "कॉपी वाले नंबर (Next Results)": nums_str
             })
 
         if records:
             res_df = pd.DataFrame(records)
-            # रिवर्स ऑर्डर (ताजा तारीख सबसे ऊपर)
             res_df = res_df.iloc[::-1].reset_index(drop=True)
             st.dataframe(res_df, use_container_width=True, height=500)
         else:
             st.warning("डेटा उपलब्ध नहीं है।")
 
-    # ================= FEATURE 2: FAMILY PATTERN =================
+    # ================= FEATURE 2: FAMILY PATTERN WITH SLIDER =================
     with tab2:
-        st.subheader(f"👨‍👩‍👧‍👦 `{active_g}` - फैमिली पैटर्न (कस्टम दिन)")
+        st.subheader(f"👨‍👩‍👧‍👦 `{active_g}` - फैमिली पैटर्न")
         fam_days = st.slider("🎛️ फैमिली लड़ी के दिन चुनें:", min_value=1, max_value=10, value=3, key="monthly_fam_slider")
 
         series_vals = df[active_g].tolist()

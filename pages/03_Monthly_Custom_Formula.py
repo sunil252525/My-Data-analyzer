@@ -130,8 +130,7 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करके शुरू करें।")
-    
-        # ================= TAB 5: फैमिली (ORIGINAL + ALL FLIPPED FAMILIES) =================
+     # ================= TAB 5: फैमिली (ORIGINAL + ALL FLIPPED FAMILIES) =================
         with sub_tab5:
             matched_records, recent_nums = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id="5", mode_seq_days=mode_seq_days)
             st.info(f"📌 `{active_g}` का पिछले **{mode_seq_days} दिन** का फैमिली पैटर्न: `{recent_nums}`")

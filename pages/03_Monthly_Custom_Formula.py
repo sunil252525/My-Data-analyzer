@@ -130,7 +130,7 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करके शुरू करें।")
-     # ================= TAB 5: फैमिली (ORIGINAL + ALL FLIPPED FAMILIES) =================
+             # ================= TAB 5: फैमिली (ORIGINAL + ALL FLIPPED FAMILIES) =================
         with sub_tab5:
             matched_records, recent_nums = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id="5", mode_seq_days=mode_seq_days)
             st.info(f"📌 `{active_g}` का पिछले **{mode_seq_days} दिन** का फैमिली पैटर्न: `{recent_nums}`")
@@ -142,10 +142,10 @@ else:
                 clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
                 box_str = ", ".join([f"{n:02d}" for n in clean_nums])
                 
-                # 2. आए हुए (Next Result) नंबरों की पूरी 8-8 जोड़ियों की फैमिली (अलट-पलट + राशि के साथ)
+                # 2. आए हुए (Next Result) नंबरों की पूरी फैमिली (राशि + अलट-पलट समेत)
                 matched_family_set = set()
                 for num in clean_nums:
-                    matched_family_set.update(get_family(num))  # इसमें पूरी अलट-पलट शामिल है
+                    matched_family_set.update(get_family(num))
                 
                 matched_fam_nums = sorted(list(matched_family_set))
                 matched_fam_box_str = ", ".join([f"{n:02d}" for n in matched_fam_nums])

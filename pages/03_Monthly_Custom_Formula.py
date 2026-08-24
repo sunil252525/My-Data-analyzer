@@ -3,7 +3,7 @@ import pandas as pd
 
 st.set_page_config(page_title="Same-to-Same & Family Detector", layout="wide")
 
-st.title("🎯 सेम-टू-सेम & फैमिली डिटेक्टर डैशबोर्ड")
+st.title("🎯 सेम-टू-सेम, अलट-पलट & फैमिली डिटेक्टर डैशबोर्ड")
 
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -26,6 +26,18 @@ def get_family(num):
             fam.add(b * 10 + a)
         return sorted(list(fam))
     except: return []
+
+def get_flip_pairs(num_list):
+    """आए हुए नंबरों और उनकी अलट-पलट को मिलाकर यूनिक (बिना डुप्लीकेट) लिस्ट बनाता है"""
+    flip_set = set()
+    for n in num_list:
+        try:
+            val = int(n)
+            flip_val = int(f"{val:02d}"[::-1])
+            flip_set.add(val)
+            flip_set.add(flip_val)
+        except: continue
+    return sorted(list(flip_set))
 
 # ================= FAST SEARCH ENGINES =================
 @st.cache_data
@@ -233,12 +245,26 @@ if uploaded_file is not None:
 
         if matched_records:
             match_df = pd.DataFrame(matched_records)
+            
+            # 1. आए हुए मूल Next Result नंबर (Unique - डुप्लीकेट नहीं)
             clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
             box_str = ", ".join([f"{n:02d}" for n in clean_nums])
             
+            # 2. आए हुए सभी रिजल्ट नंबरों की अलट-पलट जोड़ियाँ (Unique - डुप्लीकेट नहीं)
+            flipped_nums = get_flip_pairs(clean_nums)
+            flipped_box_str = ", ".join([f"{n:02d}" for n in flipped_nums])
+            
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
-            st.markdown(f"📋 **Next Result (कुल `{len(clean_nums)}` नंबर):**")
-            st.text_area("कॉपी करें (Alat-Palat Results):", value=box_str, height=140, key=f"txt_flip_{active_g}_{mode_seq_days}")
+            
+            col_flip1, col_flip2 = st.columns(2)
+            with col_flip1:
+                st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
+                st.text_area("कॉपी करें (मूल रिजल्ट):", value=box_str, height=140, key=f"txt_flip_orig_{active_g}_{mode_seq_days}")
+
+            with col_flip2:
+                st.markdown(f"🔄 **2. आए हुए रिजल्ट + उनकी अलट-पलट (कुल `{len(flipped_nums)}` जोड़ियाँ):**")
+                st.text_area("कॉपी करें (रिजल्ट + अलट-पलट):", value=flipped_box_str, height=140, key=f"txt_flip_all_{active_g}_{mode_seq_days}")
+
             st.dataframe(match_df, use_container_width=True)
         else:
             st.warning("⚠️ कोई मैच नहीं मिला।")
@@ -266,7 +292,6 @@ if uploaded_file is not None:
 
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
             
-            # दो अलग-अलग कॉपी वाले डब्बे
             col_fam1, col_fam2 = st.columns(2)
             with col_fam1:
                 st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
@@ -282,4 +307,4 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करके शुरू करें।")
-        
+                                                                

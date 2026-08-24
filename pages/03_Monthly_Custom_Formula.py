@@ -131,3 +131,40 @@ if uploaded_file is not None:
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करके शुरू करें।")
     
+        # ================= TAB 5: फैमिली (ORIGINAL + ALL FLIPPED FAMILIES) =================
+        with sub_tab5:
+            matched_records, recent_nums = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id="5", mode_seq_days=mode_seq_days)
+            st.info(f"📌 `{active_g}` का पिछले **{mode_seq_days} दिन** का फैमिली पैटर्न: `{recent_nums}`")
+
+            if matched_records:
+                match_df = pd.DataFrame(matched_records)
+                
+                # 1. आए हुए मूल Next Result नंबर
+                clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
+                box_str = ", ".join([f"{n:02d}" for n in clean_nums])
+                
+                # 2. आए हुए (Next Result) नंबरों की पूरी 8-8 जोड़ियों की फैमिली (अलट-पलट + राशि के साथ)
+                matched_family_set = set()
+                for num in clean_nums:
+                    matched_family_set.update(get_family(num))  # इसमें पूरी अलट-पलट शामिल है
+                
+                matched_fam_nums = sorted(list(matched_family_set))
+                matched_fam_box_str = ", ".join([f"{n:02d}" for n in matched_fam_nums])
+
+                st.success(f"✅ मैच पाए गए: `{len(matched_records)}` बार")
+                
+                # दो अलग-अलग कॉपी-पेस्ट के डब्बे
+                col_fam1, col_fam2 = st.columns(2)
+                
+                with col_fam1:
+                    st.markdown(f"📋 **1. आए हुए Next Result (कुल `{len(clean_nums)}` नंबर):**")
+                    st.text_area("कॉपी करें (Next Result):", value=box_str, height=140, key=f"copy_fam_{active_g}_{mode_seq_days}")
+
+                with col_fam2:
+                    st.markdown(f"👑 **2. आए हुए Next Result की पूरी फैमिली (राशि + अलट-पलट समेत कुल `{len(matched_fam_nums)}` जोड़ियाँ):**")
+                    st.text_area("कॉपी करें (Next Result Family + अलट-पलट):", value=matched_fam_box_str, height=140, key=f"copy_matched_fam_{active_g}_{mode_seq_days}")
+
+                st.dataframe(match_df, use_container_width=True)
+            else:
+                st.warning("⚠️ कोई मैच नहीं मिला।")
+                

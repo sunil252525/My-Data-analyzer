@@ -1,13 +1,35 @@
 import streamlit as st
 import pandas as pd
 
-st.set_page_config(page_title="1-Day Same-to-Same Detector", layout="wide")
+st.set_page_config(page_title="Family Pattern & Auto-Family Generator", layout="wide")
 
-st.title("🎯 1-डे सेम-टू-सेम (DITTO) डिटेक्टर डैशबोर्ड")
+st.title("👨‍👩‍👧‍👦 फैमिली डिटेक्टर + ऑटो फैमिली जनरेटर")
 
-# ================= DYNAMIC FAST SEARCH ENGINE =================
+# ================= HELPER FUNCTIONS =================
+RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
+
+def get_rashi_digit(d):
+    try: return RASHI_MAP.get(int(d), int(d))
+    except: return 0
+
+def get_family(num):
+    """किसी भी नंबर की पूरी 8 जोड़ियों वाली फैमिली (अलट-पलट के साथ) जनरेट करता है"""
+    try:
+        if pd.isna(num): return []
+        num = int(num)
+        if not (0 <= num <= 99): return []
+        d1, d2 = num // 10, num % 10
+        r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
+        fam = set()
+        for a, b in [(d1, d2), (d1, r2), (r1, d2), (r1, r2)]:
+            fam.add(a * 10 + b)
+            fam.add(b * 10 + a)
+        return sorted(list(fam))
+    except: return []
+
+# ================= FAST CACHED FAMILY SEARCH ENGINE =================
 @st.cache_data
-def run_exact_dynamic_search(df, g_sel, available_cols, date_col, mode_seq_days, skip_recent=0):
+def run_family_dynamic_search(df, g_sel, available_cols, date_col, mode_seq_days, skip_recent=0):
     clean_series = df[g_sel].dropna().astype(int).tolist()
     if skip_recent > 0:
         clean_series = clean_series[:-skip_recent]
@@ -15,8 +37,8 @@ def run_exact_dynamic_search(df, g_sel, available_cols, date_col, mode_seq_days,
     if len(clean_series) < mode_seq_days:
         return [], []
 
-    # जितने दिन का स्लाइडर चुना है, उतने ताज़ा रिज़ल्ट की लिस्ट बनेगी
     recent_nums = clean_series[-mode_seq_days:]
+    recent_families = [set(get_family(n)) for n in recent_nums]
 
     matched_records = []
     seen_rows = set()
@@ -39,8 +61,15 @@ def run_exact_dynamic_search(df, g_sel, available_cols, date_col, mode_seq_days,
             
             sub_seq = [int(v) for v in sub_seq]
             
-            # चुना हुआ sequence (1 या अधिक दिन) डिट्टो मैच हो रहा है या नहीं
-            if sub_seq == recent_nums:
+            # चेक करें कि क्या ऐतिहासिक नंबर फैमिली मैच कर रहा है
+            is_match = True
+            for day_idx in range(len(recent_nums)):
+                hist_fam = set(get_family(sub_seq[day_idx]))
+                if not bool(recent_families[day_idx] & hist_fam):
+                    is_match = False
+                    break
+
+            if is_match:
                 next_val = col_vals[target_idx]
                 if pd.notna(next_val):
                     rec_date = df.loc[target_idx, date_col] if date_col and date_col in df.columns else f"Row #{target_idx}"
@@ -57,7 +86,7 @@ def run_exact_dynamic_search(df, g_sel, available_cols, date_col, mode_seq_days,
 
 # ================= SIDEBAR & FILE UPLOAD =================
 st.sidebar.title("📌 फ़ाइल अपलोड")
-uploaded_file = st.sidebar.file_uploader("CSV फ़ाइल अपलोड करें", type=["csv"], key="exact_page_uploader")
+uploaded_file = st.sidebar.file_uploader("CSV फ़ाइल अपलोड करें", type=["csv"], key="family_page_uploader")
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
@@ -70,8 +99,8 @@ if uploaded_file is not None:
         df[c] = pd.to_numeric(df[c], errors='coerce')
     df = df.dropna(subset=available_cols, how='all').reset_index(drop=True)
 
-    if "selected_game_ditto" not in st.session_state or st.session_state["selected_game_ditto"] not in available_cols:
-        st.session_state["selected_game_ditto"] = available_cols[0]
+    if "selected_game_fam" not in st.session_state or st.session_state["selected_game_fam"] not in available_cols:
+        st.session_state["selected_game_fam"] = available_cols[0]
 
     st.subheader("📦 गेम चुनें (क्लिक करें):")
     cols = st.columns(len(available_cols))
@@ -80,54 +109,57 @@ if uploaded_file is not None:
         recent_str = " - ".join([f"{n:02d}" for n in recent_5])
         
         with cols[idx]:
-            is_active = (st.session_state["selected_game_ditto"] == col_name)
+            is_active = (st.session_state["selected_game_fam"] == col_name)
             box_label = f"📌 {col_name}\n\n{recent_str}" if not is_active else f"✅ {col_name}\n\n{recent_str}"
-            if st.button(box_label, key=f"btn_ditto_{col_name}", use_container_width=True):
-                st.session_state["selected_game_ditto"] = col_name
+            if st.button(box_label, key=f"btn_fam_{col_name}", use_container_width=True):
+                st.session_state["selected_game_fam"] = col_name
 
-    active_g = st.session_state["selected_game_ditto"]
+    active_g = st.session_state["selected_game_fam"]
     st.markdown("---")
 
-    # 1. Slider: Default @ 1 Day
-    mode_seq_days = st.slider("🎛️ दिन चुनें (डिफ़ॉल्ट 1 दिन):", min_value=1, max_value=10, value=1, key="ditto_slider")
+    # Slider: Default @ 1 Day
+    mode_seq_days = st.slider("🎛️ दिन चुनें (डिफ़ॉल्ट 1 दिन):", min_value=1, max_value=10, value=1, key="fam_slider")
 
-    # 2. Search Function Call with Slider Value
-    matched_records, recent_nums = run_exact_dynamic_search(df, active_g, available_cols, date_col, mode_seq_days)
+    # Search Logic Call
+    matched_records, recent_nums = run_family_dynamic_search(df, active_g, available_cols, date_col, mode_seq_days)
 
     if recent_nums:
         nums_str = ", ".join([f"{n:02d}" for n in recent_nums])
-        st.info(f"📌 **{active_g}** का चुना गया (**{mode_seq_days} दिन**) का पैटर्न: `{nums_str}`")
+        st.info(f"📌 **{active_g}** का चुना गया (**{mode_seq_days} दिन**) का फैमिली पैटर्न: `{nums_str}`")
 
     if matched_records:
         match_df = pd.DataFrame(matched_records)
         
-        # 1. आए हुए नंबर (Matched / Found Numbers)
+        # 1. अगले दिन आए हुए केवल मूल नंबर (Original Next Results)
         found_nums = sorted(list(set(match_df["Next Result"].tolist())))
         found_box_str = ", ".join([f"{n:02d}" for n in found_nums])
         
-        # 2. छूटे हुए नंबर (Missing Numbers from 00-99)
-        all_100_nums = set(range(100))
-        missing_nums = sorted(list(all_100_nums - set(found_nums)))
-        missing_box_str = ", ".join([f"{n:02d}" for n in missing_nums])
+        # 2. आए हुए सभी नंबरों की पूरी फैमिली जोड़ियाँ (Generated All Families)
+        all_family_nums_set = set()
+        for num in found_nums:
+            all_family_nums_set.update(get_family(num))
+            
+        generated_family_nums = sorted(list(all_family_nums_set))
+        family_box_str = ", ".join([f"{n:02d}" for n in generated_family_nums])
 
         st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
         
-        # Unique keys used for text_area so state updates seamlessly per game/slider change
-        col_f, col_m = st.columns(2)
+        # UI Columns for Dual Displays
+        col1, col2 = st.columns(2)
         
-        with col_f:
-            st.markdown(f"📋 **1. आए हुए नंबर (Matched / Found) - कुल `{len(found_nums)}`:**")
-            st.text_area("कॉपी करें (Found Numbers):", value=found_box_str, height=150, key=f"txt_found_{active_g}_{mode_seq_days}")
+        with col1:
+            st.markdown(f"📋 **1. मूल आए हुए नंबर (Original Next Results) - कुल `{len(found_nums)}`:**")
+            st.text_area("कॉपी करें (केवल मूल नंबर):", value=found_box_str, height=150, key=f"txt_orig_{active_g}_{mode_seq_days}")
 
-        with col_m:
-            st.markdown(f"🚫 **2. छूटे हुए नंबर (Missing Numbers) - कुल `{len(missing_nums)}`:**")
-            st.text_area("कॉपी करें (Missing Numbers):", value=missing_box_str, height=150, key=f"txt_missing_{active_g}_{mode_seq_days}")
+        with col2:
+            st.markdown(f"👑 **2. इन नंबरों की संपूर्ण फैमिली (अलट-पलट के साथ) - कुल `{len(generated_family_nums)}`:**")
+            st.text_area("कॉपी करें (पूरी फैमिली जोड़ियाँ):", value=family_box_str, height=150, key=f"txt_generated_fam_{active_g}_{mode_seq_days}")
 
-        st.subheader("📊 सभी मिलान का विस्तृत रिकॉर्ड:")
+        st.subheader("📊 सभी फैमिली मिलान का विस्तृत रिकॉर्ड:")
         st.dataframe(match_df, use_container_width=True)
     else:
-        st.warning(f"⚠️ `{active_g}` के पैटर्न `{recent_nums}` के लिए कोई मैच नहीं मिला।")
+        st.warning(f"⚠️ `{active_g}` के पैटर्न `{recent_nums}` के लिए कोई फैमिली मैच नहीं मिला।")
 
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करके शुरू करें।")
-            
+    

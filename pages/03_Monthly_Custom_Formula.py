@@ -2,9 +2,9 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-st.set_page_config(page_title="Monthly Single-Day & Family Formula", layout="wide")
+st.set_page_config(page_title="Current Month Same-to-Same Pattern", layout="wide")
 
-st.title("📅 मंथली पैटर्न फ़ॉर्मूला (Same-to-Same & Family Pattern)")
+st.title("📅 केवल चालू महीने का पैटर्न (13 साल के इतिहास से मैचिंग)")
 
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -35,6 +35,10 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     date_col = 'Date' if 'Date' in df.columns else None
     
+    # तारीख कॉलम को डेट टाइम में कन्वर्ट करने की कोशिश
+    if date_col:
+        df['dt_temp'] = pd.to_datetime(df[date_col], errors='coerce')
+    
     game_order = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     available_cols = [c for c in game_order if c in df.columns]
     
@@ -58,22 +62,35 @@ if uploaded_file is not None:
     active_g = st.session_state["selected_game_m"]
     st.markdown("---")
 
+    # ---------------- केवल चालू महीने की रोज़ (Rows) ढूँढना ----------------
+    total_rows = len(df)
+    
+    # अगर फ़ाइल में Date कॉलम है तो आखिरी महीने की रोज़ निकालेंगे, नहीं तो आखिरी 31 रोज़
+    if date_col and 'dt_temp' in df.columns and df['dt_temp'].notna().any():
+        latest_dt = df['dt_temp'].dropna().iloc[-1]
+        current_month_mask = (df['dt_temp'].dt.year == latest_dt.year) & (df['dt_temp'].dt.month == latest_dt.month)
+        curr_month_indices = df[current_month_mask].index.tolist()
+    else:
+        curr_month_indices = list(range(max(0, total_rows - 31), total_rows))
+
     # ---------------- 2 MAIN SECTIONS TABS ----------------
     tab1, tab2 = st.tabs([
-        "1️⃣ सेम-टू-सेम लड़ी (कस्टम दिन)", 
-        "2️⃣ फैमिली पैटर्न (कस्टम दिन)"
+        "1️⃣ सेम-टू-सेम लड़ी (केवल चालू महीना)", 
+        "2️⃣ फैमिली पैटर्न (केवल चालू महीना)"
     ])
 
-    # ================= FEATURE 1: SAME TO SAME WITH SLIDER =================
+    # ================= FEATURE 1: SAME TO SAME (CURRENT MONTH ONLY) =================
     with tab1:
-        st.subheader(f"📊 `{active_g}` - सेम-टू-सेम लड़ी पैटर्न")
-        same_days = st.slider("🎛️ सेम-टू-सेम लड़ी के दिन चुनें:", min_value=1, max_value=10, value=1, key="monthly_same_slider")
+        st.subheader(f"📊 `{active_g}` - केवल चालू महीने के रिजल्ट्स (13 साल के रिकॉर्ड में से अगला नंबर)")
+        same_days = st.slider("🎛️ लड़ी के दिन चुनें (1-दिन, 2-दिन आदि):", min_value=1, max_value=10, value=1, key="monthly_same_slider")
 
         series_vals = df[active_g].tolist()
-        total_rows = len(df)
         
         records = []
-        for idx in range(same_days, total_rows):
+        # लूप सिर्फ चालू महीने की तारीखों/रोज़ पर चलेगा
+        for idx in curr_month_indices:
+            if idx < same_days: continue
+            
             curr_date = df.loc[idx, date_col] if date_col else f"Row #{idx}"
             target_seq = series_vals[idx - same_days : idx]
             
@@ -81,12 +98,13 @@ if uploaded_file is not None:
             target_seq = [int(v) for v in target_seq]
             
             matched_next_results = []
+            # मैचिंग पूरे 13 साल के रिकॉर्ड (0 से लेकर इतिहास के अंत तक) में होगी
             for i in range(total_rows - same_days - 1):
                 sub_seq = series_vals[i : i + same_days]
                 if any(pd.isna(v) for v in sub_seq): continue
                 sub_seq = [int(v) for v in sub_seq]
                 
-                # सेम-टू-सेम लड़ी मैचिंग
+                # पूरे इतिहास में जहां भी यह लड़ी आई
                 if sub_seq == target_seq:
                     if pd.notna(series_vals[i + same_days]):
                         matched_next_results.append(int(series_vals[i + same_days]))
@@ -95,10 +113,10 @@ if uploaded_file is not None:
             nums_str = ", ".join([f"{n:02d}" for n in clean_nums]) if clean_nums else "कोई मैच नहीं"
             
             records.append({
-                "तारीख / रो": curr_date,
-                "लड़ी पैटर्न": str(target_seq),
-                "कॉपी वाले कुल नंबर (Count)": len(clean_nums),
-                "कॉपी वाले नंबर (Next Results)": nums_str
+                "तारीख": curr_date,
+                "चालू महीने की लड़ी": str(target_seq),
+                "13 साल में कुल मैच (Count)": len(clean_nums),
+                "13 साल के रिकॉर्ड से आए नंबर (कॉपी हेतु)": nums_str
             })
 
         if records:
@@ -106,18 +124,19 @@ if uploaded_file is not None:
             res_df = res_df.iloc[::-1].reset_index(drop=True)
             st.dataframe(res_df, use_container_width=True, height=500)
         else:
-            st.warning("डेटा उपलब्ध नहीं है।")
+            st.warning("चालू महीने के लिए डेटा उपलब्ध नहीं है।")
 
-    # ================= FEATURE 2: FAMILY PATTERN WITH SLIDER =================
+    # ================= FEATURE 2: FAMILY PATTERN (CURRENT MONTH ONLY) =================
     with tab2:
-        st.subheader(f"👨‍👩‍👧‍👦 `{active_g}` - फैमिली पैटर्न")
+        st.subheader(f"👨‍👩‍👧‍👦 `{active_g}` - केवल चालू महीने का फैमिली पैटर्न")
         fam_days = st.slider("🎛️ फैमिली लड़ी के दिन चुनें:", min_value=1, max_value=10, value=3, key="monthly_fam_slider")
 
         series_vals = df[active_g].tolist()
-        total_rows = len(df)
         
         fam_records = []
-        for idx in range(fam_days, total_rows):
+        for idx in curr_month_indices:
+            if idx < fam_days: continue
+            
             curr_date = df.loc[idx, date_col] if date_col else f"Row #{idx}"
             target_seq = series_vals[idx - fam_days : idx]
             
@@ -151,7 +170,7 @@ if uploaded_file is not None:
             fam_str = ", ".join([f"{n:02d}" for n in sorted(list(all_family_blocked))]) if all_family_blocked else "N/A"
 
             fam_records.append({
-                "तारीख / रो": curr_date,
+                "तारीख": curr_date,
                 "लड़ी पैटर्न": str(target_seq),
                 "Next Results (Count)": len(clean_nums),
                 "Next Results (कॉपी हेतु)": nums_str,
@@ -163,7 +182,7 @@ if uploaded_file is not None:
             fam_df = fam_df.iloc[::-1].reset_index(drop=True)
             st.dataframe(fam_df, use_container_width=True, height=500)
         else:
-            st.warning("डेटा उपलब्ध नहीं है।")
+            st.warning("चालू महीने के लिए डेटा उपलब्ध नहीं है।")
 
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")

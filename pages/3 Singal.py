@@ -36,31 +36,34 @@ def get_family_head(num):
 # ================= TARGET SCANNER ENGINE =================
 def analyze_target_occurrences(df, target_game, target_num, window_days=2):
     """
-    पूरे डेटा में Target Number ढूँढकर उसके अगले 1 और 2 दिनों का विश्लेषण करता है
+    चुने हुए सटीक गेम में Target Number ढूँढकर विश्लेषण करता है
     """
     next_day_results = []
     window_results = []
     occurrences_log = []
 
     date_col = 'Date' if 'Date' in df.columns else None
-    total_rows = len(df)
+    
+    # केवल चुनिंदा गेम की वैध रो (Rows) निकालें
+    valid_df = df[[target_game] + ([date_col] if date_col else [])].dropna(subset=[target_game]).reset_index(drop=True)
+    total_rows = len(valid_df)
 
     for idx in range(total_rows):
-        val = df.loc[idx, target_game]
+        val = valid_df.loc[idx, target_game]
         if pd.notna(val) and int(val) == target_num:
-            rec_date = df.loc[idx, date_col] if date_col else f"Row #{idx}"
+            rec_date = valid_df.loc[idx, date_col] if date_col else f"Row #{idx}"
             
-            # 1. अगले दिन का रिजल्ट (Next 1 Day)
+            # 1. अगला 1 दिन
             next_1_val = None
-            if idx + 1 < total_rows and pd.notna(df.loc[idx + 1, target_game]):
-                next_1_val = int(df.loc[idx + 1, target_game])
+            if idx + 1 < total_rows and pd.notna(valid_df.loc[idx + 1, target_game]):
+                next_1_val = int(valid_df.loc[idx + 1, target_game])
                 next_day_results.append(next_1_val)
 
-            # 2. 2 दिन के अंदर के रिजल्ट (Window Days)
+            # 2. Window Days के अंदर आए नंबर
             win_vals = []
             for d in range(1, window_days + 1):
-                if idx + d < total_rows and pd.notna(df.loc[idx + d, target_game]):
-                    v = int(df.loc[idx + d, target_game])
+                if idx + d < total_rows and pd.notna(valid_df.loc[idx + d, target_game]):
+                    v = int(valid_df.loc[idx + d, target_game])
                     win_vals.append(v)
                     window_results.append(v)
 
@@ -88,7 +91,6 @@ if uploaded_file is not None:
     
     for c in available_cols:
         df[c] = pd.to_numeric(df[c], errors='coerce')
-    df = df.dropna(subset=available_cols, how='all').reset_index(drop=True)
 
     st.subheader("⚙️ पैटर्न सर्च सेटिंग्स:")
     
@@ -111,9 +113,9 @@ if uploaded_file is not None:
     if logs:
         st.success(f"📊 **13 साल के डेटा में `{selected_game}` में `{target_number:02d}` कुल `{len(logs)}` बार आया है।**")
         
-        # --- 1. सटीक गणना (Fixed Match Logic) ---
+        # --- 1. गणना (Counting Logic) ---
         single_counts = Counter(window_list)
-        top_3_tuples = single_counts.most_common(3)  # [(number, count), ...]
+        top_3_tuples = single_counts.most_common(3)
         
         top_3_singles = [item[0] for item in top_3_tuples]
         top_3_singles_str = ", ".join([f"{n:02d}" for n in top_3_singles])
@@ -123,7 +125,7 @@ if uploaded_file is not None:
         top_family_tuples = family_counts.most_common(3)
         top_families_heads = [item[0] for item in top_family_tuples]
         
-        # Top फैमिलियों की सभी जोड़ियों का सेट बनाना
+        # Top फैमिलियों की सभी जोड़ियों का सेट
         all_top_family_pairs = set()
         for f_head in top_families_heads:
             all_top_family_pairs.update(get_family(f_head))
@@ -135,25 +137,23 @@ if uploaded_file is not None:
         col_box1, col_box2 = st.columns(2)
 
         with col_box1:
-            st.markdown(f"🔥 **1. `{target_number:02d}` के 2 दिन के अंदर सबसे ज्यादा आए Top 3 नंबर:**")
-            st.text_area("कॉपी करें (Top 3 Single Repeat Numbers):", value=top_3_singles_str, height=130, key="txt_single_top3")
+            st.markdown(f"🔥 **1. `{selected_game}` में `{target_number:02d}` के 2 दिन के अंदर सबसे ज्यादा आए Top 3 नंबर:**")
+            st.text_area("कॉपी करें (Top 3 Single Repeat Numbers):", value=top_3_singles_str, height=130, key=f"txt_single_{selected_game}_{target_number}")
             
-            # डिटेल्स दिखाएं (जो ऊपर बॉक्स में है वही यहाँ दिखेगा)
             st.markdown("**Top 3 नंबरों की फ्रीक्वेंसी:**")
             for num, count in top_3_tuples:
                 st.write(f"- नंबर **`{num:02d}`**: कुल **{count}** बार आया")
 
         with col_box2:
             st.markdown(f"👑 **2. सबसे ज्यादा रिपीट होने वाली Top फैमिलियों की संपूर्ण जोड़ियाँ:**")
-            st.text_area("कॉपी करें (Top Repeat Family Numbers):", value=top_family_pairs_str, height=130, key="txt_family_top")
+            st.text_area("कॉपी करें (Top Repeat Family Numbers):", value=top_family_pairs_str, height=130, key=f"txt_family_{selected_game}_{target_number}")
             
-            # डिटेल्स दिखाएं
             st.markdown("**Top 3 फैमिलियों की फ्रीक्वेंसी:**")
             for f_head, count in top_family_tuples:
                 st.write(f"- **`{f_head:02d}`** की फैमिली: कुल **{count}** बार पास हुई")
 
         st.markdown("---")
-        st.subheader("📜 13 साल का पूरा रिकॉर्ड (Target Occurrence Records):")
+        st.subheader(f"📜 {selected_game} का पूरा रिकॉर्ड (Target Occurrence Records):")
         st.dataframe(pd.DataFrame(logs), use_container_width=True)
 
     else:
@@ -161,4 +161,4 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 बाएँ साइडबार से 13 साल की CSV फ़ाइल अपलोड करके शुरू करें।")
-                
+    

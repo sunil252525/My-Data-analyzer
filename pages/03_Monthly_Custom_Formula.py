@@ -207,9 +207,8 @@ if uploaded_file is not None:
     # 3 मुख्य टैब्स
     tab1, tab2, tab3 = st.tabs(["🎯 सेम टू सेम (DITTO)", "🔄 अलट-पलट", "👑 फैमिली"])
 
-    # --- TAB 3 डेटा पहले कैलकुलेट करेंगे ताकि Tab 1 के 4th Box में Tab 3 की पूरी फैमिली माइनस की जा सके ---
     if "slider_tab3" not in st.session_state:
-        st.session_state["slider_tab3"] = 3  # डिफॉल्ट 3 दिन
+        st.session_state["slider_tab3"] = 3
 
     # ================= TAB 3: FAMILY =================
     with tab3:
@@ -310,7 +309,7 @@ if uploaded_file is not None:
 
             # --- 4. चौथे बॉक्स के लिए (Tab 1 के Found Numbers - Tab 3 की सम्पूर्ण फैमिली) ---
             tab3_cut_nums = sorted(list(found_set - tab3_all_family_numbers))
-            family_cut_count = len(tab3_cut_nums)  # बचे हुए नंबरों की कुल गिनती
+            family_cut_count = len(tab3_cut_nums)
             family_cut_box_str = ", ".join([f"{n:02d}" for n in tab3_cut_nums]) if tab3_cut_nums else "(कोई नंबर नहीं बचा)"
 
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
@@ -326,9 +325,35 @@ if uploaded_file is not None:
                 st.markdown(f"👑 **3. आए हुए नंबरों की फैमिली फ़िल्टर:**")
                 st.text_area("कॉपी करें (फैमिली विश्लेषण):", value=family_box_str, height=220, key=f"txt_exact_fam_{active_g}_{mode_seq_days_1}")
             with col_cut:
-                # चौथे बॉक्स के टाइटल में कुल बचे हुए नंबरों की संख्या भी दिखाई जाएगी
                 st.markdown(f"✂️ **4. संपूर्ण फैमिली Cut (Tab 3 घटकर बचे - कुल `{family_cut_count}` नंबर):**")
                 st.text_area("कॉपी करें (फैमिली कट नंबर):", value=family_cut_box_str, height=220, key=f"txt_exact_cut_{active_g}_{mode_seq_days_1}")
+
+            # ================= 5th BOX: DIGIT FILTER SECTION =================
+            st.markdown("---")
+            st.subheader("🎯 5. चुने हुए अंकों (हरूफ/डिजिट) के आधार पर फ़िल्टर करें (Box 5):")
+            
+            selected_digits = st.multiselect(
+                "🔢 यहाँ वे अंक चुनें जिन्हें आप चौथे बॉक्स (Cut) के नंबरों में से अलग करना चाहते हैं:",
+                options=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+                default=[0, 1, 2],
+                key=f"digit_filter_select_{active_g}_{mode_seq_days_1}"
+            )
+
+            # चौथे बॉक्स के नंबरों में से चुने गए अंकों वाले नंबर फ़िल्टर करें
+            if tab3_cut_nums and selected_digits:
+                digit_str_set = set(str(d) for d in selected_digits)
+                digit_filtered_nums = [
+                    n for n in tab3_cut_nums 
+                    if any(ch in digit_str_set for ch in f"{n:02d}")
+                ]
+            else:
+                digit_filtered_nums = []
+
+            digit_filter_count = len(digit_filtered_nums)
+            digit_filter_box_str = ", ".join([f"{n:02d}" for n in digit_filtered_nums]) if digit_filtered_nums else "(कोई नंबर मैच नहीं हुआ)"
+
+            st.markdown(f"🎯 **5. फ़िल्टर होकर अलग आए हुए नंबर (चुने अंक: `{selected_digits}` - कुल `{digit_filter_count}` नंबर):**")
+            st.text_area("कॉपी करें (अंक फ़िल्टर नंबर):", value=digit_filter_box_str, height=140, key=f"txt_exact_digit_filter_{active_g}_{mode_seq_days_1}")
 
             st.dataframe(match_df, use_container_width=True)
         else:

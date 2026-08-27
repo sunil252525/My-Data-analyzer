@@ -221,16 +221,27 @@ if uploaded_file is not None:
             found_nums = sorted(list(set(match_df["Next Result"].tolist())))
             found_box_str = ", ".join([f"{n:02d}" for n in found_nums])
             
-            missing_nums = sorted(list(set(range(100)) - set(found_nums)))
+            # आए हुए नंबरों की कम्पलीट फैमिली
+            matched_family_set = set()
+            for num in found_nums:
+                matched_family_set.update(get_family(num))
+            matched_fam_nums = sorted(list(matched_family_set))
+            matched_fam_box_str = ", ".join([f"{n:02d}" for n in matched_fam_nums])
+
+            # छूटे हुए नंबर (जो फैमिली में भी नहीं आए / बचे हुए)
+            missing_nums = sorted(list(set(range(100)) - matched_family_set))
             missing_box_str = ", ".join([f"{n:02d}" for n in missing_nums])
 
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
-            col_f, col_m = st.columns(2)
+            col_f, col_fam, col_m = st.columns(3)
             with col_f:
-                st.markdown(f"📋 **1. आए हुए नंबर (Matched / Found) - कुल `{len(found_nums)}`:**")
+                st.markdown(f"📋 **1. आए हुए नंबर (Found) - कुल `{len(found_nums)}`:**")
                 st.text_area("कॉपी करें (Found Numbers):", value=found_box_str, height=140, key=f"txt_exact_found_{active_g}_{mode_seq_days}")
+            with col_fam:
+                st.markdown(f"👑 **2. आए हुए की कम्पलीट फैमिली (`{len(matched_fam_nums)}`):**")
+                st.text_area("कॉपी करें (Complete Family):", value=matched_fam_box_str, height=140, key=f"txt_exact_fam_{active_g}_{mode_seq_days}")
             with col_m:
-                st.markdown(f"🚫 **2. छूटे हुए नंबर (Missing Numbers) - कुल `{len(missing_nums)}`:**")
+                st.markdown(f"🚫 **3. बचे/छूटे हुए नंबर - कुल `{len(missing_nums)}`:**")
                 st.text_area("कॉपी करें (Missing Numbers):", value=missing_box_str, height=140, key=f"txt_exact_missing_{active_g}_{mode_seq_days}")
 
             st.dataframe(match_df, use_container_width=True)
@@ -245,25 +256,33 @@ if uploaded_file is not None:
 
         if matched_records:
             match_df = pd.DataFrame(matched_records)
-            
-            # 1. आए हुए मूल Next Result नंबर (Unique - डुप्लीकेट नहीं)
             clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
             box_str = ", ".join([f"{n:02d}" for n in clean_nums])
             
-            # 2. आए हुए सभी रिजल्ट नंबरों की अलट-पलट जोड़ियाँ (Unique - डुप्लीकेट नहीं)
-            flipped_nums = get_flip_pairs(clean_nums)
-            flipped_box_str = ", ".join([f"{n:02d}" for n in flipped_nums])
+            # आए हुए नंबरों की कम्पलीट फैमिली
+            matched_family_set = set()
+            for num in clean_nums:
+                matched_family_set.update(get_family(num))
+            matched_fam_nums = sorted(list(matched_family_set))
+            matched_fam_box_str = ", ".join([f"{n:02d}" for n in matched_fam_nums])
+
+            # बचे/छूटे हुए नंबर
+            missing_nums = sorted(list(set(range(100)) - matched_family_set))
+            missing_box_str = ", ".join([f"{n:02d}" for n in missing_nums])
             
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
-            
-            col_flip1, col_flip2 = st.columns(2)
+            col_flip1, col_flip2, col_flip3 = st.columns(3)
             with col_flip1:
-                st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
+                st.markdown(f"📋 **1. आए हुए मूल रिजल्ट (`{len(clean_nums)}`):**")
                 st.text_area("कॉपी करें (मूल रिजल्ट):", value=box_str, height=140, key=f"txt_flip_orig_{active_g}_{mode_seq_days}")
 
             with col_flip2:
-                st.markdown(f"🔄 **2. आए हुए रिजल्ट + उनकी अलट-पलट (कुल `{len(flipped_nums)}` जोड़ियाँ):**")
-                st.text_area("कॉपी करें (रिजल्ट + अलट-पलट):", value=flipped_box_str, height=140, key=f"txt_flip_all_{active_g}_{mode_seq_days}")
+                st.markdown(f"👑 **2. आए हुए की कम्पलीट फैमिली (`{len(matched_fam_nums)}`):**")
+                st.text_area("कॉपी करें (कम्पलीट फैमिली):", value=matched_fam_box_str, height=140, key=f"txt_flip_fam_{active_g}_{mode_seq_days}")
+
+            with col_flip3:
+                st.markdown(f"🚫 **3. बचे/छूटे हुए नंबर (`{len(missing_nums)}`):**")
+                st.text_area("कॉपी करें (छूटे हुए नंबर):", value=missing_box_str, height=140, key=f"txt_flip_missing_{active_g}_{mode_seq_days}")
 
             st.dataframe(match_df, use_container_width=True)
         else:
@@ -277,29 +296,33 @@ if uploaded_file is not None:
 
         if matched_records:
             match_df = pd.DataFrame(matched_records)
-            
-            # 1. आए हुए मूल Next Result नंबर
             clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
             box_str = ", ".join([f"{n:02d}" for n in clean_nums])
             
-            # 2. आए हुए Next Result नंबरों की पूरी अलट-पलट + राशि समेत फैमिली जोड़ियाँ
+            # आए हुए रिजल्ट की सम्पूर्ण फैमिली
             matched_family_set = set()
             for num in clean_nums:
                 matched_family_set.update(get_family(num))
-            
             matched_fam_nums = sorted(list(matched_family_set))
             matched_fam_box_str = ", ".join([f"{n:02d}" for n in matched_fam_nums])
 
+            # बचे/छूटे हुए नंबर
+            missing_nums = sorted(list(set(range(100)) - matched_family_set))
+            missing_box_str = ", ".join([f"{n:02d}" for n in missing_nums])
+
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
-            
-            col_fam1, col_fam2 = st.columns(2)
+            col_fam1, col_fam2, col_fam3 = st.columns(3)
             with col_fam1:
-                st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
-                st.text_area("कॉपी करें (मूल रिजल्ट नंबर):", value=box_str, height=140, key=f"txt_fam_orig_{active_g}_{mode_seq_days}")
+                st.markdown(f"📋 **1. आए हुए मूल रिजल्ट (`{len(clean_nums)}`):**")
+                st.text_area("कॉपी करें (मूल रिजल्ट):", value=box_str, height=140, key=f"txt_fam_orig_{active_g}_{mode_seq_days}")
 
             with col_fam2:
-                st.markdown(f"👑 **2. आए हुए रिजल्ट की संपूर्ण फैमिली (राशि + अलट-पलट समेत `{len(matched_fam_nums)}` जोड़ियाँ):**")
-                st.text_area("कॉपी करें (रिजल्ट की पूरी फैमिली):", value=matched_fam_box_str, height=140, key=f"txt_fam_generated_{active_g}_{mode_seq_days}")
+                st.markdown(f"👑 **2. आए हुए की कम्पलीट फैमिली (`{len(matched_fam_nums)}`):**")
+                st.text_area("कॉपी करें (पूरी फैमिली):", value=matched_fam_box_str, height=140, key=f"txt_fam_generated_{active_g}_{mode_seq_days}")
+
+            with col_fam3:
+                st.markdown(f"🚫 **3. बचे/छूटे हुए नंबर (`{len(missing_nums)}`):**")
+                st.text_area("कॉपी करें (छूटे हुए नंबर):", value=missing_box_str, height=140, key=f"txt_fam_missing_{active_g}_{mode_seq_days}")
 
             st.dataframe(match_df, use_container_width=True)
         else:
@@ -307,4 +330,3 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 बाएँ साइडबार से CSV फ़ाइल अपलोड करके शुरू करें।")
-                                                                

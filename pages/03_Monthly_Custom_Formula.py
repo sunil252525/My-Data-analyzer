@@ -224,14 +224,60 @@ if uploaded_file is not None:
             missing_nums = sorted(list(set(range(100)) - set(found_nums)))
             missing_box_str = ", ".join([f"{n:02d}" for n in missing_nums])
 
+            # --- शुद्ध आए हुए नंबरों के आधार पर फैमिली वर्गीकरण ---
+            found_set = set(found_nums)
+            complete_families = []
+            incomplete_found_nums = set(found_nums) # शुरुआती तौर पर सभी आए हुए नंबर
+
+            processed_families = set()
+
+            for n in found_nums:
+                fam = get_family(n)
+                fam_tuple = tuple(fam)
+                if fam_tuple in processed_families:
+                    continue
+                processed_families.add(fam_tuple)
+
+                fam_set = set(fam)
+                # केवल तभी कंप्लीट माना जाएगा जब पूरी फैमिली के सभी 8 नंबर आए हुए नंबरों (found_set) में मौजूद हों
+                if fam_set.issubset(found_set):
+                    fam_str = "-".join([f"{x:02d}" for x in sorted(list(fam_set))])
+                    complete_families.append(fam_str)
+                    # जो कंप्लीट हो गए, उन्हें इनकंप्लीट की लिस्ट से हटा देंगे
+                    incomplete_found_nums -= fam_set
+
+            incomplete_list = sorted(list(incomplete_found_nums))
+            incomplete_str = ", ".join([f"{x:02d}" for x in incomplete_list])
+
+            # तीसरे बॉक्स के लिए टेक्स्ट फॉर्मेट
+            family_box_lines = []
+            family_box_lines.append("=== 👑 आए हुए नंबरों की कंप्लीट फैमिली ===")
+            if complete_families:
+                family_box_lines.extend(complete_families)
+            else:
+                family_box_lines.append("(कोई कंप्लीट फैमिली नहीं बनी)")
+
+            family_box_lines.append("\n=== ⚠️ बाकी बचे (इनकंप्लीट) आए हुए नंबर ===")
+            if incomplete_list:
+                family_box_lines.append(incomplete_str)
+            else:
+                family_box_lines.append("(कोई नंबर नहीं बचा)")
+
+            family_box_str = "\n".join(family_box_lines)
+
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
-            col_f, col_m = st.columns(2)
+
+            # 3 Columns Layout
+            col_f, col_m, col_fam = st.columns(3)
             with col_f:
-                st.markdown(f"📋 **1. आए हुए नंबर (Matched / Found) - कुल `{len(found_nums)}`:**")
-                st.text_area("कॉपी करें (Found Numbers):", value=found_box_str, height=140, key=f"txt_exact_found_{active_g}_{mode_seq_days}")
+                st.markdown(f"📋 **1. आए हुए नंबर (Found) - `{len(found_nums)}`:**")
+                st.text_area("कॉपी करें (Found Numbers):", value=found_box_str, height=220, key=f"txt_exact_found_{active_g}_{mode_seq_days}")
             with col_m:
-                st.markdown(f"🚫 **2. छूटे हुए नंबर (Missing Numbers) - कुल `{len(missing_nums)}`:**")
-                st.text_area("कॉपी करें (Missing Numbers):", value=missing_box_str, height=140, key=f"txt_exact_missing_{active_g}_{mode_seq_days}")
+                st.markdown(f"🚫 **2. छूटे हुए नंबर (Missing) - `{len(missing_nums)}`:**")
+                st.text_area("कॉपी करें (Missing Numbers):", value=missing_box_str, height=220, key=f"txt_exact_missing_{active_g}_{mode_seq_days}")
+            with col_fam:
+                st.markdown(f"👑 **3. आए हुए नंबरों की फैमिली फ़िल्टर:**")
+                st.text_area("कॉपी करें (फैमिली विश्लेषण):", value=family_box_str, height=220, key=f"txt_exact_fam_{active_g}_{mode_seq_days}")
 
             st.dataframe(match_df, use_container_width=True)
         else:

@@ -328,9 +328,9 @@ if uploaded_file is not None:
                 st.markdown(f"✂️ **4. संपूर्ण फैमिली Cut (Tab 3 घटकर बचे - कुल `{family_cut_count}` नंबर):**")
                 st.text_area("कॉपी करें (फैमिली कट नंबर):", value=family_cut_box_str, height=220, key=f"txt_exact_cut_{active_g}_{mode_seq_days_1}")
 
-            # ================= 5th BOX: USER ENTERED DIGITS FILTER =================
+            # ================= 5th & 6th BOX SECTION =================
             st.markdown("---")
-            st.subheader("✏️ 5. चौथे बॉक्स में से अंक (डिजिट) लिखकर नंबर फ़िल्टर करें:")
+            st.subheader("✏️ 5 & 6. चौथे बॉक्स में से अंक (डिजिट) फ़िल्टर:")
             
             user_digits_input = st.text_input(
                 "🔢 चौथे बॉक्स के नंबरों में से जिन अंकों (जैसे 4 5 6) को अलग करना है, यहाँ लिखें:",
@@ -338,23 +338,41 @@ if uploaded_file is not None:
                 key=f"digit_input_{active_g}_{mode_seq_days_1}"
             )
 
-            # उपयोगकर्ता द्वारा लिखे गए अंकों को पहचानना (उदा. '4', '5', '6')
+            # अंकों को पहचानना
             entered_digits = set(c for c in user_digits_input if c.isdigit())
 
             if tab3_cut_nums and entered_digits:
+                # 5th Box Numbers: जिनमें चुने अंक मौजूद हैं
                 digit_filtered_nums = [
                     n for n in tab3_cut_nums 
                     if any(ch in entered_digits for ch in f"{n:02d}")
                 ]
+                # 6th Box Numbers: जिनमें चुने अंक मौजूद नहीं हैं (बाकी बचे नंबर)
+                remaining_cut_nums = [
+                    n for n in tab3_cut_nums 
+                    if not any(ch in entered_digits for ch in f"{n:02d}")
+                ]
             else:
                 digit_filtered_nums = []
+                remaining_cut_nums = tab3_cut_nums if tab3_cut_nums else []
 
             digit_filter_count = len(digit_filtered_nums)
-            digit_filter_box_str = ", ".join([f"{n:02d}" for n in digit_filtered_nums]) if digit_filtered_nums else "(कोई नंबर मैच नहीं हुआ या अंक नहीं डाले गए)"
+            digit_filter_box_str = ", ".join([f"{n:02d}" for n in digit_filtered_nums]) if digit_filtered_nums else "(कोई नंबर मैच नहीं हुआ)"
+
+            remaining_cut_count = len(remaining_cut_nums)
+            remaining_cut_box_str = ", ".join([f"{n:02d}" for n in remaining_cut_nums]) if remaining_cut_nums else "(कोई नंबर नहीं बचा)"
 
             digits_display = ", ".join(sorted(list(entered_digits))) if entered_digits else "कोई नहीं"
-            st.markdown(f"🎯 **5. अलग हुए फ़िल्टर नंबर (चुने हुए अंक: `{digits_display}` - कुल `{digit_filter_count}` नंबर):**")
-            st.text_area("कॉपी करें (फ़िल्टर नंबर):", value=digit_filter_box_str, height=140, key=f"txt_exact_digit_filter_{active_g}_{mode_seq_days_1}")
+
+            # 5th और 6th बॉक्स को आमने-सामने दिखाना
+            col_box5, col_box6 = st.columns(2)
+            with col_box5:
+                st.markdown(f"🎯 **5. चुने अंक वाले नंबर (अंक: `{digits_display}` - कुल `{digit_filter_count}` नंबर):**")
+                st.text_area("कॉपी करें (चुने अंक के नंबर):", value=digit_filter_box_str, height=180, key=f"txt_exact_digit_filter_{active_g}_{mode_seq_days_1}")
+            
+            with col_box6:
+                st.markdown(f"📦 **6. इनके अलावा बाकी बचे नंबर (कुल `{remaining_cut_count}` नंबर):**")
+                st.text_area("कॉपी करें (बाकी बचे नंबर):", value=remaining_cut_box_str, height=180, key=f"txt_exact_remaining_cut_{active_g}_{mode_seq_days_1}")
 
             st.dataframe(match_df, use_container_width=True)
         else:

@@ -328,24 +328,30 @@ if uploaded_file is not None:
             clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
             box_str = ", ".join([f"{n:02d}" for n in clean_nums])
             
-            # 2. आए हुए Next Result नंबरों की पूरी अलट-पलट + राशि समेत फैमिली जोड़ियाँ
-            matched_family_set = set()
-            for num in clean_nums:
-                matched_family_set.update(get_family(num))
+            # 2. आए हुए Next Result नंबरों की प्रत्येक फैमिली (लाइन बाई लाइन)
+            family_lines = []
+            processed_fam_tuples = set()
             
-            matched_fam_nums = sorted(list(matched_family_set))
-            matched_fam_box_str = ", ".join([f"{n:02d}" for n in matched_fam_nums])
+            for num in clean_nums:
+                fam = get_family(num)
+                fam_tuple = tuple(fam)
+                if fam_tuple not in processed_fam_tuples:
+                    processed_fam_tuples.add(fam_tuple)
+                    fam_line = "-".join([f"{x:02d}" for x in fam])
+                    family_lines.append(fam_line)
+            
+            matched_fam_box_str = "\n".join(family_lines)
 
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
             
             col_fam1, col_fam2 = st.columns(2)
             with col_fam1:
                 st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
-                st.text_area("कॉपी करें (मूल रिजल्ट नंबर):", value=box_str, height=140, key=f"txt_fam_orig_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (मूल रिजल्ट नंबर):", value=box_str, height=220, key=f"txt_fam_orig_{active_g}_{mode_seq_days}")
 
             with col_fam2:
-                st.markdown(f"👑 **2. आए हुए रिजल्ट की संपूर्ण फैमिली (राशि + अलट-पलट समेत `{len(matched_fam_nums)}` जोड़ियाँ):**")
-                st.text_area("कॉपी करें (रिजल्ट की पूरी फैमिली):", value=matched_fam_box_str, height=140, key=f"txt_fam_generated_{active_g}_{mode_seq_days}")
+                st.markdown(f"👑 **2. आए हुए रिजल्ट की संपूर्ण फैमिली (लाइन अनुसार):**")
+                st.text_area("कॉपी करें (रिजल्ट की फैमिली लाइन बाई लाइन):", value=matched_fam_box_str, height=220, key=f"txt_fam_generated_{active_g}_{mode_seq_days}")
 
             st.dataframe(match_df, use_container_width=True)
         else:

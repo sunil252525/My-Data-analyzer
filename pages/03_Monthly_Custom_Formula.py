@@ -208,9 +208,8 @@ if uploaded_file is not None:
     tab1, tab2, tab3 = st.tabs(["🎯 सेम टू सेम (DITTO)", "🔄 अलट-पलट", "👑 फैमिली"])
 
     # --- TAB 3 डेटा पहले कैलकुलेट करेंगे ताकि Tab 1 के 4th Box में Tab 3 की पूरी फैमिली माइनस की जा सके ---
-    # Tab 3 के लिए Slider की डिफॉल्ट वैल्यू सेट कर रहे हैं
     if "slider_tab3" not in st.session_state:
-        st.session_state["slider_tab3"] = 3  # आपकी फ़ोटो के अनुसार 3 दिन डिफॉल्ट
+        st.session_state["slider_tab3"] = 3  # डिफॉल्ट 3 दिन
 
     # ================= TAB 3: FAMILY =================
     with tab3:
@@ -232,7 +231,7 @@ if uploaded_file is not None:
             
             for num in clean_nums_3:
                 fam = get_family(num)
-                tab3_all_family_numbers.update(fam) # Tab 3 के सभी फैमिली नंबर इकट्ठा किए
+                tab3_all_family_numbers.update(fam)
                 fam_tuple = tuple(fam)
                 if fam_tuple not in processed_fam_tuples_3:
                     processed_fam_tuples_3.add(fam_tuple)
@@ -311,6 +310,7 @@ if uploaded_file is not None:
 
             # --- 4. चौथे बॉक्स के लिए (Tab 1 के Found Numbers - Tab 3 की सम्पूर्ण फैमिली) ---
             tab3_cut_nums = sorted(list(found_set - tab3_all_family_numbers))
+            family_cut_count = len(tab3_cut_nums)  # बचे हुए नंबरों की कुल गिनती
             family_cut_box_str = ", ".join([f"{n:02d}" for n in tab3_cut_nums]) if tab3_cut_nums else "(कोई नंबर नहीं बचा)"
 
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
@@ -326,7 +326,8 @@ if uploaded_file is not None:
                 st.markdown(f"👑 **3. आए हुए नंबरों की फैमिली फ़िल्टर:**")
                 st.text_area("कॉपी करें (फैमिली विश्लेषण):", value=family_box_str, height=220, key=f"txt_exact_fam_{active_g}_{mode_seq_days_1}")
             with col_cut:
-                st.markdown(f"✂️ **4. संपूर्ण फैमिली कट (Tab 3 फैमिली घटकर बचे):**")
+                # चौथे बॉक्स के टाइटल में कुल बचे हुए नंबरों की संख्या भी दिखाई जाएगी
+                st.markdown(f"✂️ **4. संपूर्ण फैमिली Cut (Tab 3 घटकर बचे - कुल `{family_cut_count}` नंबर):**")
                 st.text_area("कॉपी करें (फैमिली कट नंबर):", value=family_cut_box_str, height=220, key=f"txt_exact_cut_{active_g}_{mode_seq_days_1}")
 
             st.dataframe(match_df, use_container_width=True)

@@ -28,7 +28,7 @@ def get_family(num):
     except: return []
 
 def get_flip_pairs(num_list):
-    """आए हुए नंबरों और उनकी अलट-पलट को मिलाकर यूनिक (बिना डुप्लीकेट) लिस्ट बनाता है"""
+    """आए हुए नंबरों और उनकी अलट-पलट को मिलाकर यूनिक लिस्ट बनाता है"""
     flip_set = set()
     for n in num_list:
         try:
@@ -207,9 +207,58 @@ if uploaded_file is not None:
     # 3 मुख्य टैब्स
     tab1, tab2, tab3 = st.tabs(["🎯 सेम टू सेम (DITTO)", "🔄 अलट-पलट", "👑 फैमिली"])
 
+    # --- TAB 3 डेटा पहले कैलकुलेट करेंगे ताकि Tab 1 के 4th Box में Tab 3 की पूरी फैमिली माइनस की जा सके ---
+    # Tab 3 के लिए Slider की डिफॉल्ट वैल्यू सेट कर रहे हैं
+    if "slider_tab3" not in st.session_state:
+        st.session_state["slider_tab3"] = 3  # आपकी फ़ोटो के अनुसार 3 दिन डिफॉल्ट
+
+    # ================= TAB 3: FAMILY =================
+    with tab3:
+        mode_seq_days_3 = st.slider("🎛️ फैमिली के लिए दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=st.session_state.get("slider_tab3", 3), key="slider_tab3_widget")
+        st.session_state["slider_tab3"] = mode_seq_days_3
+
+        matched_records_3, recent_nums_3 = run_family_search(df, active_g, available_cols, date_col, mode_seq_days_3)
+        
+        tab3_all_family_numbers = set()
+        clean_nums_3 = []
+
+        if matched_records_3:
+            match_df_3 = pd.DataFrame(matched_records_3)
+            clean_nums_3 = sorted(list(set(match_df_3["Next Result"].tolist())))
+            box_str_3 = ", ".join([f"{n:02d}" for n in clean_nums_3])
+            
+            family_lines_3 = []
+            processed_fam_tuples_3 = set()
+            
+            for num in clean_nums_3:
+                fam = get_family(num)
+                tab3_all_family_numbers.update(fam) # Tab 3 के सभी फैमिली नंबर इकट्ठा किए
+                fam_tuple = tuple(fam)
+                if fam_tuple not in processed_fam_tuples_3:
+                    processed_fam_tuples_3.add(fam_tuple)
+                    fam_line = "-".join([f"{x:02d}" for x in fam])
+                    family_lines_3.append(fam_line)
+            
+            matched_fam_box_str_3 = "\n".join(family_lines_3)
+
+            st.info(f"📌 `{active_g}` का फैमिली (**{mode_seq_days_3} दिन**) पैटर्न: `{recent_nums_3}`")
+            st.success(f"✅ कुल मैच मिले: `{len(matched_records_3)}` बार")
+            
+            col_fam1, col_fam2 = st.columns(2)
+            with col_fam1:
+                st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums_3)}` नंबर):**")
+                st.text_area("कॉपी करें (मूल रिजल्ट नंबर):", value=box_str_3, height=220, key=f"txt_fam_orig_{active_g}_{mode_seq_days_3}")
+
+            with col_fam2:
+                st.markdown(f"👑 **2. आए हुए रिजल्ट की संपूर्ण फैमिली (लाइन अनुसार):**")
+                st.text_area("कॉपी करें (रिजल्ट की फैमिली लाइन बाई लाइन):", value=matched_fam_box_str_3, height=220, key=f"txt_fam_generated_{active_g}_{mode_seq_days_3}")
+
+            st.dataframe(match_df_3, use_container_width=True)
+        else:
+            st.warning("⚠️ कोई मैच नहीं मिला।")
+
     # ================= TAB 1: SAME TO SAME (DITTO) =================
     with tab1:
-        # टैब 1 का अपना स्वतंत्र Slider
         mode_seq_days_1 = st.slider("🎛️ सेम टू सेम के लिए दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=1, key="slider_tab1")
         
         matched_records, recent_nums = run_exact_dynamic_search(df, active_g, available_cols, date_col, mode_seq_days_1)
@@ -224,18 +273,16 @@ if uploaded_file is not None:
             missing_nums = sorted(list(set(range(100)) - set(found_nums)))
             missing_box_str = ", ".join([f"{n:02d}" for n in missing_nums])
 
-            # --- 1. तीसरे बॉक्स के लिए शुद्ध आए हुए नंबरों के आधार पर फैमिली वर्गीकरण ---
+            # --- 3. आए हुए नंबरों की फैमिली फ़िल्टर ---
             found_set = set(found_nums)
             complete_families = []
             incomplete_found_nums = set(found_nums)
-
             processed_families = set()
 
             for n in found_nums:
                 fam = get_family(n)
                 fam_tuple = tuple(fam)
-                if fam_tuple in processed_families:
-                    continue
+                if fam_tuple in processed_families: continue
                 processed_families.add(fam_tuple)
 
                 fam_set = set(fam)
@@ -262,13 +309,9 @@ if uploaded_file is not None:
 
             family_box_str = "\n".join(family_box_lines)
 
-            # --- 2. चौथे बॉक्स के लिए: संपूर्ण फैमिली नंबरों को 'आए हुए नंबरों' में से काटकर निकालना ---
-            all_generated_families_set = set()
-            for n in found_nums:
-                all_generated_families_set.update(get_family(n))
-            
-            family_cut_nums = sorted(list(found_set - all_generated_families_set))
-            family_cut_box_str = ", ".join([f"{n:02d}" for n in family_cut_nums]) if family_cut_nums else "(कोई नंबर नहीं बचा)"
+            # --- 4. चौथे बॉक्स के लिए (Tab 1 के Found Numbers - Tab 3 की सम्पूर्ण फैमिली) ---
+            tab3_cut_nums = sorted(list(found_set - tab3_all_family_numbers))
+            family_cut_box_str = ", ".join([f"{n:02d}" for n in tab3_cut_nums]) if tab3_cut_nums else "(कोई नंबर नहीं बचा)"
 
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
 
@@ -283,7 +326,7 @@ if uploaded_file is not None:
                 st.markdown(f"👑 **3. आए हुए नंबरों की फैमिली फ़िल्टर:**")
                 st.text_area("कॉपी करें (फैमिली विश्लेषण):", value=family_box_str, height=220, key=f"txt_exact_fam_{active_g}_{mode_seq_days_1}")
             with col_cut:
-                st.markdown(f"✂️ **4. संपूर्ण फैमिली कट (फैमिली हटकर बचे):**")
+                st.markdown(f"✂️ **4. संपूर्ण फैमिली कट (Tab 3 फैमिली घटकर बचे):**")
                 st.text_area("कॉपी करें (फैमिली कट नंबर):", value=family_cut_box_str, height=220, key=f"txt_exact_cut_{active_g}_{mode_seq_days_1}")
 
             st.dataframe(match_df, use_container_width=True)
@@ -292,7 +335,6 @@ if uploaded_file is not None:
 
     # ================= TAB 2: ALAT-PALAT =================
     with tab2:
-        # टैब 2 का अपना स्वतंत्र Slider
         mode_seq_days_2 = st.slider("🎛️ अलट-पलट के लिए दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=1, key="slider_tab2")
         
         matched_records, recent_nums = run_flip_search(df, active_g, available_cols, date_col, mode_seq_days_2)
@@ -317,48 +359,6 @@ if uploaded_file is not None:
             with col_flip2:
                 st.markdown(f"🔄 **2. आए हुए रिजल्ट + उनकी अलट-पलट (कुल `{len(flipped_nums)}` जोड़ियाँ):**")
                 st.text_area("कॉपी करें (रिजल्ट + अलट-पलट):", value=flipped_box_str, height=140, key=f"txt_flip_all_{active_g}_{mode_seq_days_2}")
-
-            st.dataframe(match_df, use_container_width=True)
-        else:
-            st.warning("⚠️ कोई मैच नहीं मिला।")
-
-    # ================= TAB 3: FAMILY =================
-    with tab3:
-        # टैब 3 का अपना स्वतंत्र Slider (यहाँ आप 3 या 4 दिन चुनेंगे तो बाकी टैब प्रभावित नहीं होंगे)
-        mode_seq_days_3 = st.slider("🎛️ फैमिली के लिए दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=1, key="slider_tab3")
-        
-        matched_records, recent_nums = run_family_search(df, active_g, available_cols, date_col, mode_seq_days_3)
-        if recent_nums:
-            st.info(f"📌 `{active_g}` का फैमिली (**{mode_seq_days_3} दिन**) पैटर्न: `{recent_nums}`")
-
-        if matched_records:
-            match_df = pd.DataFrame(matched_records)
-            clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
-            box_str = ", ".join([f"{n:02d}" for n in clean_nums])
-            
-            family_lines = []
-            processed_fam_tuples = set()
-            
-            for num in clean_nums:
-                fam = get_family(num)
-                fam_tuple = tuple(fam)
-                if fam_tuple not in processed_fam_tuples:
-                    processed_fam_tuples.add(fam_tuple)
-                    fam_line = "-".join([f"{x:02d}" for x in fam])
-                    family_lines.append(fam_line)
-            
-            matched_fam_box_str = "\n".join(family_lines)
-
-            st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
-            
-            col_fam1, col_fam2 = st.columns(2)
-            with col_fam1:
-                st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
-                st.text_area("कॉपी करें (मूल रिजल्ट नंबर):", value=box_str, height=220, key=f"txt_fam_orig_{active_g}_{mode_seq_days_3}")
-
-            with col_fam2:
-                st.markdown(f"👑 **2. आए हुए रिजल्ट की संपूर्ण फैमिली (लाइन अनुसार):**")
-                st.text_area("कॉपी करें (रिजल्ट की फैमिली लाइन बाई लाइन):", value=matched_fam_box_str, height=220, key=f"txt_fam_generated_{active_g}_{mode_seq_days_3}")
 
             st.dataframe(match_df, use_container_width=True)
         else:

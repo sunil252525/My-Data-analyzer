@@ -204,17 +204,17 @@ if uploaded_file is not None:
     active_g = st.session_state["selected_game"]
     st.markdown("---")
 
-    # स्लाइडर
-    mode_seq_days = st.slider("🎛️ दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=1, key="main_slider")
-
     # 3 मुख्य टैब्स
     tab1, tab2, tab3 = st.tabs(["🎯 सेम टू सेम (DITTO)", "🔄 अलट-पलट", "👑 फैमिली"])
 
     # ================= TAB 1: SAME TO SAME (DITTO) =================
     with tab1:
-        matched_records, recent_nums = run_exact_dynamic_search(df, active_g, available_cols, date_col, mode_seq_days)
+        # टैब 1 का अपना स्वतंत्र Slider
+        mode_seq_days_1 = st.slider("🎛️ सेम टू सेम के लिए दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=1, key="slider_tab1")
+        
+        matched_records, recent_nums = run_exact_dynamic_search(df, active_g, available_cols, date_col, mode_seq_days_1)
         if recent_nums:
-            st.info(f"📌 `{active_g}` का चुना गया (**{mode_seq_days} दिन**) का पैटर्न: `{recent_nums}`")
+            st.info(f"📌 `{active_g}` का चुना गया (**{mode_seq_days_1} दिन**) का पैटर्न: `{recent_nums}`")
 
         if matched_records:
             match_df = pd.DataFrame(matched_records)
@@ -262,31 +262,29 @@ if uploaded_file is not None:
 
             family_box_str = "\n".join(family_box_lines)
 
-            # --- 2. चौथे बॉक्स के लिए: संपूर्ण फैमिली नंबरों को 'आए हुए नंबरों' में से काटकर (Minus करके) निकालना ---
+            # --- 2. चौथे बॉक्स के लिए: संपूर्ण फैमिली नंबरों को 'आए हुए नंबरों' में से काटकर निकालना ---
             all_generated_families_set = set()
             for n in found_nums:
                 all_generated_families_set.update(get_family(n))
             
-            # आए हुए नंबरों में से संपूर्ण फैमिली हटाकर बचे हुए नंबर
             family_cut_nums = sorted(list(found_set - all_generated_families_set))
             family_cut_box_str = ", ".join([f"{n:02d}" for n in family_cut_nums]) if family_cut_nums else "(कोई नंबर नहीं बचा)"
 
             st.success(f"✅ कुल मैच मिले: `{len(matched_records)}` बार")
 
-            # 4 Columns Layout
             col_f, col_m, col_fam, col_cut = st.columns(4)
             with col_f:
                 st.markdown(f"📋 **1. आए हुए नंबर (Found) - `{len(found_nums)}`:**")
-                st.text_area("कॉपी करें (Found Numbers):", value=found_box_str, height=220, key=f"txt_exact_found_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (Found Numbers):", value=found_box_str, height=220, key=f"txt_exact_found_{active_g}_{mode_seq_days_1}")
             with col_m:
                 st.markdown(f"🚫 **2. छूटे हुए नंबर (Missing) - `{len(missing_nums)}`:**")
-                st.text_area("कॉपी करें (Missing Numbers):", value=missing_box_str, height=220, key=f"txt_exact_missing_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (Missing Numbers):", value=missing_box_str, height=220, key=f"txt_exact_missing_{active_g}_{mode_seq_days_1}")
             with col_fam:
                 st.markdown(f"👑 **3. आए हुए नंबरों की फैमिली फ़िल्टर:**")
-                st.text_area("कॉपी करें (फैमिली विश्लेषण):", value=family_box_str, height=220, key=f"txt_exact_fam_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (फैमिली विश्लेषण):", value=family_box_str, height=220, key=f"txt_exact_fam_{active_g}_{mode_seq_days_1}")
             with col_cut:
                 st.markdown(f"✂️ **4. संपूर्ण फैमिली कट (फैमिली हटकर बचे):**")
-                st.text_area("कॉपी करें (फैमिली कट नंबर):", value=family_cut_box_str, height=220, key=f"txt_exact_cut_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (फैमिली कट नंबर):", value=family_cut_box_str, height=220, key=f"txt_exact_cut_{active_g}_{mode_seq_days_1}")
 
             st.dataframe(match_df, use_container_width=True)
         else:
@@ -294,18 +292,18 @@ if uploaded_file is not None:
 
     # ================= TAB 2: ALAT-PALAT =================
     with tab2:
-        matched_records, recent_nums = run_flip_search(df, active_g, available_cols, date_col, mode_seq_days)
+        # टैब 2 का अपना स्वतंत्र Slider
+        mode_seq_days_2 = st.slider("🎛️ अलट-पलट के लिए दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=1, key="slider_tab2")
+        
+        matched_records, recent_nums = run_flip_search(df, active_g, available_cols, date_col, mode_seq_days_2)
         if recent_nums:
-            st.info(f"📌 `{active_g}` का अलट-पलट (**{mode_seq_days} दिन**) पैटर्न: `{recent_nums}`")
+            st.info(f"📌 `{active_g}` का अलट-पलट (**{mode_seq_days_2} दिन**) पैटर्न: `{recent_nums}`")
 
         if matched_records:
             match_df = pd.DataFrame(matched_records)
-            
-            # 1. आए हुए मूल Next Result नंबर (Unique - डुप्लीकेट नहीं)
             clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
             box_str = ", ".join([f"{n:02d}" for n in clean_nums])
             
-            # 2. आए हुए सभी रिजल्ट नंबरों की अलट-पलट जोड़ियाँ (Unique - डुप्लीकेट नहीं)
             flipped_nums = get_flip_pairs(clean_nums)
             flipped_box_str = ", ".join([f"{n:02d}" for n in flipped_nums])
             
@@ -314,11 +312,11 @@ if uploaded_file is not None:
             col_flip1, col_flip2 = st.columns(2)
             with col_flip1:
                 st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
-                st.text_area("कॉपी करें (मूल रिजल्ट):", value=box_str, height=140, key=f"txt_flip_orig_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (मूल रिजल्ट):", value=box_str, height=140, key=f"txt_flip_orig_{active_g}_{mode_seq_days_2}")
 
             with col_flip2:
                 st.markdown(f"🔄 **2. आए हुए रिजल्ट + उनकी अलट-पलट (कुल `{len(flipped_nums)}` जोड़ियाँ):**")
-                st.text_area("कॉपी करें (रिजल्ट + अलट-पलट):", value=flipped_box_str, height=140, key=f"txt_flip_all_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (रिजल्ट + अलट-पलट):", value=flipped_box_str, height=140, key=f"txt_flip_all_{active_g}_{mode_seq_days_2}")
 
             st.dataframe(match_df, use_container_width=True)
         else:
@@ -326,18 +324,18 @@ if uploaded_file is not None:
 
     # ================= TAB 3: FAMILY =================
     with tab3:
-        matched_records, recent_nums = run_family_search(df, active_g, available_cols, date_col, mode_seq_days)
+        # टैब 3 का अपना स्वतंत्र Slider (यहाँ आप 3 या 4 दिन चुनेंगे तो बाकी टैब प्रभावित नहीं होंगे)
+        mode_seq_days_3 = st.slider("🎛️ फैमिली के लिए दिन (लड़ी) चुनें:", min_value=1, max_value=10, value=1, key="slider_tab3")
+        
+        matched_records, recent_nums = run_family_search(df, active_g, available_cols, date_col, mode_seq_days_3)
         if recent_nums:
-            st.info(f"📌 `{active_g}` का फैमिली (**{mode_seq_days} दिन**) पैटर्न: `{recent_nums}`")
+            st.info(f"📌 `{active_g}` का फैमिली (**{mode_seq_days_3} दिन**) पैटर्न: `{recent_nums}`")
 
         if matched_records:
             match_df = pd.DataFrame(matched_records)
-            
-            # 1. आए हुए मूल Next Result नंबर
             clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
             box_str = ", ".join([f"{n:02d}" for n in clean_nums])
             
-            # 2. आए हुए Next Result नंबरों की प्रत्येक फैमिली (लाइन बाई लाइन)
             family_lines = []
             processed_fam_tuples = set()
             
@@ -356,11 +354,11 @@ if uploaded_file is not None:
             col_fam1, col_fam2 = st.columns(2)
             with col_fam1:
                 st.markdown(f"📋 **1. आए हुए मूल Next Result (कुल `{len(clean_nums)}` नंबर):**")
-                st.text_area("कॉपी करें (मूल रिजल्ट नंबर):", value=box_str, height=220, key=f"txt_fam_orig_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (मूल रिजल्ट नंबर):", value=box_str, height=220, key=f"txt_fam_orig_{active_g}_{mode_seq_days_3}")
 
             with col_fam2:
                 st.markdown(f"👑 **2. आए हुए रिजल्ट की संपूर्ण फैमिली (लाइन अनुसार):**")
-                st.text_area("कॉपी करें (रिजल्ट की फैमिली लाइन बाई लाइन):", value=matched_fam_box_str, height=220, key=f"txt_fam_generated_{active_g}_{mode_seq_days}")
+                st.text_area("कॉपी करें (रिजल्ट की फैमिली लाइन बाई लाइन):", value=matched_fam_box_str, height=220, key=f"txt_fam_generated_{active_g}_{mode_seq_days_3}")
 
             st.dataframe(match_df, use_container_width=True)
         else:

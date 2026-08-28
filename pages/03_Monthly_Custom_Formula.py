@@ -313,25 +313,24 @@ if uploaded_file is not None:
                 st.markdown(f"✂️ **4. संपूर्ण फैमिली Cut (Tab 3 घटकर बचे - कुल `{family_cut_count}`):**")
                 st.text_area("फैमिली कट:", value=family_cut_box_str, height=220, key=f"txt_exact_cut_{active_g}_{mode_seq_days_1}")
 
-            # ================= Arrow (Selectbox) Digit Filter =================
+            # ================= REAL-TIME ARROW DIGIT FILTER =================
             st.markdown("---")
             st.subheader("🔽 5 & 6. चौथे बॉक्स में से हरूफ/अंक चुनें (Arrow पर क्लिक करें):")
             
             selected_digits = st.multiselect(
-                "🔢 यहाँ एरो (▼) पर क्लिक करके अंक/हरूफ चुनें (जैसे 1, 3, 4):",
-                options=[0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-                default=[1, 3, 4],
-                key=f"arrow_digit_select_{active_g}_{mode_seq_days_1}_{mode_seq_days_3_val}"
+                "🔢 एरो (▼) पर क्लिक करके अंक चुनें (जैसे 1, 3, 4, 5):",
+                options=["0", "1", "2", "3", "4", "5", "6", "7", "8", "9"],
+                default=["1", "3", "4"],
+                key=f"arrow_select_digits_{active_g}_{mode_seq_days_1}"
             )
 
-            entered_digits = [str(d) for d in selected_digits]
             digit_filtered_nums = []
             remaining_cut_nums = []
 
             if tab3_cut_nums:
                 for n in tab3_cut_nums:
                     n_str = f"{n:02d}"
-                    if any(d in n_str for d in entered_digits):
+                    if any(d in n_str for d in selected_digits):
                         digit_filtered_nums.append(n)
                     else:
                         remaining_cut_nums.append(n)
@@ -342,11 +341,11 @@ if uploaded_file is not None:
             col_box5, col_box6 = st.columns(2)
             with col_box5:
                 st.markdown(f"🎯 **5. चुने अंक वाले नंबर (`{len(digit_filtered_nums)}`):**")
-                st.text_area("चुने अंक के नंबर:", value=digit_filter_box_str, height=180, key=f"txt_exact_digit_filter_{active_g}_{mode_seq_days_1}_{mode_seq_days_3_val}")
+                st.text_area("चुने अंक के नंबर:", value=digit_filter_box_str, height=180, key=f"txt_box5_live_{active_g}_{mode_seq_days_1}")
             
             with col_box6:
                 st.markdown(f"📦 **6. इनके अलावा बाकी बचे नंबर (`{len(remaining_cut_nums)}`):**")
-                st.text_area("बाकी बचे नंबर:", value=remaining_cut_box_str, height=180, key=f"txt_exact_remaining_cut_{active_g}_{mode_seq_days_1}_{mode_seq_days_3_val}")
+                st.text_area("बाकी बचे नंबर:", value=remaining_cut_box_str, height=180, key=f"txt_box6_live_{active_g}_{mode_seq_days_1}")
 
             st.dataframe(match_df, use_container_width=True)
         else:

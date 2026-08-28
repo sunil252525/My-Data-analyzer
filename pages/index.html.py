@@ -3,33 +3,45 @@ import random
 
 st.set_page_config(page_title="Number Splitter App", layout="wide")
 
-st.title("नंबर स्प्रेडर व ग्रुप जनरेटर")
+st.title("नंबर स्प्रेडर व मल्टी-ग्रुप जनरेटर")
 
-# इनपुट बॉक्स
-raw_input = st.text_area("यहाँ अपने 90 नंबर कॉमा (,) लगाकर पेस्ट करें:", placeholder="00, 01, 02, 03...")
+# दो इनपुट बॉक्स
+input_ab = st.text_area(
+    "1. यहाँ ग्रुप A और B के लिए नंबर दर्ज करें (कॉमा लगाकर):", 
+    placeholder="00, 01, 02, 03...", 
+    height=120
+)
+
+input_cd = st.text_area(
+    "2. यहाँ ग्रुप C और D के लिए नंबर दर्ज करें (कॉमा लगाकर):", 
+    placeholder="04, 05, 06, 07...", 
+    height=120
+)
 
 if st.button("जनरेट करें (Generate)", type="primary"):
-    if not raw_input.strip():
-        st.warning("कृपया नंबर दर्ज करें!")
+    if not input_ab.strip() and not input_cd.strip():
+        st.warning("कृपया कम से कम एक बॉक्स में नंबर दर्ज करें!")
     else:
-        # नंबर अलग करें
-        numbers = [num.strip() for num in raw_input.split(',') if num.strip()]
+        # 1. ग्रुप A और B के नंबर प्रोसेस करें
+        nums_ab = [n.strip() for n in input_ab.split(',') if n.strip()]
+        random.shuffle(nums_ab)
+        half_ab = len(nums_ab) // 2
+        group_a = nums_ab[:half_ab]
+        group_b = nums_ab[half_ab:]
         
-        # नंबरों को रैंडम मिक्स (Shuffle) करें
-        random.shuffle(numbers)
+        # 2. ग्रुप C और D के नंबर प्रोसेस करें
+        nums_cd = [n.strip() for n in input_cd.split(',') if n.strip()]
+        random.shuffle(nums_cd)
+        half_cd = len(nums_cd) // 2
+        group_c = nums_cd[:half_cd]
+        group_d = nums_cd[half_cd:]
         
-        # 4 ग्रुप में बांटें
-        group_a = numbers[0:20]
-        group_b = numbers[20:40]
-        group_c = numbers[40:65]
-        group_d = numbers[65:90]
-        
-        # हर ग्रुप का नाम, डेटा, निशान (Separator) और ब्रैकेट का रेट (Multiplier)
+        # ग्रुप सेटिंग्स
         groups = [
-            {"name": "ग्रुप A (20 नंबर)", "data": group_a, "sep": " / ", "rate": "(100)"},
-            {"name": "ग्रुप B (20 नंबर)", "data": group_b, "sep": " - ", "rate": "(95)"},
-            {"name": "ग्रुप C (25 नंबर)", "data": group_c, "sep": " _ ", "rate": "(90)"},
-            {"name": "ग्रुप D (25 नंबर)", "data": group_d, "sep": " . ", "rate": "(80)"}
+            {"name": f"ग्रुप A ({len(group_a)} नंबर)", "data": group_a, "sep": " / ", "rate": "(100)"},
+            {"name": f"ग्रुप B ({len(group_b)} नंबर)", "data": group_b, "sep": " - ", "rate": "(95)"},
+            {"name": f"ग्रुप C ({len(group_c)} नंबर)", "data": group_c, "sep": " _ ", "rate": "(90)"},
+            {"name": f"ग्रुप D ({len(group_d)} नंबर)", "data": group_d, "sep": " . ", "rate": "(80)"}
         ]
         
         cols = st.columns(4)
@@ -38,22 +50,17 @@ if st.button("जनरेट करें (Generate)", type="primary"):
             with cols[idx]:
                 st.subheader(grp["name"])
                 if grp["data"]:
-                    # मुख्य ग्रुप (कॉमा के साथ)
+                    # मुख्य लिस्ट
                     st.info(", ".join(grp["data"]))
                     
                     sep = grp["sep"]
                     rate = grp["rate"]
                     data = grp["data"]
                     
-                    # 5 अलग-अलग टुकड़ों में बांटना
-                    sub1 = sep.join(data[0:5]) + f" {rate}" if len(data) >= 5 else ""
-                    sub2 = sep.join(data[5:10]) + f" {rate}" if len(data) >= 10 else ""
-                    sub3 = sep.join(data[10:15]) + f" {rate}" if len(data) >= 15 else ""
-                    sub4 = sep.join(data[15:20]) + f" {rate}" if len(data) >= 20 else ""
-                    sub5 = sep.join(data[20:]) + f" {rate}" if len(data) > 20 else ""
+                    # 5-5 के सब-ग्रुप की पंक्तियाँ बनाना
+                    chunk_size = 5
+                    sub_groups = [data[i:i + chunk_size] for i in range(0, len(data), chunk_size)]
                     
-                    if sub1: st.write(f"**1.** {sub1}")
-                    if sub2: st.write(f"**2.** {sub2}")
-                    if sub3: st.write(f"**3.** {sub3}")
-                    if sub4: st.write(f"**4.** {sub4}")
-                    if sub5: st.write(f"**5.** {sub5}")
+                    for sub_idx, sub_data in enumerate(sub_groups, 1):
+                        formatted_line = sep.join(sub_data) + f" {rate}"
+                        st.write(f"**{sub_idx}.** {formatted_line}")

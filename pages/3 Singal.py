@@ -158,49 +158,74 @@ if uploaded_file is not None:
         "⚖️ 5. जोड़ & Odd/Even एनालिसिस"
     ])
 
-    # ================= TAB 1: TARGET REPEAT (FIXED) =================
+    # ================= TAB 1: TARGET REPEAT (UPDATED WITH ALL-GAME BREAKDOWN) =================
     with tab1:
         st.subheader("⚙️ टारगेट सर्च सेटिंग्स:")
         col_sel1, col_sel2, col_sel3 = st.columns(3)
         with col_sel1:
-            selected_game = st.selectbox("🎯 गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="t1_game")
+            selected_game = st.selectbox("🎯 गेम चुनें (जिसमें टारगेट देखना है):", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="t1_game")
         with col_sel2:
             target_number = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="t1_num")
         with col_sel3:
             window_days = st.slider("📅 विंडो (कितने दिन के अंदर):", min_value=1, max_value=5, value=2, key="t1_win")
 
         st.markdown("---")
+        
+        # 1. चुनी गई गेम में टारगेट नंबर की ऐतिहासिक घटनाएँ
         logs, next_day_list, window_list = analyze_target_occurrences(df, selected_game, target_number, window_days)
 
         if logs:
             st.success(f"📊 **13 साल के डेटा में `{selected_game}` में `{target_number:02d}` कुल `{len(logs)}` बार आया है।**")
             
+            # Top 3 रिपीट सिंगल नंबर
             single_counts = Counter(window_list)
             top_3_tuples = single_counts.most_common(3)
             top_3_singles = [item[0] for item in top_3_tuples]
             top_3_singles_str = ", ".join([f"{n:02d}" for n in top_3_singles])
 
+            # Top 1 सबसे मुख्य (Single Top) फैमिली निकालना
             family_counts = Counter([get_family_head(num) for num in window_list])
-            top_family_tuples = family_counts.most_common(3)
-            top_families_heads = [item[0] for item in top_family_tuples]
+            top_1_family_tuple = family_counts.most_common(1)
             
-            all_top_family_pairs = set()
-            for f_head in top_families_heads:
-                all_top_family_pairs.update(get_family(f_head))
-            top_family_pairs_str = ", ".join([f"{n:02d}" for n in sorted(list(all_top_family_pairs))])
+            if top_1_family_tuple:
+                top_fam_head, top_fam_total_count = top_1_family_tuple[0]
+                top_fam_pairs = get_family(top_fam_head)
+                top_fam_pairs_str = ", ".join([f"{n:02d}" for n in top_fam_pairs])
+
+                # चारों प्रमुख गेमों (GALI, DSWR, FRBD, GZBD) में इस 1 फैमिली का ब्रेकअप निकालना
+                # Target नंबर आने की तारीख/रो के अगले window_days के दौरान अन्य गेमों में स्कैन
+                main_games = ['GALI', 'DSWR', 'FRBD', 'GZBD']
+                game_breakdown = {g: 0 for g in main_games}
+                
+                valid_indices = df[selected_game].dropna().index[df[selected_game].dropna().astype(float) == target_number].tolist()
+                
+                for idx in valid_indices:
+                    for d in range(1, window_days + 1):
+                        target_idx = idx + d
+                        if target_idx < len(df):
+                            for g in main_games:
+                                if g in df.columns and pd.notna(df.loc[target_idx, g]):
+                                    val = int(df.loc[target_idx, g])
+                                    if val in top_fam_pairs:
+                                        game_breakdown[g] += 1
 
             col_box1, col_box2 = st.columns(2)
             with col_box1:
                 st.markdown(f"🔥 **Top 3 रिपीट सिंगल नंबर:**")
-                # ⚠️ यहाँ key में {window_days} जोड़ा गया है ताकि विंडो बदलते ही टेक्स्ट बॉक्स तुरंत अपडेट हो
                 st.text_area("कॉपी करें (Single Repeat Numbers):", value=top_3_singles_str, height=100, key=f"txt_single_{selected_game}_{target_number}_{window_days}")
                 for num, count in top_3_tuples: st.write(f"- नंबर **`{num:02d}`**: कुल **{count}** बार आया")
 
             with col_box2:
-                st.markdown(f"👑 **Top 3 रिपीट फैमिलियों की संपूर्ण जोड़ियाँ:**")
-                # ⚠️ यहाँ भी key में {window_days} जोड़ा गया है
-                st.text_area("कॉपी करें (Top Repeat Family Numbers):", value=top_family_pairs_str, height=100, key=f"txt_family_{selected_game}_{target_number}_{window_days}")
-                for f_head, count in top_family_tuples: st.write(f"- **`{f_head:02d}`** की फैमिली: कुल **{count}** बार पास हुई")
+                st.markdown(f"👑 **Top 1 सबसे ज्यादा रिपीट फैमिली की जोड़ियाँ:**")
+                if top_1_family_tuple:
+                    st.text_area("कॉपी करें (Single Top Family Pairs):", value=top_fam_pairs_str, height=100, key=f"txt_top1_family_{selected_game}_{target_number}_{window_days}")
+                    st.write(f"🏆 **`{top_fam_head:02d}`** की फैमिली: कुल **{top_fam_total_count}** बार पास हुई")
+                    
+                    st.markdown("🎯 **यह फैमिली 2 दिन के अंदर किस-किस गेम में कितनी बार आई:**")
+                    for g_name, g_cnt in game_breakdown.items():
+                        st.write(f" - **{g_name}**: `{g_cnt}` बार")
+                else:
+                    st.info("कोई फैमिली डेटा नहीं मिला।")
 
             st.markdown("---")
             st.subheader("📜 पूरा ऐतिहासिक रिकॉर्ड:")

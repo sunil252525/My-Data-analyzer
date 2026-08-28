@@ -4,7 +4,7 @@ from collections import Counter
 
 st.set_page_config(page_title="Ultimate 13-Year Pattern & Target Detector", layout="wide")
 
-st.title("🎯 Ultimate 13-Year Master Pattern & Target Detector v3.0")
+st.title("🎯 Ultimate 13-Year Master Pattern & Target Detector v4.0")
 
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -40,14 +40,12 @@ def extract_haruf(num):
         return (None, None)
 
 def get_sum_digit(num):
-    """अंकों का जोड़ (Sum)"""
     try:
         n = int(num)
         return (n // 10) + (n % 10)
     except: return None
 
 def get_odd_even_type(num):
-    """Even-Even, Odd-Odd, Odd-Even प्रकार"""
     try:
         n = int(num)
         d1, d2 = n // 10, n % 10
@@ -149,65 +147,46 @@ if uploaded_file is not None:
     for c in available_cols:
         df[c] = pd.to_numeric(df[c], errors='coerce')
 
-    # मुख्य टैब्स
-    tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    # मुख्य 6 टैब्स
+    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
         "🎯 1. टारगेट सर्च", 
         "🔄 2. चाल & हर्फ़ पैटर्न", 
         "🔴 3. हॉट & कोल्ड हीटमैप", 
         "👑 4. ऑटो-पैटर्न चेज़र",
-        "⚖️ 5. जोड़ & Odd/Even एनालिसिस"
+        "⚖️ 5. जोड़ & Odd/Even एनालिसिस",
+        "💯 6. 00-99 All Numbers 100% Analysis"
     ])
 
-    # ================= TAB 1: TARGET REPEAT (UPDATED WITH ALL-GAME BREAKDOWN) =================
+    # ================= TAB 1: TARGET REPEAT =================
     with tab1:
         st.subheader("⚙️ टारगेट सर्च सेटिंग्स:")
         col_sel1, col_sel2, col_sel3 = st.columns(3)
         with col_sel1:
-            selected_game = st.selectbox("🎯 गेम चुनें (जिसमें टारगेट देखना है):", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="t1_game")
+            selected_game = st.selectbox("🎯 गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="t1_game")
         with col_sel2:
             target_number = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="t1_num")
         with col_sel3:
             window_days = st.slider("📅 विंडो (कितने दिन के अंदर):", min_value=1, max_value=5, value=2, key="t1_win")
 
         st.markdown("---")
-        
-        # 1. चुनी गई गेम में टारगेट नंबर की ऐतिहासिक घटनाएँ
         logs, next_day_list, window_list = analyze_target_occurrences(df, selected_game, target_number, window_days)
 
         if logs:
             st.success(f"📊 **13 साल के डेटा में `{selected_game}` में `{target_number:02d}` कुल `{len(logs)}` बार आया है।**")
             
-            # Top 3 रिपीट सिंगल नंबर
             single_counts = Counter(window_list)
             top_3_tuples = single_counts.most_common(3)
             top_3_singles = [item[0] for item in top_3_tuples]
             top_3_singles_str = ", ".join([f"{n:02d}" for n in top_3_singles])
 
-            # Top 1 सबसे मुख्य (Single Top) फैमिली निकालना
             family_counts = Counter([get_family_head(num) for num in window_list])
-            top_1_family_tuple = family_counts.most_common(1)
+            top_family_tuples = family_counts.most_common(3)
+            top_families_heads = [item[0] for item in top_family_tuples]
             
-            if top_1_family_tuple:
-                top_fam_head, top_fam_total_count = top_1_family_tuple[0]
-                top_fam_pairs = get_family(top_fam_head)
-                top_fam_pairs_str = ", ".join([f"{n:02d}" for n in top_fam_pairs])
-
-                # चारों प्रमुख गेमों (GALI, DSWR, FRBD, GZBD) में इस 1 फैमिली का ब्रेकअप निकालना
-                # Target नंबर आने की तारीख/रो के अगले window_days के दौरान अन्य गेमों में स्कैन
-                main_games = ['GALI', 'DSWR', 'FRBD', 'GZBD']
-                game_breakdown = {g: 0 for g in main_games}
-                
-                valid_indices = df[selected_game].dropna().index[df[selected_game].dropna().astype(float) == target_number].tolist()
-                
-                for idx in valid_indices:
-                    for d in range(1, window_days + 1):
-                        target_idx = idx + d
-                        if target_idx < len(df):
-                            for g in main_games:
-                                if g in df.columns and pd.notna(df.loc[target_idx, g]):
-                                    val = int(df.loc[target_idx, g])
-                                    if val in top_fam_pairs:
-                                        game_breakdown[g] += 1
+            all_top_family_pairs = set()
+            for f_head in top_families_heads:
+                all_top_family_pairs.update(get_family(f_head))
+            top_family_pairs_str = ", ".join([f"{n:02d}" for n in sorted(list(all_top_family_pairs))])
 
             col_box1, col_box2 = st.columns(2)
             with col_box1:
@@ -216,16 +195,9 @@ if uploaded_file is not None:
                 for num, count in top_3_tuples: st.write(f"- नंबर **`{num:02d}`**: कुल **{count}** बार आया")
 
             with col_box2:
-                st.markdown(f"👑 **Top 1 सबसे ज्यादा रिपीट फैमिली की जोड़ियाँ:**")
-                if top_1_family_tuple:
-                    st.text_area("कॉपी करें (Single Top Family Pairs):", value=top_fam_pairs_str, height=100, key=f"txt_top1_family_{selected_game}_{target_number}_{window_days}")
-                    st.write(f"🏆 **`{top_fam_head:02d}`** की फैमिली: कुल **{top_fam_total_count}** बार पास हुई")
-                    
-                    st.markdown("🎯 **यह फैमिली 2 दिन के अंदर किस-किस गेम में कितनी बार आई:**")
-                    for g_name, g_cnt in game_breakdown.items():
-                        st.write(f" - **{g_name}**: `{g_cnt}` बार")
-                else:
-                    st.info("कोई फैमिली डेटा नहीं मिला।")
+                st.markdown(f"👑 **Top 3 रिपीट फैमिलियों की संपूर्ण जोड़ियाँ:**")
+                st.text_area("कॉपी करें (Top Repeat Family Numbers):", value=top_family_pairs_str, height=100, key=f"txt_family_{selected_game}_{target_number}_{window_days}")
+                for f_head, count in top_family_tuples: st.write(f"- **`{f_head:02d}`** की फैमिली: कुल **{count}** बार पास हुई")
 
             st.markdown("---")
             st.subheader("📜 पूरा ऐतिहासिक रिकॉर्ड:")
@@ -266,13 +238,12 @@ if uploaded_file is not None:
             else:
                 st.warning("⚠️ 70%+ मैच खाता हुआ रिकॉर्ड नहीं मिला।")
 
-    # ================= TAB 3: HOT & COLD HEATMAP (FIXED) =================
+    # ================= TAB 3: HOT & COLD HEATMAP =================
     with tab3:
         st.subheader("🔴🔵 100 नंबरों का फ्रीक्वेंसी हीटमैप (Hot & Cold Chart)")
         heat_game = st.selectbox("🎯 गेम चुनें:", available_cols, key="heat_game")
         recent_scan_days = st.slider("📅 कितने हालिया दिनों में देखना है:", min_value=10, max_value=365, value=60, key="heat_days")
         
-        # ⚠️ यहाँ reset_index(drop=True) जोड़ा गया है ताकि ताज़ा डेटा सही से फ़िल्टर हो
         valid_series = df[heat_game].dropna().reset_index(drop=True).tail(recent_scan_days).astype(int).tolist()
         num_counts = Counter(valid_series)
         
@@ -341,6 +312,78 @@ if uploaded_file is not None:
         with c_s2:
             st.info(f"⚖️ **Odd/Even कॉम्बिनेशन पैटर्न:**")
             for t, c in type_counts.items(): st.write(f"- **{t}**: **{c}** बार")
+
+    # ================= TAB 6: 00-99 ALL NUMBERS ALL GAMES ANALYSIS (NEW TAB) =================
+    with tab6:
+        st.subheader("💯 00 से 99 तक सभी नंबरों का All-Game 100% ऐतिहासिक विश्लेषण")
+        st.info("यहाँ किसी भी गेम में कोई नंबर आने के बाद सभी 6 मार्केट (DB, SG, FRBD, GZBD, GALI, DSWR) में अगले 2 दिन के अंदर 00 से 99 तक के सभी नंबर कितनी-कितनी बार आए हैं, उसकी पूरी A-to-Z सूची दिखाई जाएगी।")
+        
+        c_t6_1, c_t6_2, c_t6_3 = st.columns(3)
+        with c_t6_1:
+            t6_game = st.selectbox("🎯 टारगेट गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="t6_game")
+        with c_t6_2:
+            t6_target = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="t6_num")
+        with c_t6_3:
+            t6_window = st.slider("📅 विंडो (कितने दिन के अंदर देखना है):", min_value=1, max_value=5, value=2, key="t6_win")
+
+        # टारगेट नंबर की खोज
+        valid_df_t6 = df.dropna(subset=[t6_game]).reset_index(drop=True)
+        target_indices = valid_df_t6.index[valid_df_t6[t6_game].astype(int) == t6_target].tolist()
+        total_target_hits = len(target_indices)
+
+        if total_target_hits > 0:
+            st.success(f"📊 **13 साल के डेटा में `{t6_game}` में `{t6_target:02d}` कुल `{total_target_hits}` बार आया है।**")
+
+            # 6 मार्केट में विंडो के अंदर आने वाले सभी नंबरों का कलेक्शन
+            all_market_hits = Counter()
+            guaranteed_list = []
+
+            for idx in target_indices:
+                for d in range(1, t6_window + 1):
+                    win_idx = idx + d
+                    if win_idx < len(valid_df_t6):
+                        for m_col in available_cols:
+                            if pd.notna(valid_df_t6.loc[win_idx, m_col]):
+                                hit_num = int(valid_df_t6.loc[win_idx, m_col])
+                                all_market_hits[hit_num] += 1
+
+            # A to Z List Preparing (00 to 99)
+            t6_table_data = []
+            for n in range(100):
+                cnt = all_market_hits.get(n, 0)
+                status = "💯 Guaranteed / आया ही आया" if cnt >= total_target_hits else ("🔥 High Hit" if cnt > 0 else "❌ Never (0 Bar)")
+                if cnt >= total_target_hits:
+                    guaranteed_list.append(f"{n:02d}")
+                
+                t6_table_data.append({
+                    "नंबर": f"{n:02d}",
+                    "कुल बार आया (सभी 6 गेम मिलाकर)": cnt,
+                    "स्टेटस": status,
+                    "फैमिली": get_family_head(n)
+                })
+
+            df_t6_summary = pd.DataFrame(t6_table_data).sort_values(by="कुल बार आया (सभी 6 गेम मिलाकर)", ascending=False).reset_index(drop=True)
+
+            c_g1, c_g2 = st.columns(2)
+            with c_g1:
+                st.markdown(f"💯 **100% Sure / Guaranteed Numbers (जो हर बार गिरे हैं):**")
+                if guaranteed_list:
+                    st.text_area("कॉपी करें (Guaranteed Numbers):", value=", ".join(guaranteed_list), height=90, key=f"t6_guar_txt_{t6_game}_{t6_target}_{t6_window}")
+                else:
+                    st.warning("सभी 6 मार्केट मिलाकर ऐसा कोई सिंगल नंबर नहीं है जो 100% हर बार गिरा हो, लेकिन सबसे ज्यादा आने वाले नंबर नीचे टेबल में हैं।")
+            
+            with c_g2:
+                top_3_t6 = df_t6_summary.head(3)
+                top_3_str = ", ".join(top_3_t6["नंबर"].tolist())
+                st.markdown(f"🔥 **Top 3 सबसे ज्यादा आने वाले नंबर:**")
+                st.text_area("कॉपी करें (Top 3 Overall Hits):", value=top_3_str, height=90, key=f"t6_top3_txt_{t6_game}_{t6_target}_{t6_window}")
+
+            st.markdown("---")
+            st.subheader(f"📋 `{t6_game}` में `{t6_target:02d}` आने के {t6_window} दिन के अंदर 00 से 99 तक पूरे 100 नंबरों की A-to-Z लिस्ट:")
+            st.dataframe(df_t6_summary, use_container_width=True)
+
+        else:
+            st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
 
 else:
     st.info("👈 बाएँ साइडबार से 13 साल की CSV फ़ाइल अपलोड करके शुरू करें।")

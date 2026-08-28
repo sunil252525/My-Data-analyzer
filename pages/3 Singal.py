@@ -313,10 +313,10 @@ if uploaded_file is not None:
             st.info(f"⚖️ **Odd/Even कॉम्बिनेशन पैटर्न:**")
             for t, c in type_counts.items(): st.write(f"- **{t}**: **{c}** बार")
 
-    # ================= TAB 6: 00-99 ALL NUMBERS ALL GAMES ANALYSIS (NEW TAB) =================
+    # ================= TAB 6: 00-99 ALL NUMBERS & HARUF 100% ANALYSIS =================
     with tab6:
-        st.subheader("💯 00 से 99 तक सभी नंबरों का All-Game 100% ऐतिहासिक विश्लेषण")
-        st.info("यहाँ किसी भी गेम में कोई नंबर आने के बाद सभी 6 मार्केट (DB, SG, FRBD, GZBD, GALI, DSWR) में अगले 2 दिन के अंदर 00 से 99 तक के सभी नंबर कितनी-कितनी बार आए हैं, उसकी पूरी A-to-Z सूची दिखाई जाएगी।")
+        st.subheader("💯 00 से 99 तक सभी नंबरों और हर्फ़ का All-Game 100% ऐतिहासिक विश्लेषण")
+        st.info("यहाँ किसी भी गेम में कोई नंबर आने के बाद सभी 6 मार्केट में 00-99 तक की जोड़ियाँ और 0-9 तक के अंदर/बाहर हर्फ़ कितनी बार आए हैं, उसकी पूरी A-to-Z सूची दिखाई जाएगी।")
         
         c_t6_1, c_t6_2, c_t6_3 = st.columns(3)
         with c_t6_1:
@@ -326,7 +326,6 @@ if uploaded_file is not None:
         with c_t6_3:
             t6_window = st.slider("📅 विंडो (कितने दिन के अंदर देखना है):", min_value=1, max_value=5, value=2, key="t6_win")
 
-        # टारगेट नंबर की खोज
         valid_df_t6 = df.dropna(subset=[t6_game]).reset_index(drop=True)
         target_indices = valid_df_t6.index[valid_df_t6[t6_game].astype(int) == t6_target].tolist()
         total_target_hits = len(target_indices)
@@ -334,8 +333,10 @@ if uploaded_file is not None:
         if total_target_hits > 0:
             st.success(f"📊 **13 साल के डेटा में `{t6_game}` में `{t6_target:02d}` कुल `{total_target_hits}` बार आया है।**")
 
-            # 6 मार्केट में विंडो के अंदर आने वाले सभी नंबरों का कलेक्शन
             all_market_hits = Counter()
+            ander_haruf_hits = Counter()
+            bahar_haruf_hits = Counter()
+
             guaranteed_list = []
 
             for idx in target_indices:
@@ -346,8 +347,13 @@ if uploaded_file is not None:
                             if pd.notna(valid_df_t6.loc[win_idx, m_col]):
                                 hit_num = int(valid_df_t6.loc[win_idx, m_col])
                                 all_market_hits[hit_num] += 1
+                                
+                                # हर्फ़ काउंटिंग (अंदर और बाहर)
+                                a_h, b_h = extract_haruf(hit_num)
+                                if a_h is not None: ander_haruf_hits[a_h] += 1
+                                if b_h is not None: bahar_haruf_hits[b_h] += 1
 
-            # A to Z List Preparing (00 to 99)
+            # 1. जोड़ी टेबल (00 to 99)
             t6_table_data = []
             for n in range(100):
                 cnt = all_market_hits.get(n, 0)
@@ -366,24 +372,61 @@ if uploaded_file is not None:
 
             c_g1, c_g2 = st.columns(2)
             with c_g1:
-                st.markdown(f"💯 **100% Sure / Guaranteed Numbers (जो हर बार गिरे हैं):**")
+                st.markdown(f"💯 **100% Guaranteed Numbers (जो हर बार गिरे हैं):**")
                 if guaranteed_list:
-                    st.text_area("कॉपी करें (Guaranteed Numbers):", value=", ".join(guaranteed_list), height=90, key=f"t6_guar_txt_{t6_game}_{t6_target}_{t6_window}")
+                    st.text_area("कॉपी करें (Guaranteed Numbers):", value=", ".join(guaranteed_list), height=80, key=f"t6_guar_txt_{t6_game}_{t6_target}_{t6_window}")
                 else:
-                    st.warning("सभी 6 मार्केट मिलाकर ऐसा कोई सिंगल नंबर नहीं है जो 100% हर बार गिरा हो, लेकिन सबसे ज्यादा आने वाले नंबर नीचे टेबल में हैं।")
+                    st.warning("कोई भी single नंबर 100% हर बार नहीं आया, लेकिन नीचे सबसे ज्यादा आने वाले नंबर मौजूद हैं।")
             
             with c_g2:
                 top_3_t6 = df_t6_summary.head(3)
                 top_3_str = ", ".join(top_3_t6["नंबर"].tolist())
                 st.markdown(f"🔥 **Top 3 सबसे ज्यादा आने वाले नंबर:**")
-                st.text_area("कॉपी करें (Top 3 Overall Hits):", value=top_3_str, height=90, key=f"t6_top3_txt_{t6_game}_{t6_target}_{t6_window}")
+                st.text_area("कॉपी करें (Top 3 Overall Hits):", value=top_3_str, height=80, key=f"t6_top3_txt_{t6_game}_{t6_target}_{t6_window}")
 
             st.markdown("---")
-            st.subheader(f"📋 `{t6_game}` में `{t6_target:02d}` आने के {t6_window} दिन के अंदर 00 से 99 तक पूरे 100 नंबरों की A-to-Z लिस्ट:")
+            st.subheader(f"📋 1. `{t6_game}` में `{t6_target:02d}` आने के {t6_window} दिन के अंदर 00 से 99 तक सभी नंबरों की लिस्ट:")
             st.dataframe(df_t6_summary, use_container_width=True)
+
+            # ================= NEW SECTION: HARUF ANALYSIS (0 to 9) =================
+            st.markdown("---")
+            st.subheader(f"🔑 2. `{t6_game}` में `{t6_target:02d}` आने के बाद अंदर/बाहर हर्फ़ (0 से 9) का A-to-Z विश्लेषण:")
+
+            guar_ander = [str(d) for d in range(10) if ander_haruf_hits.get(d, 0) >= total_target_hits]
+            guar_bahar = [str(d) for d in range(10) if bahar_haruf_hits.get(d, 0) >= total_target_hits]
+
+            c_h_g1, c_h_g2 = st.columns(2)
+            with c_h_g1:
+                st.markdown("💯 **100% Guaranteed अंदर हर्फ़ (Ander):**")
+                if guar_ander:
+                    st.success(f"🎯 अंदर हर बार पास हुए हर्फ़: **{', '.join(guar_ander)}**")
+                else:
+                    st.info("ℹ️ कोई भी अंदर का हर्फ़ 100% हर बार नहीं आया।")
+
+            with c_h_g2:
+                st.markdown("💯 **100% Guaranteed बाहर हर्फ़ (Bahar):**")
+                if guar_bahar:
+                    st.success(f"🎯 बाहर हर बार पास हुए हर्फ़: **{', '.join(guar_bahar)}**")
+                else:
+                    st.info("ℹ️ कोई भी बाहर का हर्फ़ 100% हर बार नहीं आया।")
+
+            # 0 से 9 हर्फ़ की पूरी टेबल
+            haruf_table_data = []
+            for h in range(10):
+                a_cnt = ander_haruf_hits.get(h, 0)
+                b_cnt = bahar_haruf_hits.get(h, 0)
+                tot_cnt = a_cnt + b_cnt
+                haruf_table_data.append({
+                    "हर्फ़ (Digit)": str(h),
+                    "अंदर (Ander) कुल बार": a_cnt,
+                    "बाहर (Bahar) कुल बार": b_cnt,
+                    "कुल बार खुला (A+B)": tot_cnt,
+                    "अंदर 100% Status": "💯 Yes" if a_cnt >= total_target_hits else "❌ No",
+                    "बाहर 100% Status": "💯 Yes" if b_cnt >= total_target_hits else "❌ No"
+                })
+
+            df_haruf_summary = pd.DataFrame(haruf_table_data).sort_values(by="कुल बार खुला (A+B)", ascending=False).reset_index(drop=True)
+            st.dataframe(df_haruf_summary, use_container_width=True)
 
         else:
             st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
-
-else:
-    st.info("👈 बाएँ साइडबार से 13 साल की CSV फ़ाइल अपलोड करके शुरू करें।")

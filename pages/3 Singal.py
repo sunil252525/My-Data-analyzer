@@ -239,13 +239,14 @@ if uploaded_file is not None:
             else:
                 st.warning("⚠️ 70%+ मैच खाता हुआ रिकॉर्ड नहीं मिला।")
 
-    # ================= TAB 3: HOT & COLD HEATMAP =================
+    # ================= TAB 3: HOT & COLD HEATMAP (FIXED) =================
     with tab3:
         st.subheader("🔴🔵 100 नंबरों का फ्रीक्वेंसी हीटमैप (Hot & Cold Chart)")
         heat_game = st.selectbox("🎯 गेम चुनें:", available_cols, key="heat_game")
         recent_scan_days = st.slider("📅 कितने हालिया दिनों में देखना है:", min_value=10, max_value=365, value=60, key="heat_days")
         
-        valid_series = df[heat_game].dropna().tail(recent_scan_days).astype(int).tolist()
+        # ⚠️ यहाँ reset_index(drop=True) जोड़ा गया है ताकि ताज़ा डेटा सही से फ़िल्टर हो
+        valid_series = df[heat_game].dropna().reset_index(drop=True).tail(recent_scan_days).astype(int).tolist()
         num_counts = Counter(valid_series)
         
         hot_nums = [f"{n:02d}" for n, c in num_counts.most_common(10)]
@@ -254,10 +255,10 @@ if uploaded_file is not None:
         c_h1, c_h2 = st.columns(2)
         with c_h1:
             st.error(f"🔥 **Top 10 Hot Numbers (पिछले {recent_scan_days} दिनों में सबसे ज्यादा आए):**")
-            st.text_area("कॉपी करें (Hot Numbers):", value=", ".join(hot_nums), height=100, key="txt_hot")
+            st.text_area("कॉपी करें (Hot Numbers):", value=", ".join(hot_nums), height=100, key=f"txt_hot_{recent_scan_days}")
         with c_h2:
             st.info(f"❄️ **Cold Numbers (जो पिछले {recent_scan_days} दिनों से बिल्कुल नहीं आए):**")
-            st.text_area("कॉपी करें (Cold Numbers):", value=", ".join(cold_nums), height=100, key="txt_cold")
+            st.text_area("कॉपी करें (Cold Numbers):", value=", ".join(cold_nums), height=100, key=f"txt_cold_{recent_scan_days}")
 
         st.markdown("---")
         st.write("📊 **00 से 99 तक सभी 100 नंबरों की फ्रीक्वेंसी (कितनी बार आए):**")

@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 from collections import Counter
+from itertools import combinations
 
 st.set_page_config(page_title="Ultimate 13-Year Pattern & Target Detector", layout="wide")
 
-st.title("🎯 Ultimate 13-Year Master Pattern & Target Detector v4.0")
+st.title("🎯 Ultimate 13-Year Master Pattern & Target Detector v5.0")
 
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -147,14 +148,15 @@ if uploaded_file is not None:
     for c in available_cols:
         df[c] = pd.to_numeric(df[c], errors='coerce')
 
-    # मुख्य 6 टैब्स
-    tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
+    # मुख्य 7 टैब्स
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
         "🎯 1. टारगेट सर्च", 
         "🔄 2. चाल & हर्फ़ पैटर्न", 
         "🔴 3. हॉट & कोल्ड हीटमैप", 
         "👑 4. ऑटो-पैटर्न चेज़र",
         "⚖️ 5. जोड़ & Odd/Even एनालिसिस",
-        "💯 6. 00-99 All Numbers 100% Analysis"
+        "💯 6. 00-99 & Haruf 100% Analysis",
+        "🎯 7. Best 4-Digit Crossing (Next Day)"
     ])
 
     # ================= TAB 1: TARGET REPEAT =================
@@ -388,7 +390,7 @@ if uploaded_file is not None:
             st.subheader(f"📋 1. `{t6_game}` में `{t6_target:02d}` आने के {t6_window} दिन के अंदर 00 से 99 तक सभी नंबरों की लिस्ट:")
             st.dataframe(df_t6_summary, use_container_width=True)
 
-            # ================= NEW SECTION: HARUF ANALYSIS (0 to 9) =================
+            # ================= HARUF ANALYSIS (0 to 9) =================
             st.markdown("---")
             st.subheader(f"🔑 2. `{t6_game}` में `{t6_target:02d}` आने के बाद अंदर/बाहर हर्फ़ (0 से 9) का A-to-Z विश्लेषण:")
 
@@ -410,7 +412,6 @@ if uploaded_file is not None:
                 else:
                     st.info("ℹ️ कोई भी बाहर का हर्फ़ 100% हर बार नहीं आया।")
 
-            # 0 से 9 हर्फ़ की पूरी टेबल
             haruf_table_data = []
             for h in range(10):
                 a_cnt = ander_haruf_hits.get(h, 0)
@@ -430,7 +431,8 @@ if uploaded_file is not None:
 
         else:
             st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
-# ================= TAB 7: BEST 4-DIGIT CROSSING (NEXT DAY ONLY) =================
+
+    # ================= TAB 7: BEST 4-DIGIT CROSSING (NEXT DAY ONLY) =================
     with tab7:
         st.subheader("🎯 अगले दिन (+1 Day) के लिए सर्वश्रेष्ठ 4-अंकों की क्रॉसिंग (4-Digit Crossing)")
         st.info("यह टैब डेटा को स्कैन करके अगले ही दिन (+1 Day) छह के छह मार्केट में सबसे ज्यादा पास होने वाली 4 अंकों की क्रॉसिंग (16 जोड़ियाँ) को खुद ढूँढकर निकालता है।")
@@ -441,7 +443,6 @@ if uploaded_file is not None:
         with c_t7_2:
             t7_target = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="t7_num")
 
-        # 1. अगले दिन (+1 Day) आने वाले सभी परिणामों का डेटा निकालें
         valid_df_t7 = df.dropna(subset=[t7_game]).reset_index(drop=True)
         target_indices_t7 = valid_df_t7.index[valid_df_t7[t7_game].astype(int) == t7_target].tolist()
         total_hits_t7 = len(target_indices_t7)
@@ -449,10 +450,9 @@ if uploaded_file is not None:
         if total_hits_t7 > 0:
             st.success(f"📊 **13 साल के डेटा में `{t7_game}` में `{t7_target:02d}` कुल `{total_hits_t7}` बार आया है।**")
 
-            # अगले दिन सभी 6 मार्केट के परिणामों का रिकॉर्ड
             next_day_occurrences = []
             for idx in target_indices_t7:
-                win_idx = idx + 1 # केवल अगला 1 दिन
+                win_idx = idx + 1
                 if win_idx < len(valid_df_t7):
                     day_nums = []
                     for m_col in available_cols:
@@ -460,21 +460,16 @@ if uploaded_file is not None:
                             day_nums.append(int(valid_df_t7.loc[win_idx, m_col]))
                     next_day_occurrences.append(day_nums)
 
-            # 2. 0-9 अंकों में से 4 अंकों के सर्वश्रेष्ठ कॉम्बिनेशन की जाँच
-            from itertools import combinations
-
             best_crossing = None
             max_pass_count = -1
             guaranteed_crossings = []
 
             for cb in combinations(range(10), 4):
                 cb_set = set(cb)
-                # 4 अंकों की क्रॉसिंग से बनने वाली जोड़ियाँ
                 crossing_pairs = {d1 * 10 + d2 for d1 in cb_set for d2 in cb_set}
                 
                 pass_events = 0
                 for day_nums in next_day_occurrences:
-                    # क्या इस दिन छह मार्केट में से किसी में भी इस क्रॉसिंग का नंबर खुला?
                     if any(num in crossing_pairs for num in day_nums):
                         pass_events += 1
 
@@ -485,7 +480,6 @@ if uploaded_file is not None:
                 if pass_events >= total_hits_t7:
                     guaranteed_crossings.append(cb)
 
-            # 3. परिणाम दिखाना
             st.markdown("---")
             c_cr1, c_cr2 = st.columns(2)
             
@@ -510,7 +504,6 @@ if uploaded_file is not None:
                     
                     st.success(f"🎯 100% पास होने वाली 4 अंकों की क्रॉसिंग अंक: **{', '.join(g_list_str)}**")
                     
-                    # पहली Guaranteed क्रॉसिंग की जोड़ियाँ
                     first_g = guaranteed_crossings[0]
                     g_pairs = sorted([f"{d1}{d2}" for d1 in first_g for d2 in first_g])
                     st.text_area("कॉपी करें (100% Guaranteed Pairs):", value=", ".join(g_pairs), height=100, key=f"txt_cr_guar_{t7_game}_{t7_target}")
@@ -519,3 +512,6 @@ if uploaded_file is not None:
 
         else:
             st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
+
+else:
+    st.info("👈 बाएँ साइडबार से 13 साल की CSV फ़ाइल अपलोड करके शुरू करें।")

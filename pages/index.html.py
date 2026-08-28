@@ -24,11 +24,12 @@ if st.button("जनरेट करें (Generate)", type="primary"):
         group_c = numbers[40:65]
         group_d = numbers[65:90]
         
+        # हर ग्रुप का नाम, डेटा, निशान (Separator) और ब्रैकेट का रेट (Multiplier)
         groups = [
-            {"name": "ग्रुप A (20 नंबर)", "data": group_a},
-            {"name": "ग्रुप B (20 नंबर)", "data": group_b},
-            {"name": "ग्रुप C (25 नंबर)", "data": group_c},
-            {"name": "ग्रुप D (25 नंबर)", "data": group_d}
+            {"name": "ग्रुप A (20 नंबर)", "data": group_a, "sep": " / ", "rate": "(100)"},
+            {"name": "ग्रुप B (20 नंबर)", "data": group_b, "sep": " - ", "rate": "(95)"},
+            {"name": "ग्रुप C (25 नंबर)", "data": group_c, "sep": " _ ", "rate": "(90)"},
+            {"name": "ग्रुप D (25 नंबर)", "data": group_d, "sep": " . ", "rate": "(80)"}
         ]
         
         cols = st.columns(4)
@@ -37,15 +38,19 @@ if st.button("जनरेट करें (Generate)", type="primary"):
             with cols[idx]:
                 st.subheader(grp["name"])
                 if grp["data"]:
-                    # मुख्य ग्रुप
+                    # मुख्य ग्रुप (कॉमा के साथ)
                     st.info(", ".join(grp["data"]))
                     
-                    # सब-ग्रुप्स
-                    sub1 = " / ".join(grp["data"][0:5]) + " (100)" if len(grp["data"]) >= 5 else ""
-                    sub2 = " _ ".join(grp["data"][5:9]) + " (100)" if len(grp["data"]) >= 9 else ""
-                    sub3 = " - ".join(grp["data"][9:13]) + " (100)" if len(grp["data"]) >= 13 else ""
-                    sub4 = ", ".join(grp["data"][13:16]) + " (100)" if len(grp["data"]) >= 16 else ""
-                    sub5 = " . ".join(grp["data"][16:]) + " (100)" if len(grp["data"]) > 16 else ""
+                    sep = grp["sep"]
+                    rate = grp["rate"]
+                    data = grp["data"]
+                    
+                    # 5 अलग-अलग टुकड़ों में बांटना
+                    sub1 = sep.join(data[0:5]) + f" {rate}" if len(data) >= 5 else ""
+                    sub2 = sep.join(data[5:10]) + f" {rate}" if len(data) >= 10 else ""
+                    sub3 = sep.join(data[10:15]) + f" {rate}" if len(data) >= 15 else ""
+                    sub4 = sep.join(data[15:20]) + f" {rate}" if len(data) >= 20 else ""
+                    sub5 = sep.join(data[20:]) + f" {rate}" if len(data) > 20 else ""
                     
                     if sub1: st.write(f"**1.** {sub1}")
                     if sub2: st.write(f"**2.** {sub2}")

@@ -430,3 +430,92 @@ if uploaded_file is not None:
 
         else:
             st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
+# ================= TAB 7: BEST 4-DIGIT CROSSING (NEXT DAY ONLY) =================
+    with tab7:
+        st.subheader("🎯 अगले दिन (+1 Day) के लिए सर्वश्रेष्ठ 4-अंकों की क्रॉसिंग (4-Digit Crossing)")
+        st.info("यह टैब डेटा को स्कैन करके अगले ही दिन (+1 Day) छह के छह मार्केट में सबसे ज्यादा पास होने वाली 4 अंकों की क्रॉसिंग (16 जोड़ियाँ) को खुद ढूँढकर निकालता है।")
+        
+        c_t7_1, c_t7_2 = st.columns(2)
+        with c_t7_1:
+            t7_game = st.selectbox("🎯 टारगेट गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="t7_game")
+        with c_t7_2:
+            t7_target = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="t7_num")
+
+        # 1. अगले दिन (+1 Day) आने वाले सभी परिणामों का डेटा निकालें
+        valid_df_t7 = df.dropna(subset=[t7_game]).reset_index(drop=True)
+        target_indices_t7 = valid_df_t7.index[valid_df_t7[t7_game].astype(int) == t7_target].tolist()
+        total_hits_t7 = len(target_indices_t7)
+
+        if total_hits_t7 > 0:
+            st.success(f"📊 **13 साल के डेटा में `{t7_game}` में `{t7_target:02d}` कुल `{total_hits_t7}` बार आया है।**")
+
+            # अगले दिन सभी 6 मार्केट के परिणामों का रिकॉर्ड
+            next_day_occurrences = []
+            for idx in target_indices_t7:
+                win_idx = idx + 1 # केवल अगला 1 दिन
+                if win_idx < len(valid_df_t7):
+                    day_nums = []
+                    for m_col in available_cols:
+                        if pd.notna(valid_df_t7.loc[win_idx, m_col]):
+                            day_nums.append(int(valid_df_t7.loc[win_idx, m_col]))
+                    next_day_occurrences.append(day_nums)
+
+            # 2. 0-9 अंकों में से 4 अंकों के सर्वश्रेष्ठ कॉम्बिनेशन की जाँच
+            from itertools import combinations
+
+            best_crossing = None
+            max_pass_count = -1
+            guaranteed_crossings = []
+
+            for cb in combinations(range(10), 4):
+                cb_set = set(cb)
+                # 4 अंकों की क्रॉसिंग से बनने वाली जोड़ियाँ
+                crossing_pairs = {d1 * 10 + d2 for d1 in cb_set for d2 in cb_set}
+                
+                pass_events = 0
+                for day_nums in next_day_occurrences:
+                    # क्या इस दिन छह मार्केट में से किसी में भी इस क्रॉसिंग का नंबर खुला?
+                    if any(num in crossing_pairs for num in day_nums):
+                        pass_events += 1
+
+                if pass_events > max_pass_count:
+                    max_pass_count = pass_events
+                    best_crossing = cb
+
+                if pass_events >= total_hits_t7:
+                    guaranteed_crossings.append(cb)
+
+            # 3. परिणाम दिखाना
+            st.markdown("---")
+            c_cr1, c_cr2 = st.columns(2)
+            
+            with c_cr1:
+                st.markdown("🔥 **सबसे बेस्ट 4-अंकों की क्रॉसिंग (Top Recommendation):**")
+                if best_crossing:
+                    digits_str = "".join([str(d) for d in sorted(best_crossing)])
+                    c_pairs = sorted([f"{d1}{d2}" for d1 in best_crossing for d2 in best_crossing])
+                    pairs_str = ", ".join(c_pairs)
+                    
+                    st.success(f"👑 **क्रॉसिंग अंक:** `{digits_str}` ({digits_str[0]}x{digits_str[1]}x{digits_str[2]}x{digits_str[3]})")
+                    st.write(f"📈 **पास रिकॉर्ड:** `{total_hits_t7}` में से **`{max_pass_count}`** बार पास")
+                    st.text_area("कॉपी करें (16 Cross Pairs):", value=pairs_str, height=100, key=f"txt_cr_best_{t7_game}_{t7_target}")
+
+            with c_cr2:
+                st.markdown("💯 **100% Guaranteed 4-Digit Crossings (जो हर बार पास हुई हैं):**")
+                if guaranteed_crossings:
+                    g_list_str = []
+                    for g_cb in guaranteed_crossings:
+                        g_str = "".join([str(d) for d in sorted(g_cb)])
+                        g_list_str.append(g_str)
+                    
+                    st.success(f"🎯 100% पास होने वाली 4 अंकों की क्रॉसिंग अंक: **{', '.join(g_list_str)}**")
+                    
+                    # पहली Guaranteed क्रॉसिंग की जोड़ियाँ
+                    first_g = guaranteed_crossings[0]
+                    g_pairs = sorted([f"{d1}{d2}" for d1 in first_g for d2 in first_g])
+                    st.text_area("कॉपी करें (100% Guaranteed Pairs):", value=", ".join(g_pairs), height=100, key=f"txt_cr_guar_{t7_game}_{t7_target}")
+                else:
+                    st.info("ℹ️ कोई भी 4-अंकों की क्रॉसिंग 100% हर बार नहीं आई, लेकिन सबसे ज्यादा पास होने वाली क्रॉसिंग बाएँ (Left) बॉक्स में है।")
+
+        else:
+            st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")

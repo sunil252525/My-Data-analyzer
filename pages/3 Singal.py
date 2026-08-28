@@ -158,7 +158,7 @@ if uploaded_file is not None:
         "⚖️ 5. जोड़ & Odd/Even एनालिसिस"
     ])
 
-    # ================= TAB 1: TARGET REPEAT =================
+    # ================= TAB 1: TARGET REPEAT (FIXED) =================
     with tab1:
         st.subheader("⚙️ टारगेट सर्च सेटिंग्स:")
         col_sel1, col_sel2, col_sel3 = st.columns(3)
@@ -192,12 +192,14 @@ if uploaded_file is not None:
             col_box1, col_box2 = st.columns(2)
             with col_box1:
                 st.markdown(f"🔥 **Top 3 रिपीट सिंगल नंबर:**")
-                st.text_area("कॉपी करें (Single Repeat Numbers):", value=top_3_singles_str, height=100, key=f"txt_single_{selected_game}_{target_number}")
+                # ⚠️ यहाँ key में {window_days} जोड़ा गया है ताकि विंडो बदलते ही टेक्स्ट बॉक्स तुरंत अपडेट हो
+                st.text_area("कॉपी करें (Single Repeat Numbers):", value=top_3_singles_str, height=100, key=f"txt_single_{selected_game}_{target_number}_{window_days}")
                 for num, count in top_3_tuples: st.write(f"- नंबर **`{num:02d}`**: कुल **{count}** बार आया")
 
             with col_box2:
                 st.markdown(f"👑 **Top 3 रिपीट फैमिलियों की संपूर्ण जोड़ियाँ:**")
-                st.text_area("कॉपी करें (Top Repeat Family Numbers):", value=top_family_pairs_str, height=100, key=f"txt_family_{selected_game}_{target_number}")
+                # ⚠️ यहाँ भी key में {window_days} जोड़ा गया है
+                st.text_area("कॉपी करें (Top Repeat Family Numbers):", value=top_family_pairs_str, height=100, key=f"txt_family_{selected_game}_{target_number}_{window_days}")
                 for f_head, count in top_family_tuples: st.write(f"- **`{f_head:02d}`** की फैमिली: कुल **{count}** बार पास हुई")
 
             st.markdown("---")

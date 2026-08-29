@@ -432,10 +432,10 @@ if uploaded_file is not None:
         else:
             st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
 
-    # ================= TAB 7: BEST 4-DIGIT CROSSING (NEXT DAY ONLY) =================
+    # ================= TAB 7: BEST 6-DIGIT CROSSING (NEXT DAY ONLY) =================
     with tab7:
-        st.subheader("🎯 अगले दिन (+1 Day) के लिए सर्वश्रेष्ठ 4-अंकों की क्रॉसिंग (4-Digit Crossing)")
-        st.info("यह टैब डेटा को स्कैन करके अगले ही दिन (+1 Day) छह के छह मार्केट में सबसे ज्यादा पास होने वाली 4 अंकों की क्रॉसिंग (16 जोड़ियाँ) को खुद ढूँढकर निकालता है।")
+        st.subheader("🎯 अगले दिन (+1 Day) के लिए सर्वश्रेष्ठ 6-अंकों की क्रॉसिंग (6-Digit Crossing)")
+        st.info("यह टैब डेटा को स्कैन करके अगले ही दिन (+1 Day) छह के छह मार्केट में सबसे ज्यादा पास होने वाली 6 अंकों की क्रॉसिंग (36 जोड़ियाँ) को खुद ढूँढकर निकालता है।")
         
         c_t7_1, c_t7_2 = st.columns(2)
         with c_t7_1:
@@ -464,7 +464,8 @@ if uploaded_file is not None:
             max_pass_count = -1
             guaranteed_crossings = []
 
-            for cb in combinations(range(10), 4):
+            # 6 अंकों के सभी कॉम्बिनेशन चेक करने के लिए (10C6 = 210 पॉसिबिलिटी)
+            for cb in combinations(range(10), 6):
                 cb_set = set(cb)
                 crossing_pairs = {d1 * 10 + d2 for d1 in cb_set for d2 in cb_set}
                 
@@ -484,34 +485,31 @@ if uploaded_file is not None:
             c_cr1, c_cr2 = st.columns(2)
             
             with c_cr1:
-                st.markdown("🔥 **सबसे बेस्ट 4-अंकों की क्रॉसिंग (Top Recommendation):**")
+                st.markdown("🔥 **सबसे बेस्ट 6-अंकों की क्रॉसिंग (Top Recommendation):**")
                 if best_crossing:
                     digits_str = "".join([str(d) for d in sorted(best_crossing)])
                     c_pairs = sorted([f"{d1}{d2}" for d1 in best_crossing for d2 in best_crossing])
                     pairs_str = ", ".join(c_pairs)
                     
-                    st.success(f"👑 **क्रॉसिंग अंक:** `{digits_str}` ({digits_str[0]}x{digits_str[1]}x{digits_str[2]}x{digits_str[3]})")
+                    st.success(f"👑 **क्रॉसिंग अंक:** `{digits_str}` ({'x'.join(list(digits_str))})")
                     st.write(f"📈 **पास रिकॉर्ड:** `{total_hits_t7}` में से **`{max_pass_count}`** बार पास")
-                    st.text_area("कॉपी करें (16 Cross Pairs):", value=pairs_str, height=100, key=f"txt_cr_best_{t7_game}_{t7_target}")
+                    st.text_area("कॉपी करें (36 Cross Pairs):", value=pairs_str, height=120, key=f"txt_cr_best_{t7_game}_{t7_target}")
 
             with c_cr2:
-                st.markdown("💯 **100% Guaranteed 4-Digit Crossings (जो हर बार पास हुई हैं):**")
+                st.markdown("💯 **100% Guaranteed 6-Digit Crossings (जो हर बार पास हुई हैं):**")
                 if guaranteed_crossings:
                     g_list_str = []
                     for g_cb in guaranteed_crossings:
                         g_str = "".join([str(d) for d in sorted(g_cb)])
                         g_list_str.append(g_str)
                     
-                    st.success(f"🎯 100% पास होने वाली 4 अंकों की क्रॉसिंग अंक: **{', '.join(g_list_str)}**")
+                    st.success(f"🎯 100% पास होने वाली 6 अंकों की क्रॉसिंग अंक: **{', '.join(g_list_str)}**")
                     
                     first_g = guaranteed_crossings[0]
                     g_pairs = sorted([f"{d1}{d2}" for d1 in first_g for d2 in first_g])
-                    st.text_area("कॉपी करें (100% Guaranteed Pairs):", value=", ".join(g_pairs), height=100, key=f"txt_cr_guar_{t7_game}_{t7_target}")
+                    st.text_area("कॉपी करें (100% Guaranteed Pairs - 36):", value=", ".join(g_pairs), height=120, key=f"txt_cr_guar_{t7_game}_{t7_target}")
                 else:
-                    st.info("ℹ️ कोई भी 4-अंकों की क्रॉसिंग 100% हर बार नहीं आई, लेकिन सबसे ज्यादा पास होने वाली क्रॉसिंग बाएँ (Left) बॉक्स में है।")
+                    st.info("ℹ️ कोई भी 6-अंकों की क्रॉसिंग 100% हर बार नहीं आई, लेकिन सबसे ज्यादा पास होने वाली क्रॉसिंग बाएँ (Left) बॉक्स में है।")
 
         else:
             st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
-
-else:
-    st.info("👈 बाएँ साइडबार से 13 साल की CSV फ़ाइल अपलोड करके शुरू करें।")

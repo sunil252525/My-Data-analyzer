@@ -20,7 +20,7 @@ with col_s2:
     chunk_choice = st.selectbox(
         "एक लाइन में कितने नंबर रखें?", 
         options=[4, 5, 6, 7], 
-        index=2 # डिफ़ॉल्ट 6
+        index=2
     )
 
 with col_s3:
@@ -47,12 +47,12 @@ with col_inp1:
 with col_inp2:
     st.subheader("🔀 नंबर मिक्सर (क्रॉस/जोड़ी जनरेटर)")
     input_mix_1 = st.text_input(
-        "पहला सेट (उदा. 7,8,9,0):", 
-        placeholder="7, 8, 9, 0"
+        "पहला सेट (बिना कॉमा या कॉमा लगाकर):", 
+        placeholder="7890 या 7,8,9,0"
     )
     input_mix_2 = st.text_input(
-        "दूसरा सेट (उदा. 1,2,3,4,5,6):", 
-        placeholder="1, 2, 3, 4, 5, 6"
+        "दूसरा सेट (बिना कॉमा या कॉमा लगाकर):", 
+        placeholder="123456 या 1,2,3,4,5,6"
     )
 
 st.divider()
@@ -83,15 +83,25 @@ if st.button("जनरेट करें (Generate)", type="primary"):
         group_c = []
         group_d = []
 
-    # 3. क्रॉस मिक्सर लॉजिक (सही जोड़ी बनाने का लॉजिक)
-    set1 = [n.strip() for n in input_mix_1.split(',') if n.strip()]
-    set2 = [n.strip() for n in input_mix_2.split(',') if n.strip()]
+    # 3. बिना कॉमा / कॉमा दोनों के लिए ऑटो-डिटेक्ट लॉजिक
+    def parse_digits(raw_str):
+        raw_str = raw_str.strip()
+        if ',' in raw_str:
+            return [n.strip() for n in raw_str.split(',') if n.strip()]
+        else:
+            return [ch for ch in raw_str if ch.strip()]
+
+    set1 = parse_digits(input_mix_1)
+    set2 = parse_digits(input_mix_2)
     
-    mixed_pairs = []
+    mixed_straight = []
+    mixed_reverse = []
+    
     if set1 and set2:
         for d1 in set1:
             for d2 in set2:
-                mixed_pairs.append(f"{d1}{d2}")
+                mixed_straight.append(f"{d1}{d2}")
+                mixed_reverse.append(f"{d2}{d1}") # पलटी
     
     # 4. मुख्य चार ग्रुप का प्रदर्शन
     groups = [
@@ -102,42 +112,59 @@ if st.button("जनरेट करें (Generate)", type="primary"):
     ]
     
     cols = st.columns(4)
-    
     for idx, grp in enumerate(groups):
         with cols[idx]:
             st.subheader(grp["name"])
             if grp["data"]:
                 st.info(", ".join(grp["data"]))
-                
                 sep = grp["sep"]
                 rate = grp["rate"]
                 data = grp["data"]
                 
-                # चुने गए साइज में टुकड़े बनाना
                 sub_groups = [data[i:i + chunk_choice] for i in range(0, len(data), chunk_choice)]
-                
                 for sub_data in sub_groups:
                     formatted_line = sep.join(sub_data) + f" {rate}"
                     st.text(formatted_line)
 
-    # 5. सही मिक्सर रिजल्ट (जोड़ियाँ)
-    if mixed_pairs:
+    # 5. मिक्सर रिजल्ट (4 स्टाइल: सीधा, सीधा मिक्स, पलटी, पलटी मिक्स)
+    if mixed_straight:
         st.divider()
-        st.subheader(f"🔗 मिक्सर से बनी जोड़ियाँ ({len(mixed_pairs)} नंबर)")
-        st.success(", ".join(mixed_pairs))
+        st.subheader(f"🔗 मिक्सर से बनी जोड़ियाँ ({len(mixed_straight)} नंबर)")
+        st.success(", ".join(mixed_straight))
         
-        mix_sub_groups = [mixed_pairs[i:i + chunk_choice] for i in range(0, len(mixed_pairs), chunk_choice)]
+        # मिक्स/शफल वर्ज़न तैयार करना
+        straight_shuffled = mixed_straight.copy()
+        random.shuffle(straight_shuffled)
         
-        col_m1, col_m2 = st.columns(2)
+        reverse_shuffled = mixed_reverse.copy()
+        random.shuffle(reverse_shuffled)
+
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
         
+        # कॉलम 1: सीधा (सीरियल) /
         with col_m1:
-            st.markdown("**स्लैश (`/`) सेपरेटर के साथ:**")
-            for sub_data in mix_sub_groups:
-                formatted_line = " / ".join(sub_data) + f" (100){tag_str}"
-                st.text(formatted_line)
+            st.markdown("**1. सीधे (सीरियल वाइज) `/` :**")
+            sub_groups = [mixed_straight[i:i + chunk_choice] for i in range(0, len(mixed_straight), chunk_choice)]
+            for sub_data in sub_groups:
+                st.text(" / ".join(sub_data) + f" (100){tag_str}")
                 
+        # कॉलम 2: सीधा (मिक्स) -
         with col_m2:
-            st.markdown("**डैश (`-`) सेपरेटर के साथ:**")
-            for sub_data in mix_sub_groups:
-                formatted_line = " - ".join(sub_data) + f" (100){tag_str}"
-                st.text(formatted_line)
+            st.markdown("**2. सीधे (रैंडम/मिक्स) `-` :**")
+            sub_groups = [straight_shuffled[i:i + chunk_choice] for i in range(0, len(straight_shuffled), chunk_choice)]
+            for sub_data in sub_groups:
+                st.text(" - ".join(sub_data) + f" (100){tag_str}")
+
+        # कॉलम 3: पलटी (सीरियल) -
+        with col_m3:
+            st.markdown("**3. पलटी (सीरियल वाइज) `-` :**")
+            sub_groups = [mixed_reverse[i:i + chunk_choice] for i in range(0, len(mixed_reverse), chunk_choice)]
+            for sub_data in sub_groups:
+                st.text(" - ".join(sub_data) + f" (100){tag_str}")
+
+        # कॉलम 4: पलटी (मिक्स) /
+        with col_m4:
+            st.markdown("**4. पलटी (रैंडम/मिक्स) `/` :**")
+            sub_groups = [reverse_shuffled[i:i + chunk_choice] for i in range(0, len(reverse_shuffled), chunk_choice)]
+            for sub_data in sub_groups:
+                st.text(" / ".join(sub_data) + f" (100){tag_str}")

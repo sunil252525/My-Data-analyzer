@@ -709,4 +709,4 @@ if uploaded_file is not None:
                     st.info("ℹ️ कोई भी 6-अंकों की क्रॉसिंग 100% हर बार नहीं आई, लेकिन सबसे ज्यादा पास होने वाली क्रॉसिंग बाएँ (Left) बॉक्स में है।")
 
         else:
-            st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")                st.text_area("Copy 4-Digit Self Pairs:", value=", ".join(cross_4_self), height=140, key="k_tab7_box_4_self_pairs")
+            st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")

@@ -629,17 +629,16 @@ if uploaded_file is not None:
             input_6digit = st.text_input("🔢 अपने 6 अंक दर्ज करें (उदा. 123456):", value="123456", key="in_6d")
         with col_m2:
             input_4digit = st.text_input("🔢 अपने 4 अंक दर्ज करें (उदा. 7890):", value="7890", key="in_4d")
-# ================= TAB 7: ADVANCED 6-DIGIT CROSSING, STAR RANKING & 0% DETECTOR =================
+# ================= TAB 7: BEST 6-DIGIT CROSSING (NEXT DAY ONLY) =================
     with tab7:
-        st.subheader("🎯 6-Digit Crossing: 100⭐, 50⭐, 0% (Never Hit) & Custom Mixer")
+        st.subheader("🎯 अगले दिन (+1 Day) के लिए सर्वश्रेष्ठ 6-अंकों की क्रॉसिंग (6-Digit Crossing)")
+        st.info("यह टैब डेटा को स्कैन करके अगले ही दिन (+1 Day) छह के छह मार्केट में सबसे ज्यादा पास होने वाली 6 अंकों की क्रॉसिंग (36 जोड़ियाँ) को खुद ढूँढकर निकालता है।")
         
-        # ---------------- SECTION 1: AUTO DETECTOR ----------------
-        st.markdown("### 📊 1. ऑटोमेटिक 6-डिजिट क्रॉसिंग & स्टार रैंकिंग (100⭐ / 50⭐ / 0% Cold)")
         c_t7_1, c_t7_2 = st.columns(2)
         with c_t7_1:
-            t7_game = st.selectbox("🎯 (Tab7) टारगेट गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="k_tab7_game_unique_select")
+            t7_game = st.selectbox("🎯 टारगेट गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="t7_game")
         with c_t7_2:
-            t7_target = st.number_input("🔢 (Tab7) टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="k_tab7_target_num_unique_input")
+            t7_target = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="t7_num")
 
         valid_df_t7 = df.dropna(subset=[t7_game]).reset_index(drop=True)
         target_indices_t7 = valid_df_t7.index[valid_df_t7[t7_game].astype(int) == t7_target].tolist()
@@ -658,8 +657,11 @@ if uploaded_file is not None:
                             day_nums.append(int(valid_df_t7.loc[win_idx, m_col]))
                     next_day_occurrences.append(day_nums)
 
-            # 6-अंकों के सभी कॉम्बिनेशन और पासिंग रेट कैलकुलेशन
-            crossing_scores = []
+            best_crossing = None
+            max_pass_count = -1
+            guaranteed_crossings = []
+
+            # 6 अंकों के सभी कॉम्बिनेशन चेक करने के लिए (10C6 = 210 पॉसिबिलिटी)
             for cb in combinations(range(10), 6):
                 cb_set = set(cb)
                 crossing_pairs = {d1 * 10 + d2 for d1 in cb_set for d2 in cb_set}
@@ -668,97 +670,43 @@ if uploaded_file is not None:
                 for day_nums in next_day_occurrences:
                     if any(num in crossing_pairs for num in day_nums):
                         pass_events += 1
-                
-                pass_percentage = (pass_events / total_hits_t7) * 100
-                crossing_scores.append((cb, pass_events, pass_percentage, sorted(list(crossing_pairs))))
 
-            # ग्रुपिंग वर्गीकरण
-            group_a_100 = [item for item in crossing_scores if item[2] >= 90]
-            group_c_50 = [item for item in crossing_scores if 40 <= item[2] <= 60]
-            group_zero_0 = [item for item in crossing_scores if item[1] == 0]
+                if pass_events > max_pass_count:
+                    max_pass_count = pass_events
+                    best_crossing = cb
+
+                if pass_events >= total_hits_t7:
+                    guaranteed_crossings.append(cb)
 
             st.markdown("---")
-            col_grp_a, col_grp_c, col_grp_z = st.columns(3)
-
-            # Group A (100* Category)
-            with col_grp_a:
-                st.error("🔥 **[Group A] - 100⭐ (High Pass Rate):**")
-                if group_a_100:
-                    top_a = sorted(group_a_100, key=lambda x: x[1], reverse=True)[0]
-                    digits_a = "".join([str(d) for d in sorted(top_a[0])])
-                    pairs_a = ", ".join([f"{n:02d}" for n in top_a[3]])
+            c_cr1, c_cr2 = st.columns(2)
+            
+            with c_cr1:
+                st.markdown("🔥 **सबसे बेस्ट 6-अंकों की क्रॉसिंग (Top Recommendation):**")
+                if best_crossing:
+                    digits_str = "".join([str(d) for d in sorted(best_crossing)])
+                    c_pairs = sorted([f"{d1}{d2}" for d1 in best_crossing for d2 in best_crossing])
+                    pairs_str = ", ".join(c_pairs)
                     
-                    st.success(f"👑 **Top 100⭐ क्रॉसिंग:** `{digits_a}`")
-                    st.write(f"📈 **रिकॉर्ड:** `{total_hits_t7}` में से **`{top_a[1]}`** बार पास (`{top_a[2]:.1f}%`) ")
-                    st.text_area("Group A Pairs (100*):", value=pairs_a, height=120, key="k_grp_a_pairs_txt")
-                else:
-                    st.info("ℹ️ 90%+ पासिंग वाला कोई कॉम्बिनेशन नहीं मिला।")
+                    st.success(f"👑 **क्रॉसिंग अंक:** `{digits_str}` ({'x'.join(list(digits_str))})")
+                    st.write(f"📈 **पास रिकॉर्ड:** `{total_hits_t7}` में से **`{max_pass_count}`** बार पास")
+                    st.text_area("कॉपी करें (36 Cross Pairs):", value=pairs_str, height=120, key=f"txt_cr_best_{t7_game}_{t7_target}")
 
-            # Group C (50* Category)
-            with col_grp_c:
-                st.warning("⚡ **[Group C] - 50⭐ (Medium Pass Rate):**")
-                if group_c_50:
-                    mid_c = sorted(group_c_50, key=lambda x: x[1], reverse=True)[0]
-                    digits_c = "".join([str(d) for d in sorted(mid_c[0])])
-                    pairs_c = ", ".join([f"{n:02d}" for n in mid_c[3]])
+            with c_cr2:
+                st.markdown("💯 **100% Guaranteed 6-Digit Crossings (जो हर बार पास हुई हैं):**")
+                if guaranteed_crossings:
+                    g_list_str = []
+                    for g_cb in guaranteed_crossings:
+                        g_str = "".join([str(d) for d in sorted(g_cb)])
+                        g_list_str.append(g_str)
                     
-                    st.info(f"🎯 **Top 50⭐ क्रॉसिंग:** `{digits_c}`")
-                    st.write(f"📈 **रिकॉर्ड:** `{total_hits_t7}` में से **`{mid_c[1]}`** बार पास (`{mid_c[2]:.1f}%`) ")
-                    st.text_area("Group C Pairs (50*):", value=pairs_c, height=120, key="k_grp_c_pairs_txt")
-                else:
-                    st.info("ℹ️ 50% पासिंग श्रेणी में डेटा उपलब्ध नहीं है।")
-
-            # Group Zero (0% Category - Never Hit)
-            with col_grp_z:
-                st.info("❄️ **[Group Zero] - 0% ❌ (Never Passed):**")
-                if group_zero_0:
-                    zero_item = group_zero_0[0]
-                    digits_z = "".join([str(d) for d in sorted(zero_item[0])])
-                    pairs_z = ", ".join([f"{n:02d}" for n in zero_item[3]])
+                    st.success(f"🎯 100% पास होने वाली 6 अंकों की क्रॉसिंग अंक: **{', '.join(g_list_str)}**")
                     
-                    st.error(f"🚫 **0% Cold क्रॉसिंग अंक:** `{digits_z}`")
-                    st.write(f"📉 **रिकॉर्ड:** `{total_hits_t7}` में से **0** बार पास (0% Pass)")
-                    st.text_area("0% Blocked Pairs (जो कभी नहीं आईं):", value=pairs_z, height=120, key="k_grp_z_pairs_txt")
+                    first_g = guaranteed_crossings[0]
+                    g_pairs = sorted([f"{d1}{d2}" for d1 in first_g for d2 in first_g])
+                    st.text_area("कॉपी करें (100% Guaranteed Pairs - 36):", value=", ".join(g_pairs), height=120, key=f"txt_cr_guar_{t7_game}_{t7_target}")
                 else:
-                    st.success("✅ कोई भी 6-डिजिट क्रॉसिंग 0% नहीं है (सब कम से कम 1 बार ज़रूर आई हैं)।")
+                    st.info("ℹ️ कोई भी 6-अंकों की क्रॉसिंग 100% हर बार नहीं आई, लेकिन सबसे ज्यादा पास होने वाली क्रॉसिंग बाएँ (Left) बॉक्स में है।")
 
         else:
-            st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
-
-        # ---------------- SECTION 2: MANUAL 6+4 DIGIT MIXER ----------------
-        st.markdown("---")
-        st.markdown("### 🔀 2. कस्टम (6-Digit + 4-Digit) क्रॉसिंग मिक्सर")
-        st.info("यहाँ आप अपने 6 अंक और 4 अंक डालकर उनकी आपस में क्रॉसिंग और अलग-अलग फ़िल्टर जोड़ियाँ तुरंत बना सकते हैं।")
-
-        col_m1, col_m2 = st.columns(2)
-        with col_m1:
-            input_6digit = st.text_input("🔢 (Tab7) अपने 6 अंक दर्ज करें (उदा. 123456):", value="123456", key="k_tab7_input_6digit_mix")
-        with col_m2:
-            input_4digit = st.text_input("🔢 (Tab7) अपने 4 अंक दर्ज करें (उदा. 7890):", value="7890", key="k_tab7_input_4digit_mix")
-
-        # डिजिट प्रोसेसिंग
-        d6_list = [d for d in input_6digit if d.isdigit()]
-        d4_list = [d for d in input_4digit if d.isdigit()]
-
-        if len(d6_list) > 0 and len(d4_list) > 0:
-            # 1. 6 x 4 क्रॉसिंग (24 जोड़ियाँ)
-            cross_6x4 = sorted(list(set([f"{a}{b}" for a in d6_list for b in d4_list] + [f"{b}{a}" for a in d6_list for b in d4_list])))
-            
-            # 2. 6-अंकों की खुद की क्रॉसिंग (36 जोड़ियाँ)
-            cross_6_self = sorted(list(set([f"{a}{b}" for a in d6_list for b in d6_list])))
-            
-            # 3. 4-अंकों की खुद की क्रॉसिंग (16 जोड़ियाँ)
-            cross_4_self = sorted(list(set([f"{a}{b}" for a in d4_list for b in d4_list])))
-
-            c_bx1, c_bx2, c_bx3 = st.columns(3)
-            with c_bx1:
-                st.markdown("📦 **खाना 1: (6 × 4) आपस की क्रॉसिंग जोड़ियाँ**")
-                st.text_area("Copy 6x4 Cross Pairs:", value=", ".join(cross_6x4), height=140, key="k_tab7_box_6x4_pairs")
-            
-            with c_bx2:
-                st.markdown("📦 **खाना 2: केवल 6-अंकों की अपनी क्रॉसिंग (36)**")
-                st.text_area("Copy 6-Digit Self Pairs:", value=", ".join(cross_6_self), height=140, key="k_tab7_box_6_self_pairs")
-                
-            with c_bx3:
-                st.markdown("📦 **खाना 3: केवल 4-अंकों की अपनी क्रॉसिंग (16)**")
-                st.text_area("Copy 4-Digit Self Pairs:", value=", ".join(cross_4_self), height=140, key="k_tab7_box_4_self_pairs")
+            st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")                st.text_area("Copy 4-Digit Self Pairs:", value=", ".join(cross_4_self), height=140, key="k_tab7_box_4_self_pairs")

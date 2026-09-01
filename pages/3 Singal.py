@@ -637,9 +637,9 @@ if uploaded_file is not None:
         st.markdown("### 📊 1. ऑटोमेटिक 6-डिजिट क्रॉसिंग & स्टार रैंकिंग (100⭐ / 50⭐ / 0% Cold)")
         c_t7_1, c_t7_2 = st.columns(2)
         with c_t7_1:
-            t7_game = st.selectbox("🎯 टारगेट गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="tab7_select_game")
+            t7_game = st.selectbox("🎯 (Tab7) टारगेट गेम चुनें:", available_cols, index=available_cols.index('GALI') if 'GALI' in available_cols else 0, key="k_tab7_game_unique_select")
         with c_t7_2:
-            t7_target = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="tab7_select_num")
+            t7_target = st.number_input("🔢 (Tab7) टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="k_tab7_target_num_unique_input")
 
         valid_df_t7 = df.dropna(subset=[t7_game]).reset_index(drop=True)
         target_indices_t7 = valid_df_t7.index[valid_df_t7[t7_game].astype(int) == t7_target].tolist()
@@ -673,9 +673,9 @@ if uploaded_file is not None:
                 crossing_scores.append((cb, pass_events, pass_percentage, sorted(list(crossing_pairs))))
 
             # ग्रुपिंग वर्गीकरण
-            group_a_100 = [item for item in crossing_scores if item[2] >= 90] # 90%-100% पासिंग
-            group_c_50 = [item for item in crossing_scores if 40 <= item[2] <= 60] # 50% के आसपास
-            group_zero_0 = [item for item in crossing_scores if item[1] == 0] # 0% पासिंग (कभी नहीं आई)
+            group_a_100 = [item for item in crossing_scores if item[2] >= 90]
+            group_c_50 = [item for item in crossing_scores if 40 <= item[2] <= 60]
+            group_zero_0 = [item for item in crossing_scores if item[1] == 0]
 
             st.markdown("---")
             col_grp_a, col_grp_c, col_grp_z = st.columns(3)
@@ -690,7 +690,7 @@ if uploaded_file is not None:
                     
                     st.success(f"👑 **Top 100⭐ क्रॉसिंग:** `{digits_a}`")
                     st.write(f"📈 **रिकॉर्ड:** `{total_hits_t7}` में से **`{top_a[1]}`** बार पास (`{top_a[2]:.1f}%`) ")
-                    st.text_area("Group A Pairs (100*):", value=pairs_a, height=120, key="txt_grp_a_unique")
+                    st.text_area("Group A Pairs (100*):", value=pairs_a, height=120, key="k_grp_a_pairs_txt")
                 else:
                     st.info("ℹ️ 90%+ पासिंग वाला कोई कॉम्बिनेशन नहीं मिला।")
 
@@ -704,7 +704,7 @@ if uploaded_file is not None:
                     
                     st.info(f"🎯 **Top 50⭐ क्रॉसिंग:** `{digits_c}`")
                     st.write(f"📈 **रिकॉर्ड:** `{total_hits_t7}` में से **`{mid_c[1]}`** बार पास (`{mid_c[2]:.1f}%`) ")
-                    st.text_area("Group C Pairs (50*):", value=pairs_c, height=120, key="txt_grp_c_unique")
+                    st.text_area("Group C Pairs (50*):", value=pairs_c, height=120, key="k_grp_c_pairs_txt")
                 else:
                     st.info("ℹ️ 50% पासिंग श्रेणी में डेटा उपलब्ध नहीं है।")
 
@@ -718,7 +718,7 @@ if uploaded_file is not None:
                     
                     st.error(f"🚫 **0% Cold क्रॉसिंग अंक:** `{digits_z}`")
                     st.write(f"📉 **रिकॉर्ड:** `{total_hits_t7}` में से **0** बार पास (0% Pass)")
-                    st.text_area("0% Blocked Pairs (जो कभी नहीं आईं):", value=pairs_z, height=120, key="txt_grp_z_unique")
+                    st.text_area("0% Blocked Pairs (जो कभी नहीं आईं):", value=pairs_z, height=120, key="k_grp_z_pairs_txt")
                 else:
                     st.success("✅ कोई भी 6-डिजिट क्रॉसिंग 0% नहीं है (सब कम से कम 1 बार ज़रूर आई हैं)।")
 
@@ -732,9 +732,9 @@ if uploaded_file is not None:
 
         col_m1, col_m2 = st.columns(2)
         with col_m1:
-            input_6digit = st.text_input("🔢 अपने 6 अंक दर्ज करें (उदा. 123456):", value="123456", key="tab7_in_6d")
+            input_6digit = st.text_input("🔢 (Tab7) अपने 6 अंक दर्ज करें (उदा. 123456):", value="123456", key="k_tab7_input_6digit_mix")
         with col_m2:
-            input_4digit = st.text_input("🔢 अपने 4 अंक दर्ज करें (उदा. 7890):", value="7890", key="tab7_in_4d")
+            input_4digit = st.text_input("🔢 (Tab7) अपने 4 अंक दर्ज करें (उदा. 7890):", value="7890", key="k_tab7_input_4digit_mix")
 
         # डिजिट प्रोसेसिंग
         d6_list = [d for d in input_6digit if d.isdigit()]
@@ -753,12 +753,12 @@ if uploaded_file is not None:
             c_bx1, c_bx2, c_bx3 = st.columns(3)
             with c_bx1:
                 st.markdown("📦 **खाना 1: (6 × 4) आपस की क्रॉसिंग जोड़ियाँ**")
-                st.text_area("Copy 6x4 Cross Pairs:", value=", ".join(cross_6x4), height=140, key="tab7_box_6x4")
+                st.text_area("Copy 6x4 Cross Pairs:", value=", ".join(cross_6x4), height=140, key="k_tab7_box_6x4_pairs")
             
             with c_bx2:
                 st.markdown("📦 **खाना 2: केवल 6-अंकों की अपनी क्रॉसिंग (36)**")
-                st.text_area("Copy 6-Digit Self Pairs:", value=", ".join(cross_6_self), height=140, key="tab7_box_6_self")
+                st.text_area("Copy 6-Digit Self Pairs:", value=", ".join(cross_6_self), height=140, key="k_tab7_box_6_self_pairs")
                 
             with c_bx3:
                 st.markdown("📦 **खाना 3: केवल 4-अंकों की अपनी क्रॉसिंग (16)**")
-                st.text_area("Copy 4-Digit Self Pairs:", value=", ".join(cross_4_self), height=140, key="tab7_box_4_self")
+                st.text_area("Copy 4-Digit Self Pairs:", value=", ".join(cross_4_self), height=140, key="k_tab7_box_4_self_pairs")

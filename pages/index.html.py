@@ -61,15 +61,19 @@ st.divider()
 if st.button("जनरेट करें (Generate)", type="primary"):
     tag_str = f" {market_tag.strip()}" if market_tag.strip() else ""
 
-    # 1. बॉक्स 1 प्रोसेसिंग (A और B)
+    # 1. बॉक्स 1 प्रोसेसिंग (A और B) - रैंडम/मिक्स शफल के साथ
     nums_ab = [n.strip() for n in input_ab.split(',') if n.strip()]
-    if split_ab and len(nums_ab) > 1:
-        random.shuffle(nums_ab)
-        half_ab = len(nums_ab) // 2
-        group_a = nums_ab[:half_ab]
-        group_b = nums_ab[half_ab:]
+    if nums_ab:
+        random.shuffle(nums_ab) # यहाँ ग्रुप A के नंबरों को मिक्स/शफल किया गया है
+        if split_ab and len(nums_ab) > 1:
+            half_ab = len(nums_ab) // 2
+            group_a = nums_ab[:half_ab]
+            group_b = nums_ab[half_ab:]
+        else:
+            group_a = nums_ab
+            group_b = []
     else:
-        group_a = nums_ab
+        group_a = []
         group_b = []
 
     # 2. बॉक्स 2 प्रोसेसिंग (C और D)

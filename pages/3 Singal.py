@@ -432,10 +432,10 @@ if uploaded_file is not None:
         else:
             st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
 
-    # ================= TAB 7: BEST 6-DIGIT CROSSING (NEXT DAY ONLY) =================
+    # ================= TAB 7: BEST 6-DIGIT CROSSING & 5-DAY HISTORY =================
     with tab7:
-        st.subheader("🎯 अगले दिन (+1 Day) के लिए सर्वश्रेष्ठ 6-अंकों की क्रॉसिंग (6-Digit Crossing)")
-        st.info("यह टैब डेटा को स्कैन करके अगले ही दिन (+1 Day) छह के छह मार्केट में सबसे ज्यादा पास होने वाली 6 अंकों की क्रॉसिंग (36 जोड़ियाँ) को खुद ढूँढकर निकालता है।")
+        st.subheader("🎯 अगले दिन (+1 Day) के लिए सर्वश्रेष्ठ 6-अंकों की क्रॉसिंग व 5-दिनों का ऐतिहासिक ट्रैक")
+        st.info("यहाँ वर्तमान चाल (Present 5 Days) के साथ ऐतिहासिक 5-दिनों का सीक्वेंस और CROSSING का PASS/FAIL स्टेटस दिखाया गया है।")
         
         c_t7_1, c_t7_2 = st.columns(2)
         with c_t7_1:
@@ -444,12 +444,36 @@ if uploaded_file is not None:
             t7_target = st.number_input("🔢 टारगेट नंबर दर्ज करें:", min_value=0, max_value=99, value=25, step=1, key="t7_num")
 
         valid_df_t7 = df.dropna(subset=[t7_game]).reset_index(drop=True)
+        date_col_t7 = 'Date' if 'Date' in valid_df_t7.columns else None
+        
+        # ---------------- 1. आज / प्रेजेंट के हालिया 5 दिनों का रिकॉर्ड ----------------
+        if len(valid_df_t7) >= 5:
+            st.markdown("---")
+            st.subheader(f"🔥 वर्तमान / हालिया 5 दिनों का लाइव रिकॉर्ड (`{t7_game}`):")
+            
+            recent_5_df = valid_df_t7.tail(5).copy()
+            recent_5_list = [f"{int(x):02d}" for x in recent_5_df[t7_game].tolist()]
+            recent_5_str = " ➔ ".join(recent_5_list)
+            
+            col_p1, col_p2 = st.columns([1, 2])
+            with col_p1:
+                st.success(f"📌 **प्रेजेंट चाल (लास्ट 5 दिन):**\n\n`{recent_5_str}`")
+            with col_p2:
+                # तारीखों के साथ ब्रेकडाउन
+                rec_details = []
+                for _, r in recent_5_df.iterrows():
+                    d_val = r[date_col_t7] if date_col_t7 else "Latest"
+                    n_val = f"{int(r[t7_game]):02d}"
+                    rec_details.append(f"**{d_val}:** `{n_val}`")
+                st.write(" <b>|</b> ".join(rec_details), unsafe_allow_html=True)
+
         target_indices_t7 = valid_df_t7.index[valid_df_t7[t7_game].astype(int) == t7_target].tolist()
         total_hits_t7 = len(target_indices_t7)
 
         if total_hits_t7 > 0:
-            st.success(f"📊 **13 साल के डेटा में `{t7_game}` में `{t7_target:02d}` कुल `{total_hits_t7}` बार आया है।**")
+            st.success(f"📊 **13 साल के रिकॉर्ड में `{t7_game}` में `{t7_target:02d}` कुल `{total_hits_t7}` बार आया है।**")
 
+            # ---------------- 2. 6-डिजिट बेस्ट क्रॉसिंग लॉजिक ----------------
             next_day_occurrences = []
             for idx in target_indices_t7:
                 win_idx = idx + 1
@@ -464,7 +488,6 @@ if uploaded_file is not None:
             max_pass_count = -1
             guaranteed_crossings = []
 
-            # 6 अंकों के सभी कॉम्बिनेशन चेक करने के लिए (10C6 = 210 पॉसिबिलिटी)
             for cb in combinations(range(10), 6):
                 cb_set = set(cb)
                 crossing_pairs = {d1 * 10 + d2 for d1 in cb_set for d2 in cb_set}
@@ -481,35 +504,74 @@ if uploaded_file is not None:
                 if pass_events >= total_hits_t7:
                     guaranteed_crossings.append(cb)
 
+            # क्रॉसिंग कार्ड्स डिस्प्ले
             st.markdown("---")
             c_cr1, c_cr2 = st.columns(2)
             
-            with c_cr1:
-                st.markdown("🔥 **सबसे बेस्ट 6-अंकों की क्रॉसिंग (Top Recommendation):**")
-                if best_crossing:
-                    digits_str = "".join([str(d) for d in sorted(best_crossing)])
-                    c_pairs = sorted([f"{d1}{d2}" for d1 in best_crossing for d2 in best_crossing])
-                    pairs_str = ", ".join(c_pairs)
-                    
+            best_crossing_pairs = set()
+            if best_crossing:
+                best_cb_set = set(best_crossing)
+                best_crossing_pairs = {d1 * 10 + d2 for d1 in best_cb_set for d2 in best_cb_set}
+                
+                digits_str = "".join([str(d) for d in sorted(best_crossing)])
+                c_pairs = sorted([f"{d1:02d}" for d1 in best_crossing_pairs])
+                pairs_str = ", ".join(c_pairs)
+                
+                with c_cr1:
+                    st.markdown("🔥 **सबसे बेस्ट 6-अंकों की क्रॉसिंग (Top Recommendation):**")
                     st.success(f"👑 **क्रॉसिंग अंक:** `{digits_str}` ({'x'.join(list(digits_str))})")
                     st.write(f"📈 **पास रिकॉर्ड:** `{total_hits_t7}` में से **`{max_pass_count}`** बार पास")
-                    st.text_area("कॉपी करें (36 Cross Pairs):", value=pairs_str, height=120, key=f"txt_cr_best_{t7_game}_{t7_target}")
+                    st.text_area("कॉपी करें (36 Cross Pairs):", value=pairs_str, height=100, key=f"txt_cr_best_{t7_game}_{t7_target}")
 
             with c_cr2:
-                st.markdown("💯 **100% Guaranteed 6-Digit Crossings (जो हर बार पास हुई हैं):**")
+                st.markdown("💯 **100% Guaranteed Crossings:**")
                 if guaranteed_crossings:
-                    g_list_str = []
-                    for g_cb in guaranteed_crossings:
-                        g_str = "".join([str(d) for d in sorted(g_cb)])
-                        g_list_str.append(g_str)
-                    
-                    st.success(f"🎯 100% पास होने वाली 6 अंकों की क्रॉसिंग अंक: **{', '.join(g_list_str)}**")
-                    
+                    g_list_str = ["".join([str(d) for d in sorted(g_cb)]) for g_cb in guaranteed_crossings]
+                    st.success(f"🎯 100% पास अंक: **{', '.join(g_list_str)}**")
                     first_g = guaranteed_crossings[0]
-                    g_pairs = sorted([f"{d1}{d2}" for d1 in first_g for d2 in first_g])
-                    st.text_area("कॉपी करें (100% Guaranteed Pairs - 36):", value=", ".join(g_pairs), height=120, key=f"txt_cr_guar_{t7_game}_{t7_target}")
+                    g_pairs = sorted([f"{d1:02d}" for d1 in [d1 * 10 + d2 for d1 in first_g for d2 in first_g]])
+                    st.text_area("कॉपी करें (100% Guaranteed Pairs):", value=", ".join(g_pairs), height=100, key=f"txt_cr_guar_{t7_game}_{t7_target}")
                 else:
-                    st.info("ℹ️ कोई भी 6-अंकों की क्रॉसिंग 100% हर बार नहीं आई, लेकिन सबसे ज्यादा पास होने वाली क्रॉसिंग बाएँ (Left) बॉक्स में है।")
+                    st.info("ℹ️ 100% हर बार पास होने वाली 6-अंकों की क्रॉसिंग नहीं मिली, लेकिन बेस्ट क्रॉसिंग बाएँ (Left) बॉक्स में है।")
+
+            # ---------------- 3. ऐतिहासिक 5-दिनों का रिकॉर्ड ----------------
+            st.markdown("---")
+            st.subheader(f"📜 ऐतिहासिक 5-दिनों की चाल व क्रॉसिंग रिजल्ट (जब-जब `{t7_game}` में `{t7_target:02d}` आया):")
+            
+            history_rows = []
+            for idx in target_indices_t7:
+                rec_date = valid_df_t7.loc[idx, date_col_t7] if date_col_t7 else f"Row #{idx}"
+                
+                seq_5_days = []
+                for p in range(4, -1, -1):
+                    prev_idx = idx - p
+                    if prev_idx >= 0 and pd.notna(valid_df_t7.loc[prev_idx, t7_game]):
+                        seq_5_days.append(f"{int(valid_df_t7.loc[prev_idx, t7_game]):02d}")
+                    else:
+                        seq_5_days.append("--")
+                
+                seq_str = " ➔ ".join(seq_5_days)
+                
+                next_val_str = "N/A"
+                status_str = "N/A"
+                if idx + 1 < len(valid_df_t7) and pd.notna(valid_df_t7.loc[idx + 1, t7_game]):
+                    n_val = int(valid_df_t7.loc[idx + 1, t7_game])
+                    next_val_str = f"{n_val:02d}"
+                    
+                    if n_val in best_crossing_pairs:
+                        status_str = "✅ PASS"
+                    else:
+                        status_str = "❌ FAIL"
+
+                history_rows.append({
+                    "तारीख / रो": rec_date,
+                    "पिछले 5 दिनों की चाल (-4 से Target)": seq_str,
+                    "टारगेट नंबर": f"{t7_target:02d}",
+                    "अगला दिन (+1 Day)": next_val_str,
+                    "क्रॉसिंग स्टेटस": status_str
+                })
+
+            st.dataframe(pd.DataFrame(history_rows), use_container_width=True)
 
         else:
-            st.warning("⚠️ चुना गया नंबर 13 साल के रिकॉर्ड में नहीं मिला।")
+            st.warning("⚠️ चुना गया नंबर रिकॉर्ड में नहीं मिला।")

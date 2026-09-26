@@ -2,7 +2,18 @@ import streamlit as st
 import pandas as pd
 
 # ====================================================
-# GALI ➔ DSWR MATH & RASHI PATTERN ENGINE (FULLY FIXED)
+# 1. PAGE CONFIGURATION & TITLE
+# ====================================================
+st.set_page_config(page_title="Data Analysis & Pattern Engine", layout="wide")
+st.title("📊 Data Analysis & Trick Scanner App")
+
+# ====================================================
+# 2. FILE UPLOADER SECTION (सबसे ऊपर फ़ाइल अपलोड का बटन)
+# ====================================================
+uploaded_file = st.file_uploader("📁 अपनी CSV फ़ाइल अपलोड करें", type=["csv"])
+
+# ====================================================
+# 3. GALI ➔ DSWR MATH & RASHI PATTERN ENGINE
 # ====================================================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
 
@@ -18,7 +29,7 @@ def run_gali_dswr_custom_pattern(num):
         d1 = num // 10  # दहाई अंक (Inside)
         d2 = num % 10   # इकाई अंक (Outside)
 
-        # 1. घटाव नियम: अंदर 0 होने पर 10 - Outside, नहीं तो |Inside - Outside|
+        # घटाव नियम: अंदर 0 होने पर 10 - Outside, नहीं तो |Inside - Outside|
         if d1 == 0:
             diff_val = 10 - d2
         else:
@@ -27,13 +38,13 @@ def run_gali_dswr_custom_pattern(num):
         diff_digit = diff_val % 10
         diff_rashi = get_rashi_digit(diff_digit)
 
-        # 2. मूल अंकों की राशि
+        # मूल अंकों की राशि
         d2_rashi = get_rashi_digit(d2)
 
-        # 3. मुख्य हरूफ
+        # मुख्य हरूफ
         derived_harufs = list(dict.fromkeys([diff_digit, diff_rashi, d2, d2_rashi]))
 
-        # 4. हरूफ क्रॉसिंग कॉम्बिनेशन (Pairs)
+        # हरूफ क्रॉसिंग कॉम्बिनेशन (Pairs)
         pairs = set()
         for h1 in [diff_digit, diff_rashi]:
             for h2 in [d2, d2_rashi]:
@@ -44,19 +55,33 @@ def run_gali_dswr_custom_pattern(num):
     except Exception:
         return None, None, [], []
 
-# ----------------------------------------------------
-# LIVE ALERT & AUTO SCANNER SECTION
-# ----------------------------------------------------
+# ====================================================
+# 4. DATA LOADING LOGIC (Auto-Load + Manual Upload)
+# ====================================================
+df = None
+
+# प्राथमिकता 1: यूजर द्वारा मैन्युअली अपलोड की गई फाइल
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+else:
+    # प्राथमिकता 2: GitHub / फ़ोल्डर में रखी 'data.csv' फ़ाइल
+    try:
+        df = pd.read_csv("data.csv")
+    except Exception:
+        df = None
+
+# ====================================================
+# 5. LIVE ALERT & HISTORICAL RECORD SECTION
+# ====================================================
 st.markdown("---")
 st.subheader("🚨 आज / वर्तमान लाइव पैटर्न अलर्ट (Live Trick Alert)")
 
-# यदि CSV अपलोड हो चुकी है
-if 'df' in locals() and df is not None:
+if df is not None:
     if 'GALI' in df.columns:
         # तारीख कॉलम ऑटो-डिटेक्ट करना
         date_col = 'A' if 'A' in df.columns else df.columns[0]
         
-        # केवल सही रिजल्ट वाले रो चुनना
+        # अमान्य या खाली रो हटाकर सही रिजल्ट निकालना
         valid_gali_df = df.dropna(subset=['GALI']).copy()
         
         if not valid_gali_df.empty:
@@ -64,7 +89,7 @@ if 'df' in locals() and df is not None:
             latest_gali = int(valid_gali_df.loc[latest_valid_idx, 'GALI'])
             latest_date = valid_gali_df.loc[latest_valid_idx, date_col]
             
-            # पैटर्न पहचान: अंदर 0 होना (जैसे 07) या जोड़ा होना (जैसे 66)
+            # पैटर्न चेकिंग (अंदर 0 होना जैसे 07, या जोड़ा जैसे 66)
             d1 = latest_gali // 10
             d2 = latest_gali % 10
             is_special_trick = (d1 == 0) or (d1 == d2)
@@ -90,7 +115,7 @@ if 'df' in locals() and df is not None:
                 st.code(", ".join(res_pairs), language="text")
 
             # ----------------------------------------------------
-            # HISTORICAL PASSING TRACKER (13 साल की हिस्ट्री पासिंग)
+            # HISTORICAL PASSING TRACKER
             # ----------------------------------------------------
             st.markdown("---")
             st.subheader("📜 इतिहास में इस ट्रिक की पासिंग लिस्ट (Historical Records)")
@@ -121,94 +146,6 @@ if 'df' in locals() and df is not None:
                                     "DSWR": f"{d_val:02d}",
                                     "ट्रिक पासिंग": "✅ PASS" if is_hit else "❌ FAIL"
                                 })
-                        except:
-                            continue
-
-                if history_data:
-                    st.dataframe(pd.DataFrame(history_data), use_container_width=True)
-                else:
-                    st.write("डेटाबेस में ऐसा कोई ऐतिहासिक पैटर्न रिकॉर्ड नहीं मिला।")
-        else:
-            st.warning("गली (GALI) कॉलम में डेटा उपलब्ध नहीं है।")
-    else:
-        st.warning("CSV फ़ाइल में 'GALI' कॉलम नाम नहीं मिला।")
-else:
-    st.warning("⚠️ कृपया पहले अपनी CSV फ़ाइल अपलोड करें।")
-# ----------------------------------------------------
-# LIVE ALERT & AUTO SCANNER SECTION
-# ----------------------------------------------------
-st.markdown("---")
-st.subheader("🚨 आज / वर्तमान लाइव पैटर्न अलर्ट (Live Trick Alert)")
-
-# 1. यदि यूज़र ने मैन्युअली CSV अपलोड की है या फिर रिपोजिटरी में रखी 'data.csv' को ऑटो-लोड करना
-df = None
-if 'uploaded_file' in locals() and uploaded_file is not None:
-    df = pd.read_csv(uploaded_file)
-else:
-    try:
-        df = pd.read_csv("data.csv")  # आपकी CSV फ़ाइल का नाम
-    except Exception:
-        df = None
-
-# 2. डेटा मिलने पर आगे की प्रोसेसिंग
-if df is not None:
-    if 'GALI' in df.columns:
-        date_col = 'A' if 'A' in df.columns else df.columns[0]
-        valid_gali_df = df.dropna(subset=['GALI']).copy()
-        
-        if not valid_gali_df.empty:
-            latest_valid_idx = valid_gali_df.index[-1]
-            latest_gali = int(valid_gali_df.loc[latest_valid_idx, 'GALI'])
-            latest_date = valid_gali_df.loc[latest_valid_idx, date_col]
-            
-            d1 = latest_gali // 10
-            d2 = latest_gali % 10
-            is_special_trick = (d1 == 0) or (d1 == d2)
-            
-            if is_special_trick:
-                st.error(f"🔥 **विशेष ट्रिक अलर्ट:** तारीख `{latest_date}` (GALI: `{latest_gali:02d}`) पर '0/जोड़ा घटत पैटर्न' **एक्टिव (ACTIVE)** है!")
-            else:
-                st.info(f"📍 **हालिया दर्ज रिजल्ट:** तारीख `{latest_date}` | GALI: `{latest_gali:02d}`")
-
-            diff_d, diff_r, main_harufs, res_pairs = run_gali_dswr_custom_pattern(latest_gali)
-
-            st.write(f"• **गली रिजल्ट:** `{latest_gali:02d}` | **अंतर अंक:** `{diff_d}` (राशि: `{diff_r}`)")
-
-            col_g1, col_g2 = st.columns(2)
-            with col_g1:
-                st.markdown("**📋 अगले दिन के लिए मुख्य हरूफ (Direct Copy):**")
-                st.code(", ".join(map(str, main_harufs)), language="text")
-
-            with col_g2:
-                st.markdown("**🎯 दिसावर/अगले दिन के संभावित नंबर (Direct Copy):**")
-                st.code(", ".join(res_pairs), language="text")
-
-            st.markdown("---")
-            st.subheader("📜 इतिहास में इस ट्रिक की पासिंग लिस्ट (Historical Records)")
-
-            history_data = []
-            if 'DSWR' in df.columns:
-                for i in range(len(df) - 1):
-                    if pd.notna(df.loc[i, 'GALI']) and pd.notna(df.loc[i+1, 'DSWR']):
-                        try:
-                            g_val = int(df.loc[i, 'GALI'])
-                            d_val = int(df.loc[i+1, 'DSWR'])
-                            g_d1 = g_val // 10
-                            g_d2 = g_val % 10
-                            
-                            if g_d1 == 0 or g_d1 == g_d2:
-                                _, _, h_harufs, h_pairs = run_gali_dswr_custom_pattern(g_val)
-                                d_str = f"{d_val:02d}"
-                                is_hit = (d_str in h_pairs) or (d_val // 10 in h_harufs) or (d_val % 10 in h_harufs)
-                                
-                                history_data.append({
-                                    "तारीख (गली)": df.loc[i, date_col],
-                                    "GALI": f"{g_val:02d}",
-                                    "निकाले गए हरूफ": ", ".join(map(str, h_harufs)),
-                                    "अगली तारीख": df.loc[i+1, date_col],
-                                    "DSWR": f"{d_val:02d}",
-                                    "ट्रिक पासिंग": "✅ PASS" if is_hit else "❌ FAIL"
-                                })
                         except Exception:
                             continue
 
@@ -221,4 +158,4 @@ if df is not None:
     else:
         st.warning("CSV फ़ाइल में 'GALI' नाम का कॉलम नहीं मिला।")
 else:
-    st.warning("⚠️ कृपया स्क्रीन पर ऊपर दिए गए फ़ाइल अपलोडर से अपनी CSV फ़ाइल चुनें।")
+    st.warning("⚠️ कृपया ऊपर दिए गए बटन से अपनी CSV फ़ाइल अपलोड करें या GitHub रिपॉजिटरी में 'data.csv' नाम से फ़ाइल रखें।")

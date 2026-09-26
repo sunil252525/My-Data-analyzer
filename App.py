@@ -5,11 +5,11 @@ import numpy as np
 # Page Layout Configuration
 st.set_page_config(page_title="Deep Historical Pattern & Analytics Engine", layout="wide")
 
-st.title("🔬 Deep Historical Pattern & Analytics Engine (Multi-Game Scan)")
-st.write("13 सालों के ऐतिहासिक डेटाबेस पर आधारित स्वचालित सांख्यिकीय, हरूफ और ऑल-गेम पैटर्न स्कैन।")
+st.title("🔬 Deep Historical Pattern & Analytics Engine (Quick-Copy Supported)")
+st.write("13 सालों के ऐतिहासिक डेटाबेस पर आधारित स्वचालित सांख्यिकीय और ऑल-गेम पैटर्न स्कैन।")
 
 # ----------------------------------------------------
-# 1. Direct Main-Page File Uploading (No Sidebar Friction)
+# 1. Main Page File Uploader
 # ----------------------------------------------------
 uploaded_file = st.file_uploader("📂 अपनी 13 साल की CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
 
@@ -53,15 +53,14 @@ if uploaded_file is not None:
 
     if st.button("🔥 Run All-Game Deep 50-Point Scan", use_container_width=True):
         st.markdown("---")
-        st.header(f"📊 टारगेट नंबर '{last_result:02d}' का सभी सीरीज़ में 13 साल का संयुक्त विश्लेषण")
+        st.header(f"📊 टारगेट नंबर '{last_result:02d}' का सभी सीरीज़ में 13 साल का विश्लेषण")
         
-        # Aggregation Stores Across All Games
         all_d1_vals = []
         all_d2_vals = []
         game_wise_summaries = {}
         total_global_occurrences = 0
 
-        # Loop through every available game series
+        # Loop through available game series
         for series in available_cols:
             target_indices = df[df[series] == last_result].index
             hist_count = len(target_indices)
@@ -77,7 +76,6 @@ if uploaded_file is not None:
                 all_d1_vals.extend(d1_vals)
                 all_d2_vals.extend(d2_vals)
                 
-                # Game Specific Family Matches
                 target_fam = get_family(last_result)
                 fam_m1 = sum(1 for v in d1_vals if v in target_fam)
                 fam_m2 = sum(1 for v in d2_vals if v in target_fam)
@@ -97,7 +95,7 @@ if uploaded_file is not None:
             st.warning(f"इतिहास में किसी भी गेम सीरीज़ में नंबर {last_result:02d} कभी दर्ज नहीं हुआ है।")
         else:
             # ----------------------------------------------------
-            # EXECUTIVE SUMMARY (GLOBAL ALL-GAMES CONSOLIDATED)
+            # EXECUTIVE SUMMARY & DIRECT COPY BOX
             # ----------------------------------------------------
             st.subheader("📝 अंतिम निष्कर्ष (Executive Summary - All Games Combined)")
             
@@ -110,6 +108,10 @@ if uploaded_file is not None:
             top_1d_counts = s_d1_all.value_counts().head(5)
             top_2d_counts = s_d2_all.value_counts().head(5)
             
+            # String formatting for quick copy
+            d1_copy_str = ", ".join([f"{num:02d}" for num in top_1d_counts.index])
+            d2_copy_str = ", ".join([f"{num:02d}" for num in top_2d_counts.index])
+
             col_a, col_b = st.columns(2)
             
             with col_a:
@@ -117,41 +119,53 @@ if uploaded_file is not None:
                 for num, count in top_1d_counts.items():
                     rate = round((count / tot_d1_opps) * 100, 2) if tot_d1_opps > 0 else 0
                     st.write(f"• **नंबर {num:02d}** -> आया **{count} बार** (Observed Rate: **{rate}%**)")
+                st.markdown("**📋 1-Day कॉपी बॉक्स:**")
+                st.code(d1_copy_str, language="text")
                     
             with col_b:
                 st.markdown("#### ⚡ सबसे मजबूत 2-Day Follow-up (All Games)")
                 for num, count in top_2d_counts.items():
                     rate = round((count / tot_d2_opps) * 100, 2) if tot_d2_opps > 0 else 0
                     st.write(f"• **नंबर {num:02d}** -> आया **{count} बार** (Observed Rate: **{rate}%**)")
+                st.markdown("**📋 2-Day कॉपी बॉक्स:**")
+                st.code(d2_copy_str, language="text")
 
             st.markdown("---")
             
             # ----------------------------------------------------
-            # STEP-BY-STEP GAME-BY-GAME DETAILED BREAKDOWN
+            # GAME-BY-GAME DETAILED BREAKDOWN WITH INDIVIDUAL COPY BOXES
             # ----------------------------------------------------
-            st.subheader("📌 स्टेप-बाय-स्टेप गेम-वाइज़ डीप रिपोर्ट (Game-Wise Step Breakdown)")
+            st.subheader("📌 स्टेप-बाय-स्टेप गेम-वाइज़ डीप रिपोर्ट एवं डायरेक्ट कॉपी बॉक्स")
             
             for series_name, data in game_wise_summaries.items():
-                with st.expander(f"🎮 {series_name} सीरीज़ - कुल ऐतिहासिक रिकॉर्ड्स: {data['hist_count']} बार", expanded=True):
+                with st.expander(f"🎮 {series_name} सीरीज़ - कुल रिकॉर्ड्स: {data['hist_count']} बार", expanded=True):
                     c1, c2, c3 = st.columns(3)
                     
+                    d1_top = data["d1_series"].value_counts().head(5)
+                    d2_top = data["d2_series"].value_counts().head(5)
+
+                    d1_game_copy = ", ".join([f"{num:02d}" for num in d1_top.index])
+                    d2_game_copy = ", ".join([f"{num:02d}" for num in d2_top.index])
+
                     # Top 1-Day for this specific game
                     with c1:
                         st.markdown("**Top 1-Day Follow-up:**")
-                        d1_top = data["d1_series"].value_counts().head(3)
                         d1_tot = len(data["d1_series"])
                         for num, count in d1_top.items():
                             p = round((count / d1_tot) * 100, 1) if d1_tot > 0 else 0
                             st.write(f"- `{num:02d}` : {count} बार ({p}%)")
+                        st.markdown(f"**📋 {series_name} 1-Day कॉपी:**")
+                        st.code(d1_game_copy, language="text")
                     
                     # Top 2-Day for this specific game
                     with c2:
                         st.markdown("**Top 2-Day Follow-up:**")
-                        d2_top = data["d2_series"].value_counts().head(3)
                         d2_tot = len(data["d2_series"])
                         for num, count in d2_top.items():
                             p = round((count / d2_tot) * 100, 1) if d2_tot > 0 else 0
                             st.write(f"- `{num:02d}` : {count} बार ({p}%)")
+                        st.markdown(f"**📋 {series_name} 2-Day कॉपी:**")
+                        st.code(d2_game_copy, language="text")
                             
                     # Family Passing Rate
                     with c3:

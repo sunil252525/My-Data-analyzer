@@ -9,7 +9,7 @@ st.title("🔬 Deep Historical Pattern & Analytics Engine (50-Point Scan)")
 st.write("13 सालों के ऐतिहासिक डेटाबेस पर आधारित स्वचालित 50-बिंदु सांख्यिकीय और गणितीय स्कैन।")
 
 # ----------------------------------------------------
-# 1. Main Page CSV File Uploader (No Sidebar Friction)
+# 1. Main Page CSV File Uploader
 # ----------------------------------------------------
 uploaded_file = st.file_uploader("अपनी 13 साल की CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
 
@@ -51,7 +51,6 @@ if uploaded_file is not None:
     col1, col2, col3 = st.columns([1.5, 1.5, 2])
     
     with col1:
-        # Option to select All Games or a specific game
         game_options = ["ALL GAMES (सभी गेम)"] + available_cols
         selected_series = st.selectbox("सीरीज़ / गेम चुनें", game_options, index=0)
         
@@ -66,7 +65,6 @@ if uploaded_file is not None:
     if run_scan:
         st.markdown("---")
         
-        # Decide scan scope (Single Game vs All Games)
         scan_cols = available_cols if selected_series == "ALL GAMES (सभी गेम)" else [selected_series]
         
         all_d1_vals = []
@@ -92,12 +90,6 @@ if uploaded_file is not None:
             opps_d1 = len(all_d1_vals)
             opps_d2 = len(all_d2_vals)
             
-            # ----------------------------------------------------
-            # EXECUTIVE SUMMARY & DIRECT COPY-PASTE LINES
-            # ----------------------------------------------------
-            st.subheader("📝 अंतिम निष्कर्ष (Executive Summary)")
-            st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** 13 साल के रिकॉर्ड में **{selected_series}** में **{last_result:02d}** कुल **{total_hist_count} बार** आया है।")
-            
             # Calculations
             top_1d = d1_series.value_counts().head(5)
             top_2d = d2_series.value_counts().head(5)
@@ -107,46 +99,64 @@ if uploaded_file is not None:
             fam_m2 = sum(1 for v in all_d2_vals if v in target_fam)
             fam_obs_rate = round(((fam_m1 + fam_m2) / (opps_d1 + opps_d2)) * 100, 2) if (opps_d1 + opps_d2) > 0 else 0.0
             
-            # Haruf calculation
-            in_h_top = d1_series.apply(lambda x: x // 10).value_counts().head(3)
-            out_h_top = d1_series.apply(lambda x: x % 10).value_counts().head(3)
+            # Haruf extraction (Top 2 Inside and Top 2 Outside Harufs)
+            in_h_top2 = d1_series.apply(lambda x: x // 10).value_counts().head(2)
+            out_h_top2 = d1_series.apply(lambda x: x % 10).value_counts().head(2)
 
-            # Standard Summary Text
+            in_harufs = list(in_h_top2.index)
+            out_harufs = list(out_h_top2.index)
+
+            # Creating 2x2 Direct Crossing Numbers
+            crossed_pairs_2x2 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
+
+            # Creating 4x4 Crossing Numbers (including Rashis)
+            in_harufs_with_rashi = list(dict.fromkeys([h for h in in_harufs] + [get_rashi_digit(h) for h in in_harufs]))
+            out_harufs_with_rashi = list(dict.fromkeys([h for h in out_harufs] + [get_rashi_digit(h) for h in out_harufs]))
+            crossed_pairs_4x4 = [f"{i}{o}" for i in in_harufs_with_rashi for o in out_harufs_with_rashi]
+
+            # ----------------------------------------------------
+            # EXECUTIVE SUMMARY
+            # ----------------------------------------------------
+            st.subheader("📝 अंतिम निष्कर्ष (Executive Summary)")
+            st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** 13 साल के रिकॉर्ड में **{selected_series}** में **{last_result:02d}** कुल **{total_hist_count} बार** आया है।")
             st.write(f"• **सबसे मजबूत 1-Day Follow-up:** {top_1d.to_dict()}")
             st.write(f"• **सबसे मजबूत 2-Day Follow-up:** {top_2d.to_dict()}")
             st.write(f"• **सबसे मजबूत 8-Number Family:** {target_fam}")
-            st.write(f"• **सबसे मजबूत अंदर हरूफ:** {in_h_top.to_dict()}")
-            st.write(f"• **सबसे मजबूत बाहर हरूफ:** {out_h_top.to_dict()}")
+            st.write(f"• **टॉप 2 अंदर हरूफ:** {in_harufs}")
+            st.write(f"• **टॉप 2 बाहर हरूफ:** {out_harufs}")
             st.write(f"• **फैमिली पासिंग दर:** Observed Rate = **{fam_obs_rate}%**")
             
             st.markdown("---")
             st.markdown("### 📋 डायरेक्ट कॉपी-पेस्ट सेक्शन्स (Direct Copy Box)")
             
-            # Comma-Separated Formatting for Easy Copying
             str_1d_copy = ", ".join([f"{num:02d}" for num in top_1d.index])
             str_2d_copy = ", ".join([f"{num:02d}" for num in top_2d.index])
-            str_in_h_copy = ", ".join([str(h) for h in in_h_top.index])
-            str_out_h_copy = ", ".join([str(h) for h in out_h_top.index])
-            str_fam_copy = ", ".join([f"{num:02d}" for num in target_fam])
+            str_in_h_copy = ", ".join([str(h) for h in in_harufs])
+            str_out_h_copy = ", ".join([str(h) for h in out_harufs])
+            str_crossed_2x2 = ", ".join(crossed_pairs_2x2)
+            str_crossed_4x4 = ", ".join(crossed_pairs_4x4)
 
             c_box1, c_box2 = st.columns(2)
             
             with c_box1:
-                st.markdown("**📋 1-Day Follow-up Numbers (कॉपी करें):**")
+                st.markdown("**📋 1-Day Follow-up Numbers:**")
                 st.code(str_1d_copy, language="text")
                 
-                st.markdown("**📋 अंदर हरूफ / Inside Haruf (कॉपी करें):**")
+                st.markdown("**📋 टॉप 2 अंदर हरूफ (Inside Haruf):**")
                 st.code(str_in_h_copy, language="text")
-                
-                st.markdown("**📋 8-नंबर फैमिली ग्रुप (कॉपी करें):**")
-                st.code(str_fam_copy, language="text")
+
+                st.markdown("**🎯 हरूफ 2x2 क्रॉसिंग नंबर (4 जोड़ी):**")
+                st.code(str_crossed_2x2, language="text")
 
             with c_box2:
-                st.markdown("**📋 2-Day Follow-up Numbers (कॉपी करें):**")
+                st.markdown("**📋 2-Day Follow-up Numbers:**")
                 st.code(str_2d_copy, language="text")
                 
-                st.markdown("**📋 बाहर हरूफ / Outside Haruf (कॉपी करें):**")
+                st.markdown("**📋 टॉप 2 बाहर हरूफ (Outside Haruf):**")
                 st.code(str_out_h_copy, language="text")
+
+                st.markdown("**🔥 राशि मिलाकर हरूफ क्रॉसिंग नंबर (16 जोड़ी):**")
+                st.code(str_crossed_4x4, language="text")
 
             # ----------------------------------------------------
             # STRUCTURED OUTPUT TABLE
@@ -155,8 +165,6 @@ if uploaded_file is not None:
             st.markdown("### 📊 50-Point Scan Structured Output Table")
             
             results_table = []
-            
-            # Exact Numbers
             all_exact_nums = set(top_1d.index).union(set(top_2d.index))
             for num in all_exact_nums:
                 c1 = (d1_series == num).sum()
@@ -178,7 +186,6 @@ if uploaded_file is not None:
                         "Strength": "🔥 HIGH" if obs_rate >= 10 else "⚡ MEDIUM"
                     })
 
-            # Family Row
             results_table.append({
                 "पैटर्न / नियम": f"Same Family Repeat ({last_result:02d} Family)",
                 "Last Result": f"{last_result:02d}",

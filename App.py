@@ -52,7 +52,7 @@ if uploaded_file is not None:
     
     with col1:
         game_options = ["ALL GAMES (सभी गेम)"] + available_cols
-        selected_series = st.selectbox("सीरीज़ / गेम चुनें", game_options, index=0)
+        selected_series = st.selectbox("सीरीज़ / गेम चुनें", game_options, index=available_cols.index('GALI')+1 if 'GALI' in available_cols else 0)
         
     with col2:
         last_result = st.number_input("Last Result (टारगेट नंबर)", min_value=0, max_value=99, value=71)
@@ -67,8 +67,8 @@ if uploaded_file is not None:
         
         scan_cols = available_cols if selected_series == "ALL GAMES (सभी गेम)" else [selected_series]
         
-        all_d1_vals = []
-        all_d2_vals = []
+        d1_vals_list = []
+        d2_vals_list = []
         total_hist_count = 0
         
         for col in scan_cols:
@@ -78,38 +78,38 @@ if uploaded_file is not None:
             d1_idx = [i + 1 for i in t_idx if i + 1 < len(df)]
             d2_idx = [i + 2 for i in t_idx if i + 2 < len(df)]
             
-            all_d1_vals.extend(df.loc[d1_idx, col].dropna().astype(int).tolist())
-            all_d2_vals.extend(df.loc[d2_idx, col].dropna().astype(int).tolist())
+            d1_vals_list.extend(df.loc[d1_idx, col].dropna().astype(int).tolist())
+            d2_vals_list.extend(df.loc[d2_idx, col].dropna().astype(int).tolist())
 
         if total_hist_count == 0:
             st.warning(f"इतिहास में {selected_series} में नंबर {last_result:02d} कभी दर्ज नहीं हुआ है।")
         else:
-            d1_series = pd.Series(all_d1_vals)
-            d2_series = pd.Series(all_d2_vals)
+            d1_vals = pd.Series(d1_vals_list)
+            d2_vals = pd.Series(d2_vals_list)
             
-            opps_d1 = len(all_d1_vals)
-            opps_d2 = len(all_d2_vals)
+            opps_d1 = len(d1_vals)
+            opps_d2 = len(d2_vals)
             
-            # Calculations
-            top_1d = d1_series.value_counts().head(5)
-            top_2d = d2_series.value_counts().head(5)
+            # --- EXACT ORIGINAL LOGIC CALCULATION ---
+            top_1d = d1_vals.value_counts().head(5)
+            top_2d = d2_vals.value_counts().head(5)
             
             target_fam = get_family(last_result)
-            fam_m1 = sum(1 for v in all_d1_vals if v in target_fam)
-            fam_m2 = sum(1 for v in all_d2_vals if v in target_fam)
+            fam_m1 = sum(1 for v in d1_vals_list if v in target_fam)
+            fam_m2 = sum(1 for v in d2_vals_list if v in target_fam)
             fam_obs_rate = round(((fam_m1 + fam_m2) / (opps_d1 + opps_d2)) * 100, 2) if (opps_d1 + opps_d2) > 0 else 0.0
             
-            # Haruf extraction (Top 2 Inside and Top 2 Outside Harufs)
-            in_h_top2 = d1_series.apply(lambda x: x // 10).value_counts().head(2)
-            out_h_top2 = d1_series.apply(lambda x: x % 10).value_counts().head(2)
+            # Top 2 Inside & Outside Harufs
+            in_h_top2 = d1_vals.apply(lambda x: x // 10).value_counts().head(2)
+            out_h_top2 = d1_vals.apply(lambda x: x % 10).value_counts().head(2)
 
             in_harufs = list(in_h_top2.index)
             out_harufs = list(out_h_top2.index)
 
-            # Creating 2x2 Direct Crossing Numbers
+            # 2x2 Direct Crossing
             crossed_pairs_2x2 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
 
-            # Creating 4x4 Crossing Numbers (including Rashis)
+            # 4x4 Crossing (with Rashis)
             in_harufs_with_rashi = list(dict.fromkeys([h for h in in_harufs] + [get_rashi_digit(h) for h in in_harufs]))
             out_harufs_with_rashi = list(dict.fromkeys([h for h in out_harufs] + [get_rashi_digit(h) for h in out_harufs]))
             crossed_pairs_4x4 = [f"{i}{o}" for i in in_harufs_with_rashi for o in out_harufs_with_rashi]
@@ -122,8 +122,8 @@ if uploaded_file is not None:
             st.write(f"• **सबसे मजबूत 1-Day Follow-up:** {top_1d.to_dict()}")
             st.write(f"• **सबसे मजबूत 2-Day Follow-up:** {top_2d.to_dict()}")
             st.write(f"• **सबसे मजबूत 8-Number Family:** {target_fam}")
-            st.write(f"• **टॉप 2 अंदर हरूफ:** {in_harufs}")
-            st.write(f"• **टॉप 2 बाहर हरूफ:** {out_harufs}")
+            st.write(f"• **सबसे मजबूत अंदर हरूफ:** {in_harufs}")
+            st.write(f"• **सबसे मजबूत बाहर हरूफ:** {out_harufs}")
             st.write(f"• **फैमिली पासिंग दर:** Observed Rate = **{fam_obs_rate}%**")
             
             st.markdown("---")
@@ -139,20 +139,20 @@ if uploaded_file is not None:
             c_box1, c_box2 = st.columns(2)
             
             with c_box1:
-                st.markdown("**📋 1-Day Follow-up Numbers:**")
+                st.markdown("**📋 1-Day Follow-up Numbers (कॉपी करें):**")
                 st.code(str_1d_copy, language="text")
                 
-                st.markdown("**📋 टॉप 2 अंदर हरूफ (Inside Haruf):**")
+                st.markdown("**📋 अंदर हरूफ / Inside Haruf (कॉपी करें):**")
                 st.code(str_in_h_copy, language="text")
 
                 st.markdown("**🎯 हरूफ 2x2 क्रॉसिंग नंबर (4 जोड़ी):**")
                 st.code(str_crossed_2x2, language="text")
 
             with c_box2:
-                st.markdown("**📋 2-Day Follow-up Numbers:**")
+                st.markdown("**📋 2-Day Follow-up Numbers (कॉपी करें):**")
                 st.code(str_2d_copy, language="text")
                 
-                st.markdown("**📋 टॉप 2 बाहर हरूफ (Outside Haruf):**")
+                st.markdown("**📋 बाहर हरूफ / Outside Haruf (कॉपी करें):**")
                 st.code(str_out_h_copy, language="text")
 
                 st.markdown("**🔥 राशि मिलाकर हरूफ क्रॉसिंग नंबर (16 जोड़ी):**")
@@ -165,27 +165,29 @@ if uploaded_file is not None:
             st.markdown("### 📊 50-Point Scan Structured Output Table")
             
             results_table = []
+            
+            # Exact Numbers Scan
             all_exact_nums = set(top_1d.index).union(set(top_2d.index))
             for num in all_exact_nums:
-                c1 = (d1_series == num).sum()
-                c2 = (d2_series == num).sum()
+                c1 = (d1_vals == num).sum()
+                c2 = (d2_vals == num).sum()
                 tot_c = c1 + c2
                 tot_opps = opps_d1 + opps_d2
                 obs_rate = round((tot_c / tot_opps) * 100, 2) if tot_opps > 0 else 0.0
                 
-                if obs_rate >= min_rate_filter or c1 >= 1 or c2 >= 1:
-                    results_table.append({
-                        "पैटर्न / नियम": f"Exact Follow-up -> {num:02d}",
-                        "Last Result": f"{last_result:02d}",
-                        "Total Historical Count": total_hist_count,
-                        "Total Opportunities": tot_opps,
-                        "1-Day Count": c1,
-                        "2-Day Count": c2,
-                        "Observed Rate %": f"{obs_rate}%",
-                        "Family / Rashi": str(get_family(num)),
-                        "Strength": "🔥 HIGH" if obs_rate >= 10 else "⚡ MEDIUM"
-                    })
+                results_table.append({
+                    "पैटर्न / नियम": f"Exact Follow-up -> {num:02d}",
+                    "Last Result": f"{last_result:02d}",
+                    "Total Historical Count": total_hist_count,
+                    "Total Opportunities": tot_opps,
+                    "1-Day Count": c1,
+                    "2-Day Count": c2,
+                    "Observed Rate %": f"{obs_rate}%",
+                    "Family / Rashi": str(get_family(num)),
+                    "Strength": "🔥 HIGH" if obs_rate >= 10 else "⚡ MEDIUM"
+                })
 
+            # Same Family Row
             results_table.append({
                 "पैटर्न / नियम": f"Same Family Repeat ({last_result:02d} Family)",
                 "Last Result": f"{last_result:02d}",

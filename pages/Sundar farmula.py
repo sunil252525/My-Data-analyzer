@@ -134,3 +134,91 @@ if 'df' in locals() and df is not None:
         st.warning("CSV फ़ाइल में 'GALI' कॉलम नाम नहीं मिला।")
 else:
     st.warning("⚠️ कृपया पहले अपनी CSV फ़ाइल अपलोड करें।")
+# ----------------------------------------------------
+# LIVE ALERT & AUTO SCANNER SECTION
+# ----------------------------------------------------
+st.markdown("---")
+st.subheader("🚨 आज / वर्तमान लाइव पैटर्न अलर्ट (Live Trick Alert)")
+
+# 1. यदि यूज़र ने मैन्युअली CSV अपलोड की है या फिर रिपोजिटरी में रखी 'data.csv' को ऑटो-लोड करना
+df = None
+if 'uploaded_file' in locals() and uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+else:
+    try:
+        df = pd.read_csv("data.csv")  # आपकी CSV फ़ाइल का नाम
+    except Exception:
+        df = None
+
+# 2. डेटा मिलने पर आगे की प्रोसेसिंग
+if df is not None:
+    if 'GALI' in df.columns:
+        date_col = 'A' if 'A' in df.columns else df.columns[0]
+        valid_gali_df = df.dropna(subset=['GALI']).copy()
+        
+        if not valid_gali_df.empty:
+            latest_valid_idx = valid_gali_df.index[-1]
+            latest_gali = int(valid_gali_df.loc[latest_valid_idx, 'GALI'])
+            latest_date = valid_gali_df.loc[latest_valid_idx, date_col]
+            
+            d1 = latest_gali // 10
+            d2 = latest_gali % 10
+            is_special_trick = (d1 == 0) or (d1 == d2)
+            
+            if is_special_trick:
+                st.error(f"🔥 **विशेष ट्रिक अलर्ट:** तारीख `{latest_date}` (GALI: `{latest_gali:02d}`) पर '0/जोड़ा घटत पैटर्न' **एक्टिव (ACTIVE)** है!")
+            else:
+                st.info(f"📍 **हालिया दर्ज रिजल्ट:** तारीख `{latest_date}` | GALI: `{latest_gali:02d}`")
+
+            diff_d, diff_r, main_harufs, res_pairs = run_gali_dswr_custom_pattern(latest_gali)
+
+            st.write(f"• **गली रिजल्ट:** `{latest_gali:02d}` | **अंतर अंक:** `{diff_d}` (राशि: `{diff_r}`)")
+
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+                st.markdown("**📋 अगले दिन के लिए मुख्य हरूफ (Direct Copy):**")
+                st.code(", ".join(map(str, main_harufs)), language="text")
+
+            with col_g2:
+                st.markdown("**🎯 दिसावर/अगले दिन के संभावित नंबर (Direct Copy):**")
+                st.code(", ".join(res_pairs), language="text")
+
+            st.markdown("---")
+            st.subheader("📜 इतिहास में इस ट्रिक की पासिंग लिस्ट (Historical Records)")
+
+            history_data = []
+            if 'DSWR' in df.columns:
+                for i in range(len(df) - 1):
+                    if pd.notna(df.loc[i, 'GALI']) and pd.notna(df.loc[i+1, 'DSWR']):
+                        try:
+                            g_val = int(df.loc[i, 'GALI'])
+                            d_val = int(df.loc[i+1, 'DSWR'])
+                            g_d1 = g_val // 10
+                            g_d2 = g_val % 10
+                            
+                            if g_d1 == 0 or g_d1 == g_d2:
+                                _, _, h_harufs, h_pairs = run_gali_dswr_custom_pattern(g_val)
+                                d_str = f"{d_val:02d}"
+                                is_hit = (d_str in h_pairs) or (d_val // 10 in h_harufs) or (d_val % 10 in h_harufs)
+                                
+                                history_data.append({
+                                    "तारीख (गली)": df.loc[i, date_col],
+                                    "GALI": f"{g_val:02d}",
+                                    "निकाले गए हरूफ": ", ".join(map(str, h_harufs)),
+                                    "अगली तारीख": df.loc[i+1, date_col],
+                                    "DSWR": f"{d_val:02d}",
+                                    "ट्रिक पासिंग": "✅ PASS" if is_hit else "❌ FAIL"
+                                })
+                        except Exception:
+                            continue
+
+                if history_data:
+                    st.dataframe(pd.DataFrame(history_data), use_container_width=True)
+                else:
+                    st.write("डेटाबेस में ऐसा कोई ऐतिहासिक पैटर्न रिकॉर्ड नहीं मिला।")
+        else:
+            st.warning("गली (GALI) कॉलम में डेटा उपलब्ध नहीं है।")
+    else:
+        st.warning("CSV फ़ाइल में 'GALI' नाम का कॉलम नहीं मिला।")
+else:
+    st.warning("⚠️ कृपया स्क्रीन पर ऊपर दिए गए फ़ाइल अपलोडर से अपनी CSV फ़ाइल चुनें।")

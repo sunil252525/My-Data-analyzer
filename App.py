@@ -167,6 +167,32 @@ if uploaded_file is not None:
                     top_2d_plat = [get_plat(n) for n in top_2d_direct]
 
                     # ----------------------------------------------------
+                    # FORMATTING WITH BRACKETS (100) & (50)
+                    # ----------------------------------------------------
+                    # 1. 2x2 Crossing
+                    crossed_2x2_dir_b = [f"{n}(100)" for n in crossed_pairs_2x2_direct]
+                    crossed_2x2_plt_b = [f"{n}(50)" for n in crossed_pairs_2x2_plat]
+
+                    # 2. Haruf Pairs
+                    haruf_pairs_b = [f"{n}(50)" for n in haruf_pairs]
+
+                    # 3. 1-Day Follow-up
+                    top_1d_dir_b = [f"{n}(50)" for n in top_1d_direct]
+                    top_1d_plt_b = [f"{n}(50)" for n in top_1d_plat]
+
+                    # 4. 2-Day Follow-up
+                    top_2d_dir_b = [f"{n}(50)" for n in top_2d_direct]
+                    top_2d_plt_b = [f"{n}(50)" for n in top_2d_plat]
+
+                    # 5. 24-Hour All Games
+                    top_24h_dir_b = [f"{n}(100)" for n in top_24h_direct]
+                    top_24h_plt_b = [f"{n}(50)" for n in top_24h_plat]
+
+                    # 6. 24-Hour Haruf Numbers & Pairs
+                    all_24h_haruf_nums_b = [f"{n}(50)" for n in all_24h_haruf_nums]
+                    all_24h_haruf_plat_b = [f"{n}(50)" for n in all_24h_haruf_plat]
+
+                    # ----------------------------------------------------
                     # 1. EXECUTIVE SUMMARY & HISTORICAL STATS
                     # ----------------------------------------------------
                     st.subheader(f"📌 {col} का ऐतिहासिक विश्लेषण (Last Result: {last_result:02d})")
@@ -190,43 +216,26 @@ if uploaded_file is not None:
                     st.markdown("### 📋 अलग-अलग कैटेगरी बॉक्स")
                     
                     c_box1, c_box2 = st.columns(2)
-                    
-                    line_2x2_dir = ", ".join(crossed_pairs_2x2_direct)
-                    line_2x2_plt = ", ".join(crossed_pairs_2x2_plat)
-                    
-                    line_pairs = ", ".join(haruf_pairs)
-                    
-                    line_d1_dir = ", ".join(top_1d_direct)
-                    line_d1_plt = ", ".join(top_1d_plat)
-                    
-                    line_d2_dir = ", ".join(top_2d_direct)
-                    line_d2_plt = ", ".join(top_2d_plat)
-
-                    line_24h_dir = ", ".join(top_24h_direct)
-                    line_24h_plt = ", ".join(top_24h_plat)
-
-                    line_24h_haruf_dir = ", ".join(all_24h_haruf_nums)
-                    line_24h_haruf_plt = ", ".join(all_24h_haruf_plat)
 
                     with c_box1:
                         st.markdown("**🎯 हरूफ 2x2 क्रॉसिंग (4 जोड़ी सीधी + पलट):**")
-                        st.code(f"{line_2x2_dir}\n{line_2x2_plt}", language="text")
+                        st.code(f"{', '.join(crossed_2x2_dir_b)}\n{', '.join(crossed_2x2_plt_b)}", language="text")
 
                         st.markdown("**📋 1-Day Follow-up Numbers (सीधी + पलट):**")
-                        st.code(f"{line_d1_dir}\n{line_d1_plt}", language="text")
+                        st.code(f"{', '.join(top_1d_dir_b)}\n{', '.join(top_1d_plt_b)}", language="text")
 
                         st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम रिपीट - सीधी + पलट):**")
-                        st.code(f"{line_24h_dir}\n{line_24h_plt}", language="text")
+                        st.code(f"{', '.join(top_24h_dir_b)}\n{', '.join(top_24h_plt_b)}", language="text")
 
                     with c_box2:
                         st.markdown("**👯 हरूफ के जोड़े (Pairs / Jode):**")
-                        st.code(line_pairs, language="text")
+                        st.code(", ".join(haruf_pairs_b), language="text")
 
                         st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
-                        st.code(f"{line_d2_dir}\n{line_d2_plt}", language="text")
+                        st.code(f"{', '.join(top_2d_dir_b)}\n{', '.join(top_2d_plt_b)}", language="text")
 
                         st.markdown("**🎲 24-Hour Haruf Numbers & Pairs (24 घंटे हर्फ़ के नंबर और जोड़े - सीधी + पलट):**")
-                        st.code(f"{line_24h_haruf_dir}\n{line_24h_haruf_plt}", language="text")
+                        st.code(f"{', '.join(all_24h_haruf_nums_b)}\n{', '.join(all_24h_haruf_plat_b)}", language="text")
 
                     st.markdown("---")
 
@@ -235,34 +244,43 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
 
-                    raw_lines = [
-                        crossed_pairs_2x2_direct,
-                        crossed_pairs_2x2_plat,
-                        haruf_pairs,
-                        top_1d_direct,
-                        top_1d_plat,
-                        top_2d_direct,
-                        top_2d_plat,
-                        top_24h_direct,
-                        top_24h_plat,
-                        all_24h_haruf_nums,
-                        all_24h_haruf_plat
+                    raw_lines_b = [
+                        crossed_2x2_dir_b,
+                        crossed_2x2_plt_b,
+                        haruf_pairs_b,
+                        top_1d_dir_b,
+                        top_1d_plt_b,
+                        top_2d_dir_b,
+                        top_2d_plt_b,
+                        top_24h_dir_b,
+                        top_24h_plt_b,
+                        all_24h_haruf_nums_b,
+                        all_24h_haruf_plat_b
                     ]
 
-                    all_comb_numbers = [item.strip() for sublist in raw_lines for item in sublist if item.strip()]
+                    all_comb_numbers_b = [item.strip() for sublist in raw_lines_b for item in sublist if item.strip()]
                     
-                    total_box_count = len(all_comb_numbers)
-                    unique_box_count = len(set(all_comb_numbers))
-                    same_to_same_matches = total_box_count - unique_box_count
+                    total_box_count = len(all_comb_numbers_b)
+                    
+                    # आधारभूत नंबर (संख्या) के अनुसार डुप्लिकेट जांच
+                    seen_base_nums = set()
+                    unique_count = 0
+                    for item in all_comb_numbers_b:
+                        base_n = item.split("(")[0].strip()
+                        if base_n not in seen_base_nums:
+                            seen_base_nums.add(base_n)
+                            unique_count += 1
+
+                    same_to_same_matches = total_box_count - unique_count
 
                     st.success(
                         f"📊 **ऑल-इन-वन बॉक्स समरी:**\n"
                         f"• **कुल दर्ज नंबर (Total Numbers):** {total_box_count}\n"
                         f"• **सेम टू सेम (Duplicate):** {same_to_same_matches} नंबर\n"
-                        f"• **यूनिक नंबर (Unique Numbers):** {unique_box_count}"
+                        f"• **यूनिक नंबर (Unique Numbers):** {unique_count}"
                     )
 
-                    all_in_one_text = "\n".join([", ".join(l) for l in raw_lines if l])
+                    all_in_one_text = "\n".join([", ".join(l) for l in raw_lines_b if l])
 
                     st.code(all_in_one_text, language="text")
 
@@ -271,22 +289,24 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Pattern Preserved - Duplicate Removed)")
 
-                    seen_numbers = set()
+                    seen_base = set()
                     unique_pattern_lines = []
 
-                    for line in raw_lines:
+                    for line in raw_lines_b:
                         filtered_line = []
-                        for num in line:
-                            num_clean = num.strip()
-                            # 100% सटीक जांच: यदि यह नंबर पहली बार आया है तो ही जोड़ें
-                            if num_clean and num_clean not in seen_numbers:
-                                filtered_line.append(num_clean)
-                                seen_numbers.add(num_clean)
+                        for item in line:
+                            item_clean = item.strip()
+                            if item_clean:
+                                base_num = item_clean.split("(")[0].strip()
+                                # यदि मूल नंबर पहले नहीं आया है, तो ब्रैकेट वाले फ़ॉर्मैट को जोड़ें
+                                if base_num not in seen_base:
+                                    filtered_line.append(item_clean)
+                                    seen_base.add(base_num)
                         
                         if filtered_line:
                             unique_pattern_lines.append(", ".join(filtered_line))
 
-                    final_unique_count = len(seen_numbers)
+                    final_unique_count = len(seen_base)
 
                     st.info(
                         f"🔢 **यूनिक पैटर्न बॉक्स गिनती (Total Unique Numbers Count):**\n"
@@ -297,8 +317,8 @@ if uploaded_file is not None:
 
                     st.code(unique_pattern_box_text, language="text")
 
-                    # --- WHATSAPP SHARE LINK GENERATOR ---
-                    msg_text = f"🎯 *{col} - Unique Pattern Numbers* (Total: {final_unique_count})\n\n{unique_pattern_box_text}"
+                    # --- WHATSAPP SHARE LINK GENERATOR (Clean Message Format) ---
+                    msg_text = f"🎯 *{col}*\nTotal: {final_unique_count}\n\n{unique_pattern_box_text}"
                     encoded_msg = urllib.parse.quote(msg_text)
                     whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
 

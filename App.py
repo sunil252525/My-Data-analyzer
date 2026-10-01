@@ -32,6 +32,14 @@ def get_family(num):
     except:
         return []
 
+# Helper function to get Inside/Outside Haruf
+def get_haruf(num):
+    try:
+        num = int(num)
+        return num // 10, num % 10
+    except:
+        return None, None
+
 # Helper function to get Reverse (Palat) of a 2-digit formatted number string
 def get_plat(num_str):
     num_str = f"{int(num_str):02d}"
@@ -83,6 +91,9 @@ if uploaded_file is not None:
                 t_idx = df[df[col] == last_result].index
                 total_hist_count = len(t_idx)
                 
+                # ----------------------------------------------------
+                # A. 1-DAY AND 2-DAY SINGLE-GAME SCAN LOGIC
+                # ----------------------------------------------------
                 d1_idx = [i + 1 for i in t_idx if i + 1 < len(df)]
                 d2_idx = [i + 2 for i in t_idx if i + 2 < len(df)]
                 
@@ -113,7 +124,30 @@ if uploaded_file is not None:
                     in_harufs = list(in_h_top2.index)
                     out_harufs = list(out_h_top2.index)
 
-                    # Numbers Preparation
+                    # ----------------------------------------------------
+                    # B. 24-HOUR ALL-GAMES ENGINE SCAN LOGIC
+                    # ----------------------------------------------------
+                    next_24h_numbers, haruf_in_24h, haruf_out_24h = [], [], []
+                    family_hits_24h = 0
+
+                    for match_i in t_idx:
+                        if match_i + 1 < len(df):
+                            for c_24 in available_cols:
+                                val_24 = df.loc[match_i + 1, c_24]
+                                if pd.notna(val_24):
+                                    val_int = int(val_24)
+                                    next_24h_numbers.append(val_int)
+                                    h_i, h_o = get_haruf(val_int)
+                                    if h_i is not None: haruf_in_24h.append(h_i)
+                                    if h_o is not None: haruf_out_24h.append(h_o)
+                                    if val_int in target_fam:
+                                        family_hits_24h += 1
+
+                    top_24h_series = pd.Series(next_24h_numbers).value_counts().head(5) if next_24h_numbers else pd.Series()
+                    top_24h_direct = [f"{num:02d}" for num in top_24h_series.index]
+                    top_24h_plat = [get_plat(n) for n in top_24h_direct]
+
+                    # Numbers Preparation for Standard Boxes
                     crossed_pairs_2x2_direct = [f"{i}{o}" for i in in_harufs for o in out_harufs]
                     crossed_pairs_2x2_plat = [get_plat(p) for p in crossed_pairs_2x2_direct]
 
@@ -134,9 +168,11 @@ if uploaded_file is not None:
                     
                     top_1d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_1d.to_dict().items()])
                     top_2d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_2d.to_dict().items()])
+                    top_24h_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_24h_series.to_dict().items()])
                     
                     st.write(f"• **सबसे मजबूत 1-Day Follow-up (फ्रीक्वेंसी):** {top_1d_str}")
                     st.write(f"• **सबसे मजबूत 2-Day Follow-up (फ्रीक्वेंसी):** {top_2d_str}")
+                    st.write(f"• **24-Hour All-Games Repeat (फ्रीक्वेंसी):** {top_24h_str}")
                     st.write(f"• **सबसे मजबूत 8-Number Family:** {target_fam}")
                     st.write(f"• **सबसे मजबूत अंदर हरूफ:** {in_harufs} | **बाहर हरूफ:** {out_harufs}")
                     st.write(f"• **फैमिली पासिंग दर:** Observed Rate = **{fam_obs_rate}%**")
@@ -144,13 +180,13 @@ if uploaded_file is not None:
                     st.markdown("---")
                     
                     # ----------------------------------------------------
-                    # 2. INDIVIDUAL BOXES
+                    # 2. INDIVIDUAL CATEGORY BOXES
                     # ----------------------------------------------------
                     st.markdown("### 📋 अलग-अलग कैटेगरी बॉक्स")
                     
                     c_box1, c_box2 = st.columns(2)
                     
-                    # Individual Box Lines (Format)
+                    # Individual Line Strings
                     line_2x2_dir = ", ".join(crossed_pairs_2x2_direct)
                     line_2x2_plt = ", ".join(crossed_pairs_2x2_plat)
                     
@@ -161,6 +197,9 @@ if uploaded_file is not None:
                     
                     line_d2_dir = ", ".join(top_2d_direct)
                     line_d2_plt = ", ".join(top_2d_plat)
+
+                    line_24h_dir = ", ".join(top_24h_direct)
+                    line_24h_plt = ", ".join(top_24h_plat)
 
                     with c_box1:
                         # 2x2 Crossing Box
@@ -180,13 +219,17 @@ if uploaded_file is not None:
                         st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d2_dir}\n{line_d2_plt}", language="text")
 
+                    # Separate Dedicated Box for 24-Hour All Games Engine
+                    st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम - सीधी + पलट):**")
+                    st.code(f"{line_24h_dir}\n{line_24h_plt}", language="text")
+
                     st.markdown("---")
 
                     # ----------------------------------------------------
-                    # 3. ALL-IN-ONE COMBINED BOX (EXACT SAME LAYOUT, ONE-CLICK COPY)
+                    # 3. ALL-IN-ONE COMBINED BOX (INCLUDES ALL 5 BOXES)
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
-                    st.info("चारों बॉक्स का हुबहू रूप (बिना किसी बदलाव के) एक साथ नीचे एक ही बॉक्स में दिया गया है:")
+                    st.info("पाँचों बॉक्स की सीधी और पलट की सभी लाइनें (बिना किसी टेक्स्ट के) एक साथ नीचे दिए गए बॉक्स में उपलब्ध हैं:")
 
                     all_in_one_text = (
                         f"{line_2x2_dir}\n"
@@ -195,7 +238,9 @@ if uploaded_file is not None:
                         f"{line_d1_dir}\n"
                         f"{line_d1_plt}\n"
                         f"{line_d2_dir}\n"
-                        f"{line_d2_plt}"
+                        f"{line_d2_plt}\n"
+                        f"{line_24h_dir}\n"
+                        f"{line_24h_plt}"
                     )
 
                     st.code(all_in_one_text, language="text")
@@ -236,4 +281,4 @@ if uploaded_file is not None:
                         st.table(pd.DataFrame(results_table))
                     else:
                         st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
-                                
+                    

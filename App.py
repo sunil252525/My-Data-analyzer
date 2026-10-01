@@ -167,7 +167,7 @@ if uploaded_file is not None:
                     top_1d_plat = [get_plat(n) for n in top_1d_direct]
 
                     top_2d_direct = [f"{num:02d}" for num in top_2d.index]
-                    top_2d_plat = [get_plat(n) for n in top_2d_plat if 'top_2d_plat' in locals()] if False else [get_plat(n) for n in top_2d_direct]
+                    top_2d_plat = [get_plat(n) for n in top_2d_direct]
 
                     # ----------------------------------------------------
                     # 1. EXECUTIVE SUMMARY & HISTORICAL STATS
@@ -245,18 +245,23 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
 
-                    # Calculation of Total, Unique, and Matching Numbers
-                    raw_lines_list = [
-                        crossed_pairs_2x2_direct, crossed_pairs_2x2_plat,
-                        haruf_pairs,
-                        top_1d_direct, top_1d_plat,
-                        top_2d_direct, top_2d_plat,
-                        top_24h_direct, top_24h_plat,
-                        all_24h_haruf_nums, all_24h_haruf_plat
+                    # Direct and Palat Line Lists
+                    direct_lists = [
+                        crossed_pairs_2x2_direct, haruf_pairs,
+                        top_1d_direct, top_2d_direct,
+                        top_24h_direct, all_24h_haruf_nums
                     ]
                     
-                    # Flatten list of all numbers
-                    all_comb_numbers = [item.strip() for sublist in raw_lines_list for item in sublist if item.strip()]
+                    palat_lists = [
+                        crossed_pairs_2x2_plat,
+                        top_1d_plat, top_2d_plat,
+                        top_24h_plat, all_24h_haruf_plat
+                    ]
+
+                    all_direct_nums = [item.strip() for sublist in direct_lists for item in sublist if item.strip()]
+                    all_palat_nums = [item.strip() for sublist in palat_lists for item in sublist if item.strip()]
+
+                    all_comb_numbers = all_direct_nums + all_palat_nums
                     
                     total_box_count = len(all_comb_numbers)
                     unique_box_count = len(set(all_comb_numbers))
@@ -285,6 +290,23 @@ if uploaded_file is not None:
                     )
 
                     st.code(all_in_one_text, language="text")
+
+                    # ----------------------------------------------------
+                    # 4. NEW UNIQUE / FILTERED BOX (NO REPEAT NUMBERS)
+                    # ----------------------------------------------------
+                    st.markdown("### 🎯 यूनिक फिल्टर बॉक्स (Unique Numbers Only - बिना किसी डुप्लिकेट के)")
+                    st.info("नीचे वाले बॉक्स में ऊपर की सभी लाइनों में से सेम-टू-सेम (Duplicate) नंबरों को हटा दिया गया है।")
+
+                    # Deduplication while preserving order
+                    unique_direct = list(dict.fromkeys(all_direct_nums))
+                    unique_palat = list(dict.fromkeys(all_palat_nums))
+
+                    unique_direct_str = ", ".join(unique_direct)
+                    unique_palat_str = ", ".join(unique_palat)
+
+                    unique_box_text = f"{unique_direct_str}\n{unique_palat_str}"
+
+                    st.code(unique_box_text, language="text")
 
                     # Structured Output Table
                     st.markdown("#### 📊 50-Point Scan Table Filtered")

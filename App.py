@@ -213,28 +213,22 @@ if uploaded_file is not None:
                     line_24h_haruf_plt = ", ".join(all_24h_haruf_plat)
 
                     with c_box1:
-                        # 2x2 Crossing Box
                         st.markdown("**🎯 हरूफ 2x2 क्रॉसिंग (4 जोड़ी सीधी + पलट):**")
                         st.code(f"{line_2x2_dir}\n{line_2x2_plt}", language="text")
 
-                        # Day 1 Follow-up Box
                         st.markdown("**📋 1-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d1_dir}\n{line_d1_plt}", language="text")
 
-                        # Dedicated Box for 24-Hour Repeat Numbers
                         st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम रिपीट - सीधी + पलट):**")
                         st.code(f"{line_24h_dir}\n{line_24h_plt}", language="text")
 
                     with c_box2:
-                        # Haruf Pairs Box
                         st.markdown("**👯 हरूफ के जोड़े (Pairs / Jode):**")
                         st.code(line_pairs, language="text")
 
-                        # Day 2 Follow-up Box
                         st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d2_dir}\n{line_d2_plt}", language="text")
 
-                        # Dedicated Box for 24-Hour Haruf Numbers & Pairs
                         st.markdown("**🎲 24-Hour Haruf Numbers & Pairs (24 घंटे हर्फ़ के नंबर और जोड़े - सीधी + पलट):**")
                         st.code(f"{line_24h_haruf_dir}\n{line_24h_haruf_plt}", language="text")
 
@@ -245,7 +239,6 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
 
-                    # Direct and Palat Line Lists
                     direct_lists = [
                         crossed_pairs_2x2_direct, haruf_pairs,
                         top_1d_direct, top_2d_direct,
@@ -267,12 +260,11 @@ if uploaded_file is not None:
                     unique_box_count = len(set(all_comb_numbers))
                     same_to_same_matches = total_box_count - unique_box_count
 
-                    # Header Summary Info Banner
                     st.success(
-                        f"📊 **बॉक्स समरी रिपोर्ट:**\n"
+                        f"📊 **ऑल-इन-वन बॉक्स समरी:**\n"
                         f"• **कुल दर्ज नंबर (Total Numbers):** {total_box_count}\n"
-                        f"• **सेम टू सेम (Same-to-Same Matching / Duplicate):** {same_to_same_matches} नंबर\n"
-                        f"• **यूनिक / अलग-अलग नंबर (Unique Distinct Numbers):** {unique_box_count}"
+                        f"• **सेम टू सेम (Duplicate):** {same_to_same_matches} नंबर\n"
+                        f"• **यूनिक नंबर (Unique Numbers):** {unique_box_count}"
                     )
 
                     all_in_one_text = (
@@ -292,23 +284,45 @@ if uploaded_file is not None:
                     st.code(all_in_one_text, language="text")
 
                     # ----------------------------------------------------
-                    # 4. NEW UNIQUE / FILTERED BOX (NO REPEAT NUMBERS)
+                    # 4. UPDATED UNIQUE FILTERED BOX WITH STRICT LINE LOGIC & COUNTER
                     # ----------------------------------------------------
-                    st.markdown("### 🎯 यूनिक फिल्टर बॉक्स (Unique Numbers Only - बिना किसी डुप्लिकेट के)")
-                    st.info("नीचे वाले बॉक्स में ऊपर की सभी लाइनों में से सेम-टू-सेम (Duplicate) नंबरों को हटा दिया गया है।")
+                    st.markdown("### 🎯 यूनिक फिल्टर बॉक्स (Unique Numbers Only - लाइन वाइज फ़िल्टर)")
 
-                    # Deduplication while preserving order
-                    unique_direct = list(dict.fromkeys(all_direct_nums))
-                    unique_palat = list(dict.fromkeys(all_palat_nums))
+                    # Step A: Filter Direct Line (remove duplicates within top line)
+                    filtered_direct = []
+                    for num in all_direct_nums:
+                        if num not in filtered_direct:
+                            filtered_direct.append(num)
 
-                    unique_direct_str = ", ".join(unique_direct)
-                    unique_palat_str = ", ".join(unique_palat)
+                    # Step B: Filter Palat Line (remove duplicates within bottom line AND remove numbers present in top line)
+                    filtered_palat = []
+                    for num in all_palat_nums:
+                        if num not in filtered_direct and num not in filtered_palat:
+                            filtered_palat.append(num)
+
+                    # Counts calculation
+                    count_direct = len(filtered_direct)
+                    count_palat = len(filtered_palat)
+                    total_unique_final = count_direct + count_palat
+
+                    # Banner with clear counters
+                    st.info(
+                        f"🔢 **यूनिक बॉक्स गिनती (Count Report):**\n"
+                        f"• **कुल यूनिक नंबर (Total Unique):** {total_unique_final} नंबर\n"
+                        f"• **ऊपर की लाइन (सीधी):** {count_direct} नंबर\n"
+                        f"• **नीचे की लाइन (पलट - फिल्टर के बाद):** {count_palat} नंबर"
+                    )
+
+                    unique_direct_str = ", ".join(filtered_direct)
+                    unique_palat_str = ", ".join(filtered_palat)
 
                     unique_box_text = f"{unique_direct_str}\n{unique_palat_str}"
 
                     st.code(unique_box_text, language="text")
 
-                    # Structured Output Table
+                    # ----------------------------------------------------
+                    # 5. STRUCTURED TABLE OUTPUT
+                    # ----------------------------------------------------
                     st.markdown("#### 📊 50-Point Scan Table Filtered")
                     results_table = []
                     all_exact_nums = set(top_1d.index).union(set(top_2d.index))

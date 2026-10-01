@@ -127,12 +127,11 @@ if uploaded_file is not None:
                     top_2d_plat = [get_plat(n) for n in top_2d_direct]
 
                     # ----------------------------------------------------
-                    # 1. EXECUTIVE SUMMARY & HISTORICAL STATS (पहले जैसा निष्‍कर्ष)
+                    # 1. EXECUTIVE SUMMARY & HISTORICAL STATS
                     # ----------------------------------------------------
                     st.subheader(f"📌 {col} का ऐतिहासिक विश्लेषण (Last Result: {last_result:02d})")
                     st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** 13 साल के रिकॉर्ड में **{col}** में **{last_result:02d}** कुल **{total_hist_count} बार** आया है।")
                     
-                    # Formatting frequency dict string e.g., 25: 10 बार, 50: 5 बार
                     top_1d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_1d.to_dict().items()])
                     top_2d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_2d.to_dict().items()])
                     
@@ -145,51 +144,61 @@ if uploaded_file is not None:
                     st.markdown("---")
                     
                     # ----------------------------------------------------
-                    # 2. INDIVIDUAL BOXES (सीधी + नीचे डेश लगाकर पलट)
+                    # 2. INDIVIDUAL BOXES
                     # ----------------------------------------------------
-                    st.markdown("### 📋 अलग-अलग कैटेगरी बॉक्स (सीधी एवं नीचे पलट)")
+                    st.markdown("### 📋 अलग-अलग कैटेगरी बॉक्स")
                     
                     c_box1, c_box2 = st.columns(2)
                     
+                    # Individual Box Lines (Format)
+                    line_2x2_dir = ", ".join(crossed_pairs_2x2_direct)
+                    line_2x2_plt = ", ".join(crossed_pairs_2x2_plat)
+                    
+                    line_pairs = ", ".join(haruf_pairs)
+                    
+                    line_d1_dir = ", ".join(top_1d_direct)
+                    line_d1_plt = ", ".join(top_1d_plat)
+                    
+                    line_d2_dir = ", ".join(top_2d_direct)
+                    line_d2_plt = ", ".join(top_2d_plat)
+
                     with c_box1:
                         # 2x2 Crossing Box
-                        str_2x2_box = ", ".join(crossed_pairs_2x2_direct) + "\n-- (पलट) --\n" + ", ".join(crossed_pairs_2x2_plat)
                         st.markdown("**🎯 हरूफ 2x2 क्रॉसिंग (4 जोड़ी सीधी + पलट):**")
-                        st.code(str_2x2_box, language="text")
+                        st.code(f"{line_2x2_dir}\n{line_2x2_plt}", language="text")
 
                         # Day 1 Follow-up Box
-                        str_d1_box = ", ".join(top_1d_direct) + "\n-- (पलट) --\n" + ", ".join(top_1d_plat)
                         st.markdown("**📋 1-Day Follow-up Numbers (सीधी + पलट):**")
-                        st.code(str_d1_box, language="text")
+                        st.code(f"{line_d1_dir}\n{line_d1_plt}", language="text")
 
                     with c_box2:
                         # Haruf Pairs Box
                         st.markdown("**👯 हरूफ के जोड़े (Pairs / Jode):**")
-                        st.code(", ".join(haruf_pairs), language="text")
+                        st.code(line_pairs, language="text")
 
                         # Day 2 Follow-up Box
-                        str_d2_box = ", ".join(top_2d_direct) + "\n-- (पलट) --\n" + ", ".join(top_2d_plat)
                         st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
-                        st.code(str_d2_box, language="text")
+                        st.code(f"{line_d2_dir}\n{line_d2_plt}", language="text")
 
                     st.markdown("---")
 
                     # ----------------------------------------------------
-                    # 3. ALL-IN-ONE COMBINED BOX
+                    # 3. ALL-IN-ONE COMBINED BOX (EXACT SAME LAYOUT, ONE-CLICK COPY)
                     # ----------------------------------------------------
-                    all_combined_list = list(dict.fromkeys(
-                        crossed_pairs_2x2_direct + 
-                        crossed_pairs_2x2_plat + 
-                        haruf_pairs + 
-                        top_1d_direct + 
-                        top_1d_plat + 
-                        top_2d_direct + 
-                        top_2d_plat
-                    ))
+                    st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
+                    st.info("चारों बॉक्स का हुबहू रूप (बिना किसी बदलाव के) एक साथ नीचे एक ही बॉक्स में दिया गया है:")
 
-                    st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All Numbers Together)")
-                    st.info("ऊपर दिए गए सभी नंबरों (क्रॉसिंग, जोड़े, 1-Day, 2-Day और उनकी पलट) का एक साथ संयुक्त सेट:")
-                    st.code(", ".join(all_combined_list), language="text")
+                    all_in_one_text = (
+                        f"{line_2x2_dir}\n"
+                        f"{line_2x2_plt}\n"
+                        f"{line_pairs}\n"
+                        f"{line_d1_dir}\n"
+                        f"{line_d1_plt}\n"
+                        f"{line_d2_dir}\n"
+                        f"{line_d2_plt}"
+                    )
+
+                    st.code(all_in_one_text, language="text")
 
                     # Structured Output Table
                     st.markdown("#### 📊 50-Point Scan Table Filtered")
@@ -227,4 +236,4 @@ if uploaded_file is not None:
                         st.table(pd.DataFrame(results_table))
                     else:
                         st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
-                        
+                                

@@ -56,7 +56,7 @@ if uploaded_file is not None:
     st.success("✅ डेटाबेस सफलतापूर्वक लोड हो गया!")
 
     # ----------------------------------------------------
-    # 2. Scan Parameters (Defaulted to 100%)
+    # 2. Scan Parameters
     # ----------------------------------------------------
     st.markdown("---")
     st.subheader("⚙️ स्कैन पैरामीटर्स (Scan Parameters)")
@@ -74,7 +74,6 @@ if uploaded_file is not None:
     if run_scan:
         st.markdown("---")
         
-        # Streamlit Tabs for All Games on One Page
         tabs = st.tabs([f"🎯 {col}" for col in available_cols])
         
         for idx, col in enumerate(available_cols):
@@ -85,9 +84,7 @@ if uploaded_file is not None:
                     st.warning(f"{col} में कोई वैध डेटा नहीं है।")
                     continue
                 
-                # Auto-detect last result for this specific game
                 last_result = valid_series.iloc[-1]
-                
                 t_idx = df[df[col] == last_result].index
                 total_hist_count = len(t_idx)
                 
@@ -117,7 +114,6 @@ if uploaded_file is not None:
                     fam_m2 = sum(1 for v in d2_vals_list if v in target_fam)
                     fam_obs_rate = round(((fam_m1 + fam_m2) / (opps_d1 + opps_d2)) * 100, 2) if (opps_d1 + opps_d2) > 0 else 0.0
                     
-                    # Top 2 Inside & Outside Harufs
                     in_h_top2 = d1_vals.apply(lambda x: x // 10).value_counts().head(2)
                     out_h_top2 = d1_vals.apply(lambda x: x % 10).value_counts().head(2)
 
@@ -125,7 +121,7 @@ if uploaded_file is not None:
                     out_harufs = list(out_h_top2.index)
 
                     # ----------------------------------------------------
-                    # B. 24-HOUR ALL-GAMES ENGINE SCAN LOGIC
+                    # B. 24-HOUR ALL-GAMES ENGINE LOGIC
                     # ----------------------------------------------------
                     next_24h_numbers, haruf_in_24h, haruf_out_24h = [], [], []
                     family_hits_24h = 0
@@ -147,14 +143,15 @@ if uploaded_file is not None:
                     top_24h_direct = [f"{num:02d}" for num in top_24h_series.index]
                     top_24h_plat = [get_plat(n) for n in top_24h_direct]
 
-                    # 24-Hour Haruf Engine Crossing (Top Inside x Top Outside)
-                    in_24h_top2 = pd.Series(haruf_in_24h).value_counts().head(2).index.tolist() if haruf_in_24h else []
-                    out_24h_top2 = pd.Series(haruf_out_24h).value_counts().head(2).index.tolist() if haruf_out_24h else []
+                    # 24-Hour Top Harufs Extracted
+                    top_in_24h = pd.Series(haruf_in_24h).value_counts().head(3).index.tolist() if haruf_in_24h else []
+                    top_out_24h = pd.Series(haruf_out_24h).value_counts().head(3).index.tolist() if haruf_out_24h else []
 
-                    crossed_24h_direct = [f"{i}{o}" for i in in_24h_top2 for o in out_24h_top2]
+                    # 24-Hour Haruf Crossing (Inside x Outside)
+                    crossed_24h_direct = [f"{i}{o}" for i in top_in_24h for o in top_out_24h]
                     crossed_24h_plat = [get_plat(p) for p in crossed_24h_direct]
 
-                    # Numbers Preparation for Standard Boxes
+                    # Numbers Preparation for Regular Boxes
                     crossed_pairs_2x2_direct = [f"{i}{o}" for i in in_harufs for o in out_harufs]
                     crossed_pairs_2x2_plat = [get_plat(p) for p in crossed_pairs_2x2_direct]
 
@@ -180,8 +177,7 @@ if uploaded_file is not None:
                     st.write(f"• **सबसे मजबूत 1-Day Follow-up (फ्रीक्वेंसी):** {top_1d_str}")
                     st.write(f"• **सबसे मजबूत 2-Day Follow-up (फ्रीक्वेंसी):** {top_2d_str}")
                     st.write(f"• **24-Hour All-Games Repeat (फ्रीक्वेंसी):** {top_24h_str}")
-                    st.write(f"• **सबसे मजबूत 8-Number Family:** {target_fam}")
-                    st.write(f"• **सबसे मजबूत अंदर हरूफ:** {in_harufs} | **बाहर हरूफ:** {out_harufs}")
+                    st.write(f"• **24-Hour टॉप अंदर हर्फ़:** {top_in_24h} | **24-Hour टॉप बाहर हर्फ़:** {top_out_24h}")
                     st.write(f"• **फैमिली पासिंग दर:** Observed Rate = **{fam_obs_rate}%**")
                     
                     st.markdown("---")
@@ -221,7 +217,7 @@ if uploaded_file is not None:
                         st.code(f"{line_d1_dir}\n{line_d1_plt}", language="text")
 
                         # 24-Hour Haruf Crossing Box
-                        st.markdown("**🎲 24-Hour हर्फ़ क्रॉसिंग (अंक मिलाकर बने नंबर + पलट):**")
+                        st.markdown("**🎲 24-Hour हर्फ़ क्रॉसिंग (अंदर x बाहर हर्फ़ मिलाकर बने नंबर + नीचे पलट):**")
                         st.code(f"{line_24h_cross_dir}\n{line_24h_cross_plt}", language="text")
 
                     with c_box2:
@@ -240,10 +236,10 @@ if uploaded_file is not None:
                     st.markdown("---")
 
                     # ----------------------------------------------------
-                    # 3. ALL-IN-ONE COMBINED BOX (INCLUDES ALL 6 CATEGORY LINES)
+                    # 3. ALL-IN-ONE COMBINED BOX
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
-                    st.info("सभी बॉक्स की सीधी और पलट की लाइनें (बिना किसी टेक्स्ट के) एक साथ नीचे दिए गए बॉक्स में उपलब्ध हैं:")
+                    st.info("सभी 6 बॉक्स की सीधी और पलट की सभी लाइनें (बिना किसी अतिरिक्त टेक्स्ट के) एक साथ नीचे दिए गए बॉक्स में उपलब्ध हैं:")
 
                     all_in_one_text = (
                         f"{line_2x2_dir}\n"

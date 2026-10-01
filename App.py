@@ -41,10 +41,13 @@ def get_haruf(num):
     except:
         return None, None
 
-# Helper function to get Reverse (Palat) of a 2-digit formatted number string
-def get_plat(num_str):
-    num_str = f"{int(num_str):02d}"
-    return num_str[::-1]
+# Helper function to safely reverse (Palat) a number string formatted to 2 digits
+def get_plat(num_val):
+    try:
+        num_str = f"{int(num_val):02d}"
+        return num_str[::-1]
+    except:
+        return ""
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
@@ -125,7 +128,6 @@ if uploaded_file is not None:
                     # B. 24-HOUR ALL-GAMES ENGINE LOGIC
                     # ----------------------------------------------------
                     next_24h_numbers, haruf_in_24h, haruf_out_24h = [], [], []
-                    family_hits_24h = 0
 
                     for match_i in t_idx:
                         if match_i + 1 < len(df):
@@ -137,8 +139,6 @@ if uploaded_file is not None:
                                     h_i, h_o = get_haruf(val_int)
                                     if h_i is not None: haruf_in_24h.append(h_i)
                                     if h_o is not None: haruf_out_24h.append(h_o)
-                                    if val_int in target_fam:
-                                        family_hits_24h += 1
 
                     top_24h_series = pd.Series(next_24h_numbers).value_counts().head(5) if next_24h_numbers else pd.Series()
                     top_24h_direct = [f"{num:02d}" for num in top_24h_series.index]
@@ -242,7 +242,7 @@ if uploaded_file is not None:
                         top_1d_direct,
                         top_1d_plat,
                         top_2d_direct,
-                        top_24h_plat,
+                        top_2d_plat,
                         top_24h_direct,
                         top_24h_plat,
                         all_24h_haruf_nums,
@@ -278,6 +278,7 @@ if uploaded_file is not None:
                         filtered_line = []
                         for num in line:
                             num_clean = num.strip()
+                            # 100% सटीक जांच: यदि यह नंबर पहली बार आया है तो ही जोड़ें
                             if num_clean and num_clean not in seen_numbers:
                                 filtered_line.append(num_clean)
                                 seen_numbers.add(num_clean)
@@ -351,4 +352,4 @@ if uploaded_file is not None:
                         st.table(pd.DataFrame(results_table))
                     else:
                         st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
-                        
+                    

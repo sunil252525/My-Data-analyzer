@@ -147,9 +147,14 @@ if uploaded_file is not None:
                     top_in_24h = pd.Series(haruf_in_24h).value_counts().head(3).index.tolist() if haruf_in_24h else []
                     top_out_24h = pd.Series(haruf_out_24h).value_counts().head(3).index.tolist() if haruf_out_24h else []
 
-                    # 24-Hour Haruf Crossing (Inside x Outside)
+                    # 24-Hour Haruf Crossing & Haruf Pairs
                     crossed_24h_direct = [f"{i}{o}" for i in top_in_24h for o in top_out_24h]
-                    crossed_24h_plat = [get_plat(p) for p in crossed_24h_direct]
+                    all_24h_harufs = list(dict.fromkeys(top_in_24h + top_out_24h))
+                    haruf_24h_pairs = [f"{h}{h}" for h in all_24h_harufs]
+
+                    # Combine crossing numbers and pairs for Haruf Box
+                    all_24h_haruf_nums = crossed_24h_direct + haruf_24h_pairs
+                    all_24h_haruf_plat = [get_plat(p) for p in all_24h_haruf_nums]
 
                     # Numbers Preparation for Regular Boxes
                     crossed_pairs_2x2_direct = [f"{i}{o}" for i in in_harufs for o in out_harufs]
@@ -204,8 +209,8 @@ if uploaded_file is not None:
                     line_24h_dir = ", ".join(top_24h_direct)
                     line_24h_plt = ", ".join(top_24h_plat)
 
-                    line_24h_cross_dir = ", ".join(crossed_24h_direct)
-                    line_24h_cross_plt = ", ".join(crossed_24h_plat)
+                    line_24h_haruf_dir = ", ".join(all_24h_haruf_nums)
+                    line_24h_haruf_plt = ", ".join(all_24h_haruf_plat)
 
                     with c_box1:
                         # 2x2 Crossing Box
@@ -216,9 +221,9 @@ if uploaded_file is not None:
                         st.markdown("**📋 1-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d1_dir}\n{line_d1_plt}", language="text")
 
-                        # 24-Hour Haruf Crossing Box
-                        st.markdown("**🎲 24-Hour हर्फ़ क्रॉसिंग (अंदर x बाहर हर्फ़ मिलाकर बने नंबर + नीचे पलट):**")
-                        st.code(f"{line_24h_cross_dir}\n{line_24h_cross_plt}", language="text")
+                        # Dedicated Box for 24-Hour Repeat Numbers
+                        st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम रिपीट - सीधी + पलट):**")
+                        st.code(f"{line_24h_dir}\n{line_24h_plt}", language="text")
 
                     with c_box2:
                         # Haruf Pairs Box
@@ -229,9 +234,9 @@ if uploaded_file is not None:
                         st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d2_dir}\n{line_d2_plt}", language="text")
 
-                        # Dedicated Box for 24-Hour All Games Repeat Numbers
-                        st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम - सीधी + पलट):**")
-                        st.code(f"{line_24h_dir}\n{line_24h_plt}", language="text")
+                        # Dedicated Box for 24-Hour Haruf Numbers & Pairs (NEW)
+                        st.markdown("**🎲 24-Hour Haruf Numbers & Pairs (24 घंटे हर्फ़ के नंबर और जोड़े - सीधी + पलट):**")
+                        st.code(f"{line_24h_haruf_dir}\n{line_24h_haruf_plt}", language="text")
 
                     st.markdown("---")
 
@@ -251,8 +256,8 @@ if uploaded_file is not None:
                         f"{line_d2_plt}\n"
                         f"{line_24h_dir}\n"
                         f"{line_24h_plt}\n"
-                        f"{line_24h_cross_dir}\n"
-                        f"{line_24h_cross_plt}"
+                        f"{line_24h_haruf_dir}\n"
+                        f"{line_24h_haruf_plt}"
                     )
 
                     st.code(all_in_one_text, language="text")
@@ -293,4 +298,4 @@ if uploaded_file is not None:
                         st.table(pd.DataFrame(results_table))
                     else:
                         st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
-                    
+        

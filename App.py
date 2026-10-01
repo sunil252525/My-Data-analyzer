@@ -143,20 +143,16 @@ if uploaded_file is not None:
                     top_24h_direct = [f"{num:02d}" for num in top_24h_series.index]
                     top_24h_plat = [get_plat(n) for n in top_24h_direct]
 
-                    # 24-Hour Top Harufs Extracted
                     top_in_24h = pd.Series(haruf_in_24h).value_counts().head(3).index.tolist() if haruf_in_24h else []
                     top_out_24h = pd.Series(haruf_out_24h).value_counts().head(3).index.tolist() if haruf_out_24h else []
 
-                    # 24-Hour Haruf Crossing & Haruf Pairs
                     crossed_24h_direct = [f"{i}{o}" for i in top_in_24h for o in top_out_24h]
                     all_24h_harufs = list(dict.fromkeys(top_in_24h + top_out_24h))
                     haruf_24h_pairs = [f"{h}{h}" for h in all_24h_harufs]
 
-                    # Combine crossing numbers and pairs for Haruf Box
                     all_24h_haruf_nums = crossed_24h_direct + haruf_24h_pairs
                     all_24h_haruf_plat = [get_plat(p) for p in all_24h_haruf_nums]
 
-                    # Numbers Preparation for Regular Boxes
                     crossed_pairs_2x2_direct = [f"{i}{o}" for i in in_harufs for o in out_harufs]
                     crossed_pairs_2x2_plat = [get_plat(p) for p in crossed_pairs_2x2_direct]
 
@@ -194,7 +190,6 @@ if uploaded_file is not None:
                     
                     c_box1, c_box2 = st.columns(2)
                     
-                    # Individual Line Strings
                     line_2x2_dir = ", ".join(crossed_pairs_2x2_direct)
                     line_2x2_plt = ", ".join(crossed_pairs_2x2_plat)
                     
@@ -239,22 +234,21 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
 
-                    direct_lists = [
-                        crossed_pairs_2x2_direct, haruf_pairs,
-                        top_1d_direct, top_2d_direct,
-                        top_24h_direct, all_24h_haruf_nums
-                    ]
-                    
-                    palat_lists = [
+                    raw_lines = [
+                        crossed_pairs_2x2_direct,
                         crossed_pairs_2x2_plat,
-                        top_1d_plat, top_2d_plat,
-                        top_24h_plat, all_24h_haruf_plat
+                        haruf_pairs,
+                        top_1d_direct,
+                        top_1d_plat,
+                        top_2d_direct,
+                        top_2d_plat,
+                        top_24h_direct,
+                        top_24h_plat,
+                        all_24h_haruf_nums,
+                        all_24h_haruf_plat
                     ]
 
-                    all_direct_nums = [item.strip() for sublist in direct_lists for item in sublist if item.strip()]
-                    all_palat_nums = [item.strip() for sublist in palat_lists for item in sublist if item.strip()]
-
-                    all_comb_numbers = all_direct_nums + all_palat_nums
+                    all_comb_numbers = [item.strip() for sublist in raw_lines for item in sublist if item.strip()]
                     
                     total_box_count = len(all_comb_numbers)
                     unique_box_count = len(set(all_comb_numbers))
@@ -267,58 +261,41 @@ if uploaded_file is not None:
                         f"• **यूनिक नंबर (Unique Numbers):** {unique_box_count}"
                     )
 
-                    all_in_one_text = (
-                        f"{line_2x2_dir}\n"
-                        f"{line_2x2_plt}\n"
-                        f"{line_pairs}\n"
-                        f"{line_d1_dir}\n"
-                        f"{line_d1_plt}\n"
-                        f"{line_d2_dir}\n"
-                        f"{line_d2_plt}\n"
-                        f"{line_24h_dir}\n"
-                        f"{line_24h_plt}\n"
-                        f"{line_24h_haruf_dir}\n"
-                        f"{line_24h_haruf_plt}"
-                    )
+                    all_in_one_text = "\n".join([", ".join(l) for l in raw_lines if l])
 
                     st.code(all_in_one_text, language="text")
 
                     # ----------------------------------------------------
-                    # 4. UPDATED UNIQUE FILTERED BOX WITH STRICT LINE LOGIC & COUNTER
+                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX (EXACT MATCHING)
                     # ----------------------------------------------------
-                    st.markdown("### 🎯 यूनिक फिल्टर बॉक्स (Unique Numbers Only - लाइन वाइज फ़िल्टर)")
+                    st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Pattern Preserved - Duplicate Removed)")
 
-                    # Step A: Filter Direct Line (remove duplicates within top line)
-                    filtered_direct = []
-                    for num in all_direct_nums:
-                        if num not in filtered_direct:
-                            filtered_direct.append(num)
+                    seen_numbers = set()
+                    unique_pattern_lines = []
 
-                    # Step B: Filter Palat Line (remove duplicates within bottom line AND remove numbers present in top line)
-                    filtered_palat = []
-                    for num in all_palat_nums:
-                        if num not in filtered_direct and num not in filtered_palat:
-                            filtered_palat.append(num)
+                    for line in raw_lines:
+                        filtered_line = []
+                        for num in line:
+                            num_clean = num.strip()
+                            if num_clean and num_clean not in seen_numbers:
+                                filtered_line.append(num_clean)
+                                seen_numbers.add(num_clean)
+                        
+                        # Only add line if it has remaining unique numbers
+                        if filtered_line:
+                            unique_pattern_lines.append(", ".join(filtered_line))
 
-                    # Counts calculation
-                    count_direct = len(filtered_direct)
-                    count_palat = len(filtered_palat)
-                    total_unique_final = count_direct + count_palat
+                    final_unique_count = len(seen_numbers)
 
-                    # Banner with clear counters
+                    # Total Count Header
                     st.info(
-                        f"🔢 **यूनिक बॉक्स गिनती (Count Report):**\n"
-                        f"• **कुल यूनिक नंबर (Total Unique):** {total_unique_final} नंबर\n"
-                        f"• **ऊपर की लाइन (सीधी):** {count_direct} नंबर\n"
-                        f"• **नीचे की लाइन (पलट - फिल्टर के बाद):** {count_palat} नंबर"
+                        f"🔢 **यूनिक पैटर्न बॉक्स गिनती (Total Unique Numbers Count):**\n"
+                        f"• **कुल यूनिक नंबर (Total Numbers):** **{final_unique_count}**"
                     )
 
-                    unique_direct_str = ", ".join(filtered_direct)
-                    unique_palat_str = ", ".join(filtered_palat)
+                    unique_pattern_box_text = "\n".join(unique_pattern_lines)
 
-                    unique_box_text = f"{unique_direct_str}\n{unique_palat_str}"
-
-                    st.code(unique_box_text, language="text")
+                    st.code(unique_pattern_box_text, language="text")
 
                     # ----------------------------------------------------
                     # 5. STRUCTURED TABLE OUTPUT

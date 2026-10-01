@@ -167,7 +167,7 @@ if uploaded_file is not None:
                     top_1d_plat = [get_plat(n) for n in top_1d_direct]
 
                     top_2d_direct = [f"{num:02d}" for num in top_2d.index]
-                    top_2d_plat = [get_plat(n) for n in top_2d_direct]
+                    top_2d_plat = [get_plat(n) for n in top_2d_plat if 'top_2d_plat' in locals()] if False else [get_plat(n) for n in top_2d_direct]
 
                     # ----------------------------------------------------
                     # 1. EXECUTIVE SUMMARY & HISTORICAL STATS
@@ -234,17 +234,41 @@ if uploaded_file is not None:
                         st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d2_dir}\n{line_d2_plt}", language="text")
 
-                        # Dedicated Box for 24-Hour Haruf Numbers & Pairs (NEW)
+                        # Dedicated Box for 24-Hour Haruf Numbers & Pairs
                         st.markdown("**🎲 24-Hour Haruf Numbers & Pairs (24 घंटे हर्फ़ के नंबर और जोड़े - सीधी + पलट):**")
                         st.code(f"{line_24h_haruf_dir}\n{line_24h_haruf_plt}", language="text")
 
                     st.markdown("---")
 
                     # ----------------------------------------------------
-                    # 3. ALL-IN-ONE COMBINED BOX
+                    # 3. ALL-IN-ONE COMBINED BOX WITH DYNAMIC COUNT STATS
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
-                    st.info("सभी 6 बॉक्स की सीधी और पलट की सभी लाइनें (बिना किसी अतिरिक्त टेक्स्ट के) एक साथ नीचे दिए गए बॉक्स में उपलब्ध हैं:")
+
+                    # Calculation of Total, Unique, and Matching Numbers
+                    raw_lines_list = [
+                        crossed_pairs_2x2_direct, crossed_pairs_2x2_plat,
+                        haruf_pairs,
+                        top_1d_direct, top_1d_plat,
+                        top_2d_direct, top_2d_plat,
+                        top_24h_direct, top_24h_plat,
+                        all_24h_haruf_nums, all_24h_haruf_plat
+                    ]
+                    
+                    # Flatten list of all numbers
+                    all_comb_numbers = [item.strip() for sublist in raw_lines_list for item in sublist if item.strip()]
+                    
+                    total_box_count = len(all_comb_numbers)
+                    unique_box_count = len(set(all_comb_numbers))
+                    same_to_same_matches = total_box_count - unique_box_count
+
+                    # Header Summary Info Banner
+                    st.success(
+                        f"📊 **बॉक्स समरी रिपोर्ट:**\n"
+                        f"• **कुल दर्ज नंबर (Total Numbers):** {total_box_count}\n"
+                        f"• **सेम टू सेम (Same-to-Same Matching / Duplicate):** {same_to_same_matches} नंबर\n"
+                        f"• **यूनिक / अलग-अलग नंबर (Unique Distinct Numbers):** {unique_box_count}"
+                    )
 
                     all_in_one_text = (
                         f"{line_2x2_dir}\n"
@@ -298,4 +322,4 @@ if uploaded_file is not None:
                         st.table(pd.DataFrame(results_table))
                     else:
                         st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
-        
+                    

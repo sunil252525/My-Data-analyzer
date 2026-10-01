@@ -147,6 +147,13 @@ if uploaded_file is not None:
                     top_24h_direct = [f"{num:02d}" for num in top_24h_series.index]
                     top_24h_plat = [get_plat(n) for n in top_24h_direct]
 
+                    # 24-Hour Haruf Engine Crossing (Top Inside x Top Outside)
+                    in_24h_top2 = pd.Series(haruf_in_24h).value_counts().head(2).index.tolist() if haruf_in_24h else []
+                    out_24h_top2 = pd.Series(haruf_out_24h).value_counts().head(2).index.tolist() if haruf_out_24h else []
+
+                    crossed_24h_direct = [f"{i}{o}" for i in in_24h_top2 for o in out_24h_top2]
+                    crossed_24h_plat = [get_plat(p) for p in crossed_24h_direct]
+
                     # Numbers Preparation for Standard Boxes
                     crossed_pairs_2x2_direct = [f"{i}{o}" for i in in_harufs for o in out_harufs]
                     crossed_pairs_2x2_plat = [get_plat(p) for p in crossed_pairs_2x2_direct]
@@ -201,6 +208,9 @@ if uploaded_file is not None:
                     line_24h_dir = ", ".join(top_24h_direct)
                     line_24h_plt = ", ".join(top_24h_plat)
 
+                    line_24h_cross_dir = ", ".join(crossed_24h_direct)
+                    line_24h_cross_plt = ", ".join(crossed_24h_plat)
+
                     with c_box1:
                         # 2x2 Crossing Box
                         st.markdown("**🎯 हरूफ 2x2 क्रॉसिंग (4 जोड़ी सीधी + पलट):**")
@@ -209,6 +219,10 @@ if uploaded_file is not None:
                         # Day 1 Follow-up Box
                         st.markdown("**📋 1-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d1_dir}\n{line_d1_plt}", language="text")
+
+                        # 24-Hour Haruf Crossing Box
+                        st.markdown("**🎲 24-Hour हर्फ़ क्रॉसिंग (अंक मिलाकर बने नंबर + पलट):**")
+                        st.code(f"{line_24h_cross_dir}\n{line_24h_cross_plt}", language="text")
 
                     with c_box2:
                         # Haruf Pairs Box
@@ -219,17 +233,17 @@ if uploaded_file is not None:
                         st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{line_d2_dir}\n{line_d2_plt}", language="text")
 
-                    # Separate Dedicated Box for 24-Hour All Games Engine
-                    st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम - सीधी + पलट):**")
-                    st.code(f"{line_24h_dir}\n{line_24h_plt}", language="text")
+                        # Dedicated Box for 24-Hour All Games Repeat Numbers
+                        st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम - सीधी + पलट):**")
+                        st.code(f"{line_24h_dir}\n{line_24h_plt}", language="text")
 
                     st.markdown("---")
 
                     # ----------------------------------------------------
-                    # 3. ALL-IN-ONE COMBINED BOX (INCLUDES ALL 5 BOXES)
+                    # 3. ALL-IN-ONE COMBINED BOX (INCLUDES ALL 6 CATEGORY LINES)
                     # ----------------------------------------------------
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
-                    st.info("पाँचों बॉक्स की सीधी और पलट की सभी लाइनें (बिना किसी टेक्स्ट के) एक साथ नीचे दिए गए बॉक्स में उपलब्ध हैं:")
+                    st.info("सभी बॉक्स की सीधी और पलट की लाइनें (बिना किसी टेक्स्ट के) एक साथ नीचे दिए गए बॉक्स में उपलब्ध हैं:")
 
                     all_in_one_text = (
                         f"{line_2x2_dir}\n"
@@ -240,7 +254,9 @@ if uploaded_file is not None:
                         f"{line_d2_dir}\n"
                         f"{line_d2_plt}\n"
                         f"{line_24h_dir}\n"
-                        f"{line_24h_plt}"
+                        f"{line_24h_plt}\n"
+                        f"{line_24h_cross_dir}\n"
+                        f"{line_24h_cross_plt}"
                     )
 
                     st.code(all_in_one_text, language="text")

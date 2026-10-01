@@ -1,14 +1,14 @@
 import streamlit as st
 import pandas as pd
 
+# Streamlit Page Config
+st.set_page_config(page_title="Advanced Crossing & Haruf Engine", layout="wide")
+
+# --- 1. CORE LOGIC FUNCTION ---
 def analyze_best_crossing_and_haruf(df, column_name):
-    """
-    CSV डेटा के आधार पर 1 सिंगल हरूफ़, 4 हरूफ़ क्रॉसिंग और 6 हरूफ़ क्रॉसिंग निकालता है।
-    """
     vals = df[column_name].dropna().tolist()
     valid_vals = []
     
-    # डेटा क्लीनिंग (केवल 0-99 तक के वैलिड नंबर लेना)
     for x in vals:
         try:
             val = int(x)
@@ -23,14 +23,12 @@ def analyze_best_crossing_and_haruf(df, column_name):
     last_num = valid_vals[-1]
     haruf_scores = {d: 0 for d in range(10)}
     
-    # 1. फ्रीक्वेंसी स्कोरिंग (हाल के नंबरों को ज़्यादा वेटेज/वेट)
     total_len = len(valid_vals)
     for idx, num in enumerate(valid_vals):
-        weight = 1 + (idx / total_len)  # Recent data gets slightly higher weight
+        weight = 1 + (idx / total_len)
         haruf_scores[num // 10] += weight
         haruf_scores[num % 10] += weight
 
-    # 2. पैटर्न/फॉलो-अप स्कोरिंग (जब-जब last_num आया, तब अगले 2 रिजल्ट में कौन से हरूफ़ आए)
     follow_up_harufs = []
     for i in range(len(valid_vals) - 2):
         if valid_vals[i] == last_num:
@@ -40,15 +38,13 @@ def analyze_best_crossing_and_haruf(df, column_name):
 
     for h in follow_up_harufs:
         if 0 <= h <= 9:
-            haruf_scores[h] += 3.5  # High priority to follow-up historical patterns
+            haruf_scores[h] += 3.5
 
-    # स्कोर के हिसाब से हरूफ़ को सॉर्ट करना (Desc order)
     ranked_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)
     
-    # परिणाम तैयार करना
-    single_haruf = ranked_harufs[0]                     # टॉप 1 हरूफ़
-    top_4_harufs = sorted(ranked_harufs[:4])            # टॉप 4 हरूफ़
-    top_6_harufs = sorted(ranked_harufs[:6])            # टॉप 6 हरूफ़
+    single_haruf = ranked_harufs[0]
+    top_4_harufs = sorted(ranked_harufs[:4])
+    top_6_harufs = sorted(ranked_harufs[:6])
 
     return {
         "last_num": f"{last_num:02d}",
@@ -57,10 +53,10 @@ def analyze_best_crossing_and_haruf(df, column_name):
         "haruf_6_str": ", ".join(map(str, top_6_harufs))
     }
 
-# ================= TAB / PAGE: ADVANCED CROSSING & HARUF ENGINE =================
+# --- 2. RENDER ENGINE FUNCTION ---
 def render_advanced_engine_tab(df, available_cols):
     st.title("🎯 Advanced 1-Haruf, 4-Haruf & 6-Haruf Engine")
-    st.write("यह इंजन ऐतिहासिक डेटा, हालिया पैटर्न और फॉलो-अप फ़्रीक्वेंसी को एनालाइज़ करके सबसे सटीक क्रॉसिंग और हरूफ़ निकालता है।")
+    st.write("ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर एनालाइज किया गया परिणाम:")
 
     analysis_results = []
 
@@ -82,12 +78,30 @@ def render_advanced_engine_tab(df, available_cols):
         st.dataframe(res_df, use_container_width=True, hide_index=True)
         
         st.markdown("---")
-        st.subheader("💡 कैसे इस्तेमाल करें?")
+        st.subheader("💡 निर्देश (Instructions):")
         st.info("""
-        * **सिंगल हरूफ़ (👑):** यह सबसे मज़बूत हरूफ़ है, जिसे अंदर या बाहर प्ले किया जा सकता है।
-        * **4 हरूफ़ क्रॉसिंग (⚡):** कम बजट में सिर्फ 16 जोड़ियों के लिए सबसे सटीक हरूफ़ों का ग्रुप है।
-        * **6 हरूफ़ क्रॉसिंग (🔥):** बैकटेस्टेड और सेफ़ गेम के लिए 36 जोड़ियों का परफेक्ट कॉम्बिनेशन है।
+        * **सिंगल हरूफ़ (👑):** सबसे मज़बूत हरूफ़ (अंदर/बाहर के लिए)।
+        * **4 हरूफ़ क्रॉसिंग (⚡):** 16 जोड़ियों का कम बजट कॉम्बिनेशन।
+        * **6 हरूफ़ क्रॉसिंग (🔥):** 36 जोड़ियों की ऑल-टाइम सेफ़ क्रॉसिंग।
         """)
     else:
-        st.warning("पर्याप्त डेटा उपलब्ध नहीं है। कृपया सही CSV फाइल लोड करें।")
-        
+        st.warning("डेटा कम है या मैचिंग कॉलम नहीं मिले।")
+
+# --- 3. MAIN APP EXECUTION ---
+st.title("📂 CSV Data Analyzer")
+uploaded_file = st.file_uploader("अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
+
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    df.columns = df.columns.str.strip()
+    
+    series_cols = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
+    available_cols = [c for c in series_cols if c in df.columns]
+    
+    if available_cols:
+        render_advanced_engine_tab(df, available_cols)
+    else:
+        st.error("CSV में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला।")
+else:
+    st.info("कृपया आगे बढ़ने के लिए ऊपर CSV फ़ाइल अपलोड करें।")
+    

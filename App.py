@@ -169,26 +169,20 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     # FORMATTING WITH BRACKETS (100) & (50)
                     # ----------------------------------------------------
-                    # 1. 2x2 Crossing
                     crossed_2x2_dir_b = [f"{n}(100)" for n in crossed_pairs_2x2_direct]
                     crossed_2x2_plt_b = [f"{n}(50)" for n in crossed_pairs_2x2_plat]
 
-                    # 2. Haruf Pairs
                     haruf_pairs_b = [f"{n}(50)" for n in haruf_pairs]
 
-                    # 3. 1-Day Follow-up
                     top_1d_dir_b = [f"{n}(50)" for n in top_1d_direct]
                     top_1d_plt_b = [f"{n}(50)" for n in top_1d_plat]
 
-                    # 4. 2-Day Follow-up
                     top_2d_dir_b = [f"{n}(50)" for n in top_2d_direct]
                     top_2d_plt_b = [f"{n}(50)" for n in top_2d_plat]
 
-                    # 5. 24-Hour All Games
                     top_24h_dir_b = [f"{n}(100)" for n in top_24h_direct]
                     top_24h_plt_b = [f"{n}(50)" for n in top_24h_plat]
 
-                    # 6. 24-Hour Haruf Numbers & Pairs
                     all_24h_haruf_nums_b = [f"{n}(50)" for n in all_24h_haruf_nums]
                     all_24h_haruf_plat_b = [f"{n}(50)" for n in all_24h_haruf_plat]
 
@@ -262,7 +256,6 @@ if uploaded_file is not None:
                     
                     total_box_count = len(all_comb_numbers_b)
                     
-                    # आधारभूत नंबर (संख्या) के अनुसार डुप्लिकेट जांच
                     seen_base_nums = set()
                     unique_count = 0
                     for item in all_comb_numbers_b:
@@ -285,12 +278,13 @@ if uploaded_file is not None:
                     st.code(all_in_one_text, language="text")
 
                     # ----------------------------------------------------
-                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX WITH WHATSAPP LINK
+                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX WITH AUTOMATIC PAYMENT CALCULATOR
                     # ----------------------------------------------------
                     st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Pattern Preserved - Duplicate Removed)")
 
                     seen_base = set()
                     unique_pattern_lines = []
+                    all_final_items = []
 
                     for line in raw_lines_b:
                         filtered_line = []
@@ -298,9 +292,9 @@ if uploaded_file is not None:
                             item_clean = item.strip()
                             if item_clean:
                                 base_num = item_clean.split("(")[0].strip()
-                                # यदि मूल नंबर पहले नहीं आया है, तो ब्रैकेट वाले फ़ॉर्मैट को जोड़ें
                                 if base_num not in seen_base:
                                     filtered_line.append(item_clean)
+                                    all_final_items.append(item_clean)
                                     seen_base.add(base_num)
                         
                         if filtered_line:
@@ -308,17 +302,35 @@ if uploaded_file is not None:
 
                     final_unique_count = len(seen_base)
 
+                    # --- PAYMENT CALCULATION ENGINE ---
+                    count_100 = sum(1 for item in all_final_items if "(100)" in item)
+                    count_50 = sum(1 for item in all_final_items if "(50)" in item)
+                    
+                    total_100_amt = count_100 * 100
+                    total_50_amt = count_50 * 50
+                    grand_total_payment = total_100_amt + total_50_amt
+
                     st.info(
-                        f"🔢 **यूनिक पैटर्न बॉक्स गिनती (Total Unique Numbers Count):**\n"
-                        f"• **कुल यूनिक नंबर (Total Numbers):** **{final_unique_count}**"
+                        f"🔢 **यूनिक पैटर्न बॉक्स गिनती एवं पेमेंट समरी (Payment Summary):**\n"
+                        f"• **कुल यूनिक नंबर:** **{final_unique_count}**\n"
+                        f"• **(100) वाले नंबर:** {count_100} × 100 = **₹{total_100_amt}**\n"
+                        f"• **(50) वाले नंबर:** {count_50} × 50 = **₹{total_50_amt}**\n"
+                        f"• 💰 **कुल पेमेंट (Grand Total):** **₹{grand_total_payment}**"
                     )
 
                     unique_pattern_box_text = "\n".join(unique_pattern_lines)
 
                     st.code(unique_pattern_box_text, language="text")
 
-                    # --- WHATSAPP SHARE LINK GENERATOR (Clean Message Format) ---
-                    msg_text = f"🎯 *{col}*\nTotal: {final_unique_count}\n\n{unique_pattern_box_text}"
+                    # --- WHATSAPP SHARE LINK GENERATOR WITH PAYMENT DETAILS ---
+                    msg_text = (
+                        f"🎯 *{col}*\n"
+                        f"Total Numbers: {final_unique_count}\n"
+                        f"• 100 वाले: {count_100} (₹{total_100_amt})\n"
+                        f"• 50 वाले: {count_50} (₹{total_50_amt})\n"
+                        f"💰 Total Payment: ₹{grand_total_payment}\n\n"
+                        f"{unique_pattern_box_text}"
+                    )
                     encoded_msg = urllib.parse.quote(msg_text)
                     whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
 

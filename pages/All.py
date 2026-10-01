@@ -1,8 +1,9 @@
 import streamlit as st
 import pandas as pd
+import urllib.parse
 
 # Streamlit Page Config
-st.set_page_config(page_title="Advanced Crossing & Haruf Engine", layout="wide")
+st.set_page_config(page_title="Advanced All-in-One Engine", layout="wide")
 
 # --- 1. CORE LOGIC FUNCTION ---
 def analyze_best_crossing_and_haruf(df, column_name):
@@ -55,10 +56,11 @@ def analyze_best_crossing_and_haruf(df, column_name):
 
 # --- 2. RENDER ENGINE FUNCTION ---
 def render_advanced_engine_tab(df, available_cols):
-    st.title("🎯 Advanced 1-Haruf, 4-Haruf & 6-Haruf Engine")
+    st.title("🎯 Complete Analytics & Crossing Engine")
     st.write("ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर एनालाइज किया गया परिणाम:")
 
     analysis_results = []
+    full_box_messages = []
 
     for col in available_cols:
         res = analyze_best_crossing_and_haruf(df, col)
@@ -67,28 +69,55 @@ def render_advanced_engine_tab(df, available_cols):
                 "लोकेशन / गेम": col,
                 "🎯 ताज़ा रिज़ल्ट": res["last_num"],
                 "👑 सिंगल हरूफ़ (1 Haruf)": f"🔥 {res['single_haruf']} (अंदर/बाहर)",
-                "⚡ 4 हरूफ़ की ख़ास क्रॉसिंग": res["haruf_4_str"],
+                "⚡ 4 हरूफ़ क्रॉसिंग": res["haruf_4_str"],
                 "💡 4-हरूफ़ जोड़ियाँ": "16 जोड़ियाँ (4x4)",
-                "🔥 6 हरूफ़ की ख़ास क्रॉसिंग": res["haruf_6_str"],
+                "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"],
                 "📊 6-हरूफ़ जोड़ियाँ": "36 जोड़ियाँ (6x6)"
             })
+            
+            # पूरा बॉक्स मैसेज फ़ॉर्मैट करना
+            game_msg = (
+                f"🎯 *{col}* (Last: {res['last_num']})\n"
+                f"👑 सिंगल हरूफ़: *{res['single_haruf']}* (अंदर/बाहर)\n"
+                f"⚡ 4 हरूफ़ (16 जोड़ियाँ): [{res['haruf_4_str']}]\n"
+                f"🔥 6 हरूफ़ (36 जोड़ियाँ): [{res['haruf_6_str']}]"
+            )
+            full_box_messages.append(game_msg)
 
     if analysis_results:
         res_df = pd.DataFrame(analysis_results)
         st.dataframe(res_df, use_container_width=True, hide_index=True)
         
         st.markdown("---")
+        st.subheader("📲 WhatsApp पर पूरा समरी बॉक्स भेजें")
+        
+        # --- FULL BOX WHATSAPP SHARE LINK ---
+        full_whatsapp_text = "📊 *COMPLETE DAILY ANALYTICS REPORT* 📊\n\n" + "\n\n---\n\n".join(full_box_messages)
+        encoded_full_msg = urllib.parse.quote(full_whatsapp_text)
+        wa_full_url = f"https://api.whatsapp.com/send?text={encoded_full_msg}"
+        
+        st.markdown(
+            f'<a href="{wa_full_url}" target="_blank">'
+            f'<button style="background-color:#25D366; color:white; border:none; padding:15px 25px; '
+            f'font-size:18px; border-radius:10px; cursor:pointer; font-weight:bold; width:100%;">'
+            f'📲 पूरा समरी बॉक्स WhatsApp पर भेजें (Click to Share Full Box)'
+            f'</button></a>',
+            unsafe_allow_html=True
+        )
+
+        st.markdown("---")
         st.subheader("💡 निर्देश (Instructions):")
         st.info("""
         * **सिंगल हरूफ़ (👑):** सबसे मज़बूत हरूफ़ (अंदर/बाहर के लिए)।
         * **4 हरूफ़ क्रॉसिंग (⚡):** 16 जोड़ियों का कम बजट कॉम्बिनेशन।
         * **6 हरूफ़ क्रॉसिंग (🔥):** 36 जोड़ियों की ऑल-टाइम सेफ़ क्रॉसिंग।
+        * **WhatsApp बटन:** बटन दबाते ही सिंगल हरूफ़, 4-हरूफ़ और 6-हरूफ़ तीनों की डिटेल्स एक साथ मैसेज में चली जाएँगी।
         """)
     else:
         st.warning("डेटा कम है या मैचिंग कॉलम नहीं मिले।")
 
 # --- 3. MAIN APP EXECUTION ---
-st.title("📂 CSV Data Analyzer")
+st.title("📂 CSV Data Analyzer Dashboard")
 uploaded_file = st.file_uploader("अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
 
 if uploaded_file is not None:

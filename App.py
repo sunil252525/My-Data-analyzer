@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import urllib.parse
 
 # Page Layout Configuration
 st.set_page_config(page_title="Deep Historical Pattern & Analytics Engine", layout="wide")
@@ -241,7 +242,7 @@ if uploaded_file is not None:
                         top_1d_direct,
                         top_1d_plat,
                         top_2d_direct,
-                        top_2d_plat,
+                        top_24h_plat,
                         top_24h_direct,
                         top_24h_plat,
                         all_24h_haruf_nums,
@@ -266,7 +267,7 @@ if uploaded_file is not None:
                     st.code(all_in_one_text, language="text")
 
                     # ----------------------------------------------------
-                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX (EXACT MATCHING)
+                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX WITH WHATSAPP LINK
                     # ----------------------------------------------------
                     st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Pattern Preserved - Duplicate Removed)")
 
@@ -281,13 +282,11 @@ if uploaded_file is not None:
                                 filtered_line.append(num_clean)
                                 seen_numbers.add(num_clean)
                         
-                        # Only add line if it has remaining unique numbers
                         if filtered_line:
                             unique_pattern_lines.append(", ".join(filtered_line))
 
                     final_unique_count = len(seen_numbers)
 
-                    # Total Count Header
                     st.info(
                         f"🔢 **यूनिक पैटर्न बॉक्स गिनती (Total Unique Numbers Count):**\n"
                         f"• **कुल यूनिक नंबर (Total Numbers):** **{final_unique_count}**"
@@ -296,6 +295,23 @@ if uploaded_file is not None:
                     unique_pattern_box_text = "\n".join(unique_pattern_lines)
 
                     st.code(unique_pattern_box_text, language="text")
+
+                    # --- WHATSAPP SHARE LINK GENERATOR ---
+                    msg_text = f"🎯 *{col} - Unique Pattern Numbers* (Total: {final_unique_count})\n\n{unique_pattern_box_text}"
+                    encoded_msg = urllib.parse.quote(msg_text)
+                    whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
+
+                    # Clickable WhatsApp Link Button
+                    st.markdown(
+                        f'<a href="{whatsapp_url}" target="_blank">'
+                        f'<button style="background-color:#25D366; color:white; border:none; padding:12px 24px; '
+                        f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">'
+                        f'📲 WhatsApp पर भेजें (Click to Share on WhatsApp)'
+                        f'</button></a>',
+                        unsafe_allow_html=True
+                    )
+
+                    st.markdown("---")
 
                     # ----------------------------------------------------
                     # 5. STRUCTURED TABLE OUTPUT
@@ -335,4 +351,4 @@ if uploaded_file is not None:
                         st.table(pd.DataFrame(results_table))
                     else:
                         st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
-                    
+                        

@@ -3,7 +3,7 @@ import pandas as pd
 import urllib.parse
 
 # Streamlit Page Config
-st.set_page_config(page_title="Advanced Analytics & Single Number Dashboard", layout="wide")
+st.set_page_config(page_title="Advanced Analytics & Search Engine", layout="wide")
 
 # --- RASHI MAP & FAMILY GENERATOR ENGINE ---
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -34,11 +34,20 @@ def get_family_members(rep):
         fam.add(b * 10 + a)
     return sorted([f"{x:02d}" for x in fam])
 
-# --- 1. SINGLE DIRECT NUMBER GENERATOR (NO PALAT) ---
+# --- SINGLE DIRECT NUMBER GENERATOR (NO PALAT) ---
 def get_single_direct_number(df, col_name):
     vals = df[col_name].dropna().tolist()
-    valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
-    if len(valid_vals) < 10: return None
+    valid_vals = []
+    for x in vals:
+        try:
+            v = int(x)
+            if 0 <= v <= 99:
+                valid_vals.append(v)
+        except:
+            continue
+
+    if len(valid_vals) < 3:
+        return None
 
     last_num = valid_vals[-1]
     
@@ -75,11 +84,20 @@ def get_single_direct_number(df, col_name):
         "score": round(num_scores[best_single], 1)
     }
 
-# --- 2. CROSSING & HARUF ENGINE ---
+# --- CROSSING & HARUF ENGINE ---
 def get_crossing_harufs(df, col_name):
     vals = df[col_name].dropna().tolist()
-    valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
-    if len(valid_vals) < 5: return None
+    valid_vals = []
+    for x in vals:
+        try:
+            v = int(x)
+            if 0 <= v <= 99:
+                valid_vals.append(v)
+        except:
+            continue
+
+    if len(valid_vals) < 3:
+        return None
 
     last_num = valid_vals[-1]
     haruf_scores = {d: 0 for d in range(10)}
@@ -120,9 +138,58 @@ if uploaded_file is not None:
 
     st.success("✅ 13 साल का ऐतिहासिक डेटा लोड हो गया है!")
 
-    tab1, tab2, tab3 = st.tabs(["👑 Single Direct Number Box", "🎯 Haruf & Crossing Engine", "🗓️️ 1-2 Date & Special Pattern Scan"])
+    # --- 🔍 SEARCH BOX SECTION ---
+    st.markdown("---")
+    st.subheader("🔍 किसी भी नंबर का पैटर्न सर्च करें")
+    col_s1, col_s2 = st.columns([2, 2])
+    with col_s1:
+        search_num = st.number_input("नंबर दर्ज करें (0 से 99):", min_value=0, max_value=99, value=25, step=1)
+    with col_s2:
+        search_game = st.selectbox("गेम चुनें:", ["ALL GAMES"] + available_cols)
 
-    # --- TAB 1: SINGLE DIRECT NUMBER ---
+    if st.button("🔥 पैटर्न सर्च करें"):
+        next_24h_nums = []
+        next_24h_fams = []
+        total_occurrences = 0
+
+        for i in range(len(df) - 1):
+            if search_game == "ALL GAMES":
+                row_vals = df.loc[i, available_cols].dropna().astype(int).tolist()
+                matched = (search_num in row_vals)
+            else:
+                val = df.loc[i, search_game]
+                matched = (pd.notna(val) and int(val) == search_num)
+
+            if matched:
+                total_occurrences += 1
+                for c in available_cols:
+                    val_next = df.loc[i + 1, c]
+                    if pd.notna(val_next):
+                        v_int = int(val_next)
+                        next_24h_nums.append(v_int)
+                        rep = get_family_rep(v_int)
+                        if rep is not None:
+                            next_24h_fams.append(rep)
+
+        if total_occurrences > 0:
+            top_nums = pd.Series(next_24h_nums).value_counts().head(5)
+            top_fams = pd.Series(next_24h_fams).value_counts().head(3)
+
+            st.write(f"• **कुल उपस्थिति:** {search_num:02d} पूरे रिकॉर्ड में **{total_occurrences} बार** आया है।")
+            top_nums_str = ", ".join([f"**{k:02d}** ({v} बार)" for k, v in top_nums.items()])
+            st.write(f"• **अगले 24 घंटे में टॉप सिंगल नंबर:** {top_nums_str}")
+            st.markdown("**🔥 अगले 24 घंटे में टॉप फैमिलियाँ:**")
+            for fam_rep, count in top_fams.items():
+                st.write(f"  - **फैमिली {fam_rep:02d}** `{get_family_members(fam_rep)}`: **{count} बार**")
+        else:
+            st.warning(f"रिकॉर्ड में {search_num:02d} का डेटा नहीं मिला।")
+
+    st.markdown("---")
+
+    # --- TABS SECTION ---
+    tab1, tab2, tab3 = st.tabs(["👑 Single Direct Number Box", "🎯 Haruf & Crossing Engine", "🗓 1-2 Date & Special Pattern Scan"])
+
+    # TAB 1: SINGLE NUMBER
     with tab1:
         st.subheader("🎯 1 SINGLE DIRECT NUMBER (NO PALAT)")
         single_list = []
@@ -141,8 +208,6 @@ if uploaded_file is not None:
         
         if single_list:
             st.dataframe(pd.DataFrame(single_list), use_container_width=True, hide_index=True)
-            
-            # WhatsApp Share for Single Numbers
             wa_text_single = "🎯 *SINGLE DIRECT NUMBERS (NO PALAT)* 🎯\n\n" + "\n".join(wa_single_msg)
             encoded_single = urllib.parse.quote(wa_text_single)
             wa_url_single = f"https://api.whatsapp.com/send?text={encoded_single}"
@@ -156,7 +221,7 @@ if uploaded_file is not None:
                 unsafe_allow_html=True
             )
 
-    # --- TAB 2: HARUF & CROSSING ENGINE ---
+    # TAB 2: HARUF & CROSSING ENGINE
     with tab2:
         st.subheader("📊 1-HARUF, 4-HARUF (16 Pairs) & 6-HARUF (36 Pairs)")
         crossing_list = []
@@ -184,7 +249,6 @@ if uploaded_file is not None:
         if crossing_list:
             st.dataframe(pd.DataFrame(crossing_list), use_container_width=True, hide_index=True)
 
-            # Full Box Share
             wa_text_box = "📊 *ALL GAMES COMPLETE ANALYTICS REPORT* 📊\n\n" + "\n\n---\n\n".join(wa_box_msg)
             encoded_box = urllib.parse.quote(wa_text_box)
             wa_url_box = f"https://api.whatsapp.com/send?text={encoded_box}"
@@ -197,8 +261,10 @@ if uploaded_file is not None:
                 f'</button></a>',
                 unsafe_allow_html=True
             )
+        else:
+            st.warning("क्रॉसिंग जनरेट करने के लिए डेटा पर्याप्त नहीं है।")
 
-    # --- TAB 3: 1-2 DATE & SPECIAL PATTERN SCAN ---
+    # TAB 3: 1-2 DATE & PATTERN SCAN
     with tab3:
         st.subheader("📅 1 और 2 तारीख की 90%+ पासिंग फैमिलियाँ")
         st.info("""
@@ -207,13 +273,6 @@ if uploaded_file is not None:
         * 💡 **कंबाइंड पासिंग गारन्टी:** 1 और 2 तारीख में इन दोनों फैमिलियों में से एक न एक फैमिली **89.88% (लगभग 90%)** पास होती ही होती है।
         """)
 
-        st.markdown("---")
-        st.subheader("⚡ 25 रिज़ल्ट के बाद ऑल-गेम पैटर्न")
-        st.warning("""
-        * **25 के बाद सबसे ज़्यादा आने वाले सिंगल नंबर:** `68`, `41`, `84`, `04`
-        * **25 के बाद सबसे ज़्यादा आने वाली फैमिली:** **14 फैमिली** (`14, 19, 41, 46, 64, 69, 91, 96`)
-        """)
-
 else:
-    st.info("कृपया ऊपर CSV फ़ाइल अपलोड करें।")
-  
+    st.info("कृपया आगे बढ़ने के लिए ऊपर CSV फ़ाइल अपलोड करें।")
+        

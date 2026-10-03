@@ -35,8 +35,75 @@ def get_family_members(rep):
         fam.add(b * 10 + a)
     return sorted([f"{x:02d}" for x in fam])
 
+# --- FAST CACHED CALCULATION FUNCTIONS (तेज़ प्रोसेसिंग के लिए) ---
+@st.cache_data
+def process_all_games_report(df, available_cols):
+    summary_data_all = []
+    # तेजी के लिए डाटा को numpy array/list में बदलें
+    values_matrix = df[available_cols].to_numpy()
+    num_rows = len(values_matrix)
+
+    for search_num in range(100):
+        next_24h_nums = []
+        next_24h_fams = []
+        haruf_scores = [0] * 10
+        total_occ = 0
+
+        for i in range(num_rows - 1):
+            row_vals = [int(x) for x in values_matrix[i] if pd.notna(x) and 0 <= int(x) <= 99]
+            if search_num in row_vals:
+                total_occ += 1
+                next_row = values_matrix[i + 1]
+                for val_next in next_row:
+                    if pd.notna(val_next):
+                        v_int = int(val_next)
+                        if 0 <= v_int <= 99:
+                            next_24h_nums.append(v_int)
+                            haruf_scores[v_int // 10] += 1
+                            haruf_scores[v_int % 10] += 1
+                            rep = get_family_rep(v_int)
+                            if rep is not None:
+                                next_24h_fams.append(rep)
+
+        if total_occ > 0 and len(next_24h_nums) > 0:
+            top_3_nums = pd.Series(next_24h_nums).value_counts().head(3)
+            top_1_fam = pd.Series(next_24h_fams).value_counts().head(1)
+
+            num1 = f"{top_3_nums.index[0]:02d} ({top_3_nums.iloc[0]}x)" if len(top_3_nums) > 0 else "N/A"
+            num2 = f"{top_3_nums.index[1]:02d} ({top_3_nums.iloc[1]}x)" if len(top_3_nums) > 1 else "N/A"
+            num3 = f"{top_3_nums.index[2]:02d} ({top_3_nums.iloc[2]}x)" if len(top_3_nums) > 2 else "N/A"
+
+            top_fam = top_1_fam.index[0] if len(top_1_fam) > 0 else None
+            fam_members = ", ".join(get_family_members(top_fam)) if top_fam is not None else "N/A"
+
+            max_haruf = max(range(10), key=lambda x: haruf_scores[x])
+
+            summary_data_all.append({
+                "सर्च नंबर": f"{search_num:02d}",
+                "कुल उपस्थिति": f"{total_occ} बार",
+                "1st Single": num1,
+                "2nd Single": num2,
+                "3rd Single": num3,
+                "Top Family": f"फैमिली {top_fam:02d}" if top_fam is not None else "N/A",
+                "फैमिली मेंबर": fam_members,
+                "सिंगल हरूफ़": f"{max_haruf}"
+            })
+        else:
+            summary_data_all.append({
+                "सर्च नंबर": f"{search_num:02d}",
+                "कुल उपस्थिति": "0 बार",
+                "1st Single": "N/A",
+                "2nd Single": "N/A",
+                "3rd Single": "N/A",
+                "Top Family": "N/A",
+                "फैमिली मेंबर": "N/A",
+                "सिंगल हरूफ़": "N/A"
+            })
+
+    return summary_data_all
+
 # --- MAIN DASHBOARD APP ---
-st.title("🔬 Multi-Game Auto Pattern & Crossing Engine")
+st.title("⚡ Multi-Game Auto Fast Pattern Engine")
 
 uploaded_file = st.file_uploader("अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
 
@@ -62,84 +129,21 @@ if uploaded_file is not None:
             ])
 
             # ====================================================
-            # TAB 1: ALL GAMES PATTERN (00 - 99 TOP 3 SINGLES TABLE)
+            # TAB 1: ALL GAMES PATTERN (00 - 99 TOP 3 SINGLES)
             # ====================================================
             with tab1:
-                st.subheader("🌐 पूरे 00 से 99 नंबरों के बाद अगले 24 घंटे का पैटर्न (Top 3 Singles & Family)")
-                
+                st.subheader("🌐 पूरे 00 से 99 नंबरों के बाद अगले 24 घंटे का पैटर्न")
                 btn_all = st.button("🔥 00 से 99 तक की पूरी रिपोर्ट तैयार करें", key="btn_all")
 
                 if btn_all:
-                    summary_data_all = []
-
-                    for search_num in range(100):
-                        next_24h_nums = []
-                        next_24h_fams = []
-                        haruf_scores = {d: 0 for d in range(10)}
-                        total_occ = 0
-
-                        for i in range(len(df) - 1):
-                            row_vals = [int(x) for x in df.loc[i, available_cols].dropna().tolist() if 0 <= int(x) <= 99]
-                            if search_num in row_vals:
-                                total_occ += 1
-                                for c in available_cols:
-                                    val_next = df.loc[i + 1, c]
-                                    if pd.notna(val_next):
-                                        try:
-                                            v_int = int(val_next)
-                                            if 0 <= v_int <= 99:
-                                                next_24h_nums.append(v_int)
-                                                in_h, out_h = v_int // 10, v_int % 10
-                                                haruf_scores[in_h] += 1
-                                                haruf_scores[out_h] += 1
-                                                
-                                                rep = get_family_rep(v_int)
-                                                if rep is not None:
-                                                    next_24h_fams.append(rep)
-                                        except:
-                                            continue
-
-                        if total_occ > 0 and len(next_24h_nums) > 0:
-                            top_3_nums = pd.Series(next_24h_nums).value_counts().head(3)
-                            top_1_fam = pd.Series(next_24h_fams).value_counts().head(1)
-
-                            num1 = f"{top_3_nums.index[0]:02d} ({top_3_nums.iloc[0]}x)" if len(top_3_nums) > 0 else "N/A"
-                            num2 = f"{top_3_nums.index[1]:02d} ({top_3_nums.iloc[1]}x)" if len(top_3_nums) > 1 else "N/A"
-                            num3 = f"{top_3_nums.index[2]:02d} ({top_3_nums.iloc[2]}x)" if len(top_3_nums) > 2 else "N/A"
-
-                            top_fam = top_1_fam.index[0] if len(top_1_fam) > 0 else None
-                            fam_members = ", ".join(get_family_members(top_fam)) if top_fam is not None else "N/A"
-
-                            ranked_h = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)
-                            top_haruf = f"{ranked_h[0]}" if len(ranked_h) > 0 else "N/A"
-
-                            summary_data_all.append({
-                                "सर्च नंबर": f"{search_num:02d}",
-                                "कुल उपस्थिति": f"{total_occ} बार",
-                                "1st Single": num1,
-                                "2nd Single": num2,
-                                "3rd Single": num3,
-                                "Top Family": f"फैमिली {top_fam:02d}" if top_fam is not None else "N/A",
-                                "फैमिली मेंबर": fam_members,
-                                "सिंगल हरूफ़": top_haruf
-                            })
-                        else:
-                            summary_data_all.append({
-                                "सर्च नंबर": f"{search_num:02d}",
-                                "कुल उपस्थिति": "0 बार",
-                                "1st Single": "N/A",
-                                "2nd Single": "N/A",
-                                "3rd Single": "N/A",
-                                "Top Family": "N/A",
-                                "फैमिली मेंबर": "N/A",
-                                "सिंगल हरूफ़": "N/A"
-                            })
-
-                    summary_df_all = pd.DataFrame(summary_data_all)
-                    st.markdown("### 📊 पूरे 00-99 नंबरों का 24H रिपोर्ट टेबल (Top 3 Singles शामिल)")
+                    with st.spinner("⚡ डेटा प्रोसेस हो रहा है, कृपया प्रतीक्षा करें..."):
+                        summary_data_all = process_all_games_report(df, available_cols)
+                        summary_df_all = pd.DataFrame(summary_data_all)
+                    
+                    st.markdown("### 📊 पूरे 00-99 नंबरों का 24H रिपोर्ट टेबल")
                     st.dataframe(summary_df_all, height=500, use_container_width=True)
 
-                    # Full 00-99 WhatsApp Sharing
+                    # Whatsapp String Chunk Construction
                     wa_lines = ["🌐 *ALL-GAMES COMPLETE PATTERN REPORT (00-99)* 🌐\n"]
                     for row in summary_data_all:
                         if row["कुल उपस्थिति"] != "0 बार":
@@ -157,17 +161,16 @@ if uploaded_file is not None:
                         f'<a href="{wa_url_all}" target="_blank">'
                         f'<button style="background-color:#25D366; color:white; border:none; padding:12px 24px; '
                         f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-top:15px;">'
-                        f'📲 पूरे 00 से 99 तक की रिपोर्ट WhatsApp पर एक साथ शेयर करें'
+                        f'📲 पूरे 00 से 99 तक की रिपोर्ट WhatsApp पर शेयर करें'
                         f'</button></a>',
                         unsafe_allow_html=True
                     )
 
             # ====================================================
-            # TAB 2: SAME-GAME SEARCH (AUTO LAST RESULT PATTERN)
+            # TAB 2: SAME-GAME SEARCH (AUTO LAST RESULTS)
             # ====================================================
             with tab2:
-                st.subheader("🎯 गेम के ऑटोमैटिक लास्ट रिजल्ट्स (Last Results) पर आधारित पैटर्न")
-                
+                st.subheader("🎯 गेम के ऑटोमैटिक लास्ट रिजल्ट्स पर आधारित पैटर्न")
                 col_s1, col_s2 = st.columns([3, 1])
                 with col_s1:
                     same_game = st.selectbox("गेम सेलेक्ट करें:", available_cols, key="same_game")
@@ -177,97 +180,86 @@ if uploaded_file is not None:
                 btn_same = st.button("🔥 ऑटो लास्ट रिजल्ट्स रिपोर्ट जनरेट करें", key="btn_same")
 
                 if btn_same:
-                    raw_vals = df[same_game].dropna().tolist()
-                    game_vals = []
-                    for x in raw_vals:
-                        try:
-                            v = int(x)
-                            if 0 <= v <= 99:
-                                game_vals.append(v)
-                        except:
-                            continue
-                    
-                    if len(game_vals) >= num_last_results:
-                        recent_targets = game_vals[-num_last_results:]
-                        st.info(f"📍 `{same_game}` के हालिया {num_last_results} रिजल्ट्स ऑटो-फाइंड हुए: **{', '.join([f'{x:02d}' for x in recent_targets])}**")
+                    with st.spinner("⚡ प्रोसेस हो रहा है..."):
+                        raw_vals = df[same_game].dropna().tolist()
+                        game_vals = [int(x) for x in raw_vals if 0 <= int(x) <= 99]
                         
-                        summary_data_same = []
+                        if len(game_vals) >= num_last_results:
+                            recent_targets = game_vals[-num_last_results:]
+                            st.info(f"📍 `{same_game}` के हालिया {num_last_results} रिजल्ट्स: **{', '.join([f'{x:02d}' for x in recent_targets])}**")
+                            
+                            summary_data_same = []
+                            for target_num in recent_targets:
+                                next_2days_nums = []
+                                next_2days_fams = []
+                                same_haruf_scores = [0] * 10
+                                total_occ_same = 0
 
-                        for target_num in recent_targets:
-                            next_2days_nums = []
-                            next_2days_fams = []
-                            same_haruf_scores = {d: 0 for d in range(10)}
-                            total_occ_same = 0
+                                for i in range(len(game_vals) - 2):
+                                    if game_vals[i] == target_num:
+                                        total_occ_same += 1
+                                        for v in [game_vals[i + 1], game_vals[i + 2]]:
+                                            next_2days_nums.append(v)
+                                            same_haruf_scores[v // 10] += 1
+                                            same_haruf_scores[v % 10] += 1
+                                            rep = get_family_rep(v)
+                                            if rep is not None:
+                                                next_2days_fams.append(rep)
 
-                            for i in range(len(game_vals) - 2):
-                                if game_vals[i] == target_num:
-                                    total_occ_same += 1
-                                    for v in [game_vals[i + 1], game_vals[i + 2]]:
-                                        next_2days_nums.append(v)
-                                        in_h, out_h = v // 10, v % 10
-                                        same_haruf_scores[in_h] += 1
-                                        same_haruf_scores[out_h] += 1
-                                        
-                                        rep = get_family_rep(v)
-                                        if rep is not None:
-                                            next_2days_fams.append(rep)
+                                if total_occ_same > 0 and len(next_2days_nums) > 0:
+                                    top_3_nums_s = pd.Series(next_2days_nums).value_counts().head(3)
+                                    top_1_fam_s = pd.Series(next_2days_fams).value_counts().head(1)
 
-                            if total_occ_same > 0 and len(next_2days_nums) > 0:
-                                top_3_nums_s = pd.Series(next_2days_nums).value_counts().head(3)
-                                top_1_fam_s = pd.Series(next_2days_fams).value_counts().head(1)
+                                    num1_s = f"{top_3_nums_s.index[0]:02d} ({top_3_nums_s.iloc[0]}x)" if len(top_3_nums_s) > 0 else "N/A"
+                                    num2_s = f"{top_3_nums_s.index[1]:02d} ({top_3_nums_s.iloc[1]}x)" if len(top_3_nums_s) > 1 else "N/A"
+                                    num3_s = f"{top_3_nums_s.index[2]:02d} ({top_3_nums_s.iloc[2]}x)" if len(top_3_nums_s) > 2 else "N/A"
 
-                                num1_s = f"{top_3_nums_s.index[0]:02d} ({top_3_nums_s.iloc[0]}x)" if len(top_3_nums_s) > 0 else "N/A"
-                                num2_s = f"{top_3_nums_s.index[1]:02d} ({top_3_nums_s.iloc[1]}x)" if len(top_3_nums_s) > 1 else "N/A"
-                                num3_s = f"{top_3_nums_s.index[2]:02d} ({top_3_nums_s.iloc[2]}x)" if len(top_3_nums_s) > 2 else "N/A"
+                                    top_fam_s = top_1_fam_s.index[0] if len(top_1_fam_s) > 0 else None
+                                    fam_members_s = ", ".join(get_family_members(top_fam_s)) if top_fam_s is not None else "N/A"
+                                    max_haruf_s = max(range(10), key=lambda x: same_haruf_scores[x])
 
-                                top_fam_s = top_1_fam_s.index[0] if len(top_1_fam_s) > 0 else None
-                                fam_members_s = ", ".join(get_family_members(top_fam_s)) if top_fam_s is not None else "N/A"
+                                    summary_data_same.append({
+                                        "लास्ट रिजल्ट": f"{target_num:02d}",
+                                        "इतिहास में कुल बार": f"{total_occ_same} बार",
+                                        "1st Single": num1_s,
+                                        "2nd Single": num2_s,
+                                        "3rd Single": num3_s,
+                                        "Top Family": f"फैमिली {top_fam_s:02d}" if top_fam_s is not None else "N/A",
+                                        "फैमिली मेंबर": fam_members_s,
+                                        "सिंगल हरूफ़": f"{max_haruf_s}"
+                                    })
 
-                                ranked_h_s = sorted(same_haruf_scores.keys(), key=lambda x: same_haruf_scores[x], reverse=True)
-                                top_haruf_s = f"{ranked_h_s[0]}" if len(ranked_h_s) > 0 else "N/A"
+                            summary_df_same = pd.DataFrame(summary_data_same)
+                            st.markdown(f"### 🎯 `{same_game}` - हालिया रिजल्ट्स का पैटर्न")
+                            st.dataframe(summary_df_same, height=400, use_container_width=True)
 
-                                summary_data_same.append({
-                                    "लास्ट रिजल्ट": f"{target_num:02d}",
-                                    "इतिहास में कुल बार": f"{total_occ_same} बार",
-                                    "1st Single": num1_s,
-                                    "2nd Single": num2_s,
-                                    "3rd Single": num3_s,
-                                    "Top Family": f"फैमिली {top_fam_s:02d}" if top_fam_s is not None else "N/A",
-                                    "फैमिली मेंबर": fam_members_s,
-                                    "सिंगल हरूफ़": top_haruf_s
-                                })
+                            # WhatsApp Share
+                            wa_same_lines = [f"🎯 *SAME-GAME ({same_game}) AUTO LAST RESULTS PATTERN* 🎯\n"]
+                            for row in summary_data_same:
+                                wa_same_lines.append(
+                                    f"• **लास्ट नंबर {row['लास्ट रिजल्ट']}** (इतिहास: {row['इतिहास में कुल बार']})\n"
+                                    f"  ➔ 1st: *{row['1st Single']}* | 2nd: *{row['2nd Single']}* | 3rd: *{row['3rd Single']}*\n"
+                                    f"  ➔ {row['Top Family']} ({row['फैमिली मेंबर']}) | Haruf: *{row['सिंगल हरूफ़']}*\n"
+                                )
 
-                        summary_df_same = pd.DataFrame(summary_data_same)
-                        st.markdown(f"### 🎯 `{same_game}` - हालिया रिजल्ट्स का 1-2 दिन का ऑटो पैटर्न")
-                        st.dataframe(summary_df_same, height=400, use_container_width=True)
+                            wa_same_text = "\n".join(wa_same_lines)
+                            encoded_wa_s = urllib.parse.quote(wa_same_text)
+                            wa_url_s = f"https://api.whatsapp.com/send?text={encoded_wa_s}"
 
-                        # WhatsApp Sharing for Same Game
-                        wa_same_lines = [f"🎯 *SAME-GAME ({same_game}) AUTO LAST RESULTS PATTERN* 🎯\n"]
-                        for row in summary_data_same:
-                            wa_same_lines.append(
-                                f"• **लास्ट आए नंबर {row['लास्ट रिजल्ट']}** (इतिहास: {row['इतिहास में कुल बार']})\n"
-                                f"  ➔ 1st: *{row['1st Single']}* | 2nd: *{row['2nd Single']}* | 3rd: *{row['3rd Single']}*\n"
-                                f"  ➔ {row['Top Family']} ({row['फैमिली मेंबर']}) | Haruf: *{row['सिंगल हरूफ़']}*\n"
+                            st.markdown(
+                                f'<a href="{wa_url_s}" target="_blank">'
+                                f'<button style="background-color:#25D366; color:white; border:none; padding:12px 24px; '
+                                f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-top:15px;">'
+                                f'📲 `{same_game}` की ऑटो रिपोर्ट WhatsApp पर भेजें'
+                                f'</button></a>',
+                                unsafe_allow_html=True
                             )
-
-                        wa_same_text = "\n".join(wa_same_lines)
-                        encoded_wa_s = urllib.parse.quote(wa_same_text)
-                        wa_url_s = f"https://api.whatsapp.com/send?text={encoded_wa_s}"
-
-                        st.markdown(
-                            f'<a href="{wa_url_s}" target="_blank">'
-                            f'<button style="background-color:#25D366; color:white; border:none; padding:12px 24px; '
-                            f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-top:15px;">'
-                            f'📲 `{same_game}` की ऑल ऑटो रिपोर्ट WhatsApp पर भेजें'
-                            f'</button></a>',
-                            unsafe_allow_html=True
-                        )
-                    else:
-                        st.warning("चयनित गेम में पर्याप्त डेटा नहीं है।")
+                        else:
+                            st.warning("चयनित गेम में पर्याप्त डेटा नहीं है।")
 
     except Exception as e:
-        st.error(f"❌ फ़ाइल पढ़ने या प्रोसेस करने में त्रुटि हुई: {e}")
+        st.error(f"❌ फ़ाइल पढ़ने में त्रुटि हुई: {e}")
 
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर CSV फ़ाइल अपलोड करें।")
-                                
+                                    

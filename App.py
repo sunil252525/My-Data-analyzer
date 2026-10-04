@@ -125,6 +125,31 @@ if uploaded_file is not None:
                     out_harufs = list(out_h_top2.index)
 
                     # ----------------------------------------------------
+                    # ✅ 3-LINE CROSSING LOGIC (16 NUMBERS IN 1 BOX)
+                    # ----------------------------------------------------
+                    # Line 1: Inside x Outside (Direct)
+                    crossed_line1 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
+                    
+                    # Line 2: Outside x Inside (Palat)
+                    crossed_line2 = [f"{o}{i}" for i in in_harufs for o in out_harufs]
+
+                    # Line 3: Remaining combinations from 4x4 cross (Inside x Inside, Outside x Outside, Pairs)
+                    all_cross_digits = list(dict.fromkeys(in_harufs + out_harufs))
+                    total_16_cross = [f"{h1}{h2}" for h1 in all_cross_digits for h2 in all_cross_digits]
+                    
+                    seen_l1_l2 = set(crossed_line1 + crossed_line2)
+                    crossed_line3 = [num for num in total_16_cross if num not in seen_l1_l2]
+
+                    # Format with brackets
+                    crossed_line1_b = [f"{n}(100)" for n in crossed_line1]
+                    crossed_line2_b = [f"{n}(50)" for n in crossed_line2]
+                    crossed_line3_b = [f"{n}(50)" for n in crossed_line3]
+
+                    all_harufs = list(dict.fromkeys(in_harufs + out_harufs))
+                    haruf_pairs = [f"{h}{h}" for h in all_harufs]
+                    haruf_pairs_b = [f"{n}(50)" for n in haruf_pairs]
+
+                    # ----------------------------------------------------
                     # B. 24-HOUR ALL-GAMES ENGINE LOGIC
                     # ----------------------------------------------------
                     next_24h_numbers, haruf_in_24h, haruf_out_24h = [], [], []
@@ -154,12 +179,6 @@ if uploaded_file is not None:
                     all_24h_haruf_nums = crossed_24h_direct + haruf_24h_pairs
                     all_24h_haruf_plat = [get_plat(p) for p in all_24h_haruf_nums]
 
-                    crossed_pairs_2x2_direct = [f"{i}{o}" for i in in_harufs for o in out_harufs]
-                    crossed_pairs_2x2_plat = [get_plat(p) for p in crossed_pairs_2x2_direct]
-
-                    all_harufs = list(dict.fromkeys(in_harufs + out_harufs))
-                    haruf_pairs = [f"{h}{h}" for h in all_harufs]
-
                     top_1d_direct = [f"{num:02d}" for num in top_1d.index]
                     top_1d_plat = [get_plat(n) for n in top_1d_direct]
 
@@ -169,11 +188,6 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     # FORMATTING WITH BRACKETS (100) & (50)
                     # ----------------------------------------------------
-                    crossed_2x2_dir_b = [f"{n}(100)" for n in crossed_pairs_2x2_direct]
-                    crossed_2x2_plt_b = [f"{n}(50)" for n in crossed_pairs_2x2_plat]
-
-                    haruf_pairs_b = [f"{n}(50)" for n in haruf_pairs]
-
                     top_1d_dir_b = [f"{n}(50)" for n in top_1d_direct]
                     top_1d_plt_b = [f"{n}(50)" for n in top_1d_plat]
 
@@ -212,8 +226,13 @@ if uploaded_file is not None:
                     c_box1, c_box2 = st.columns(2)
 
                     with c_box1:
-                        st.markdown("**🎯 हरूफ 2x2 क्रॉसिंग (4 जोड़ी सीधी + पलट):**")
-                        st.code(f"{', '.join(crossed_2x2_dir_b)}\n{', '.join(crossed_2x2_plt_b)}", language="text")
+                        st.markdown("**🎯 हरूफ़ क्रॉसिंग (3 लाइन्स - कुल 16 नंबर):**")
+                        st.code(
+                            f"{', '.join(crossed_line1_b)}\n"
+                            f"{', '.join(crossed_line2_b)}\n"
+                            f"{', '.join(crossed_line3_b)}", 
+                            language="text"
+                        )
 
                         st.markdown("**📋 1-Day Follow-up Numbers (सीधी + पलट):**")
                         st.code(f"{', '.join(top_1d_dir_b)}\n{', '.join(top_1d_plt_b)}", language="text")
@@ -239,8 +258,9 @@ if uploaded_file is not None:
                     st.markdown("### 🔥 ऑल-इन-वन कंबाइंड नंबर बॉक्स (All-in-One Structured Box)")
 
                     raw_lines_b = [
-                        crossed_2x2_dir_b,
-                        crossed_2x2_plt_b,
+                        crossed_line1_b,
+                        crossed_line2_b,
+                        crossed_line3_b,
                         haruf_pairs_b,
                         top_1d_dir_b,
                         top_1d_plt_b,
@@ -380,7 +400,4 @@ if uploaded_file is not None:
                             "Strength": "🎯 100% SOLID" if fam_obs_rate == 100 else "🔥 HIGH"
                         })
 
-                    if results_table:
-                        st.table(pd.DataFrame(results_table))
-                    else:
-                        st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
+          

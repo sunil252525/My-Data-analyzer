@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import urllib.parse
 
 st.set_page_config(page_title="Auto-Detect & Multi-Formula Dashboard", layout="wide")
 
@@ -132,33 +133,28 @@ def get_statistically_analyzed_crossing(df, col):
 
     last_num = vals[-1]
     
-    # 3 अलग-अलग लॉजिक से हरूफ़ स्कोर जनरेट करना
     method_scores = {"Method_A": {d: 0 for d in range(10)}, 
                      "Method_B": {d: 0 for d in range(10)}, 
                      "Method_C": {d: 0 for d in range(10)}}
 
-    # Method A: ऐतिहासिक फॉलो-अप फ्रीक्वेंसी (ताज़ा रिज़ल्ट जब-जब आया, तब अगले 2 दिन क्या आया)
     for i in range(len(vals) - 2):
         if vals[i] == last_num:
             f1, f2 = vals[i+1], vals[i+2]
             for h in [f1//10, f1%10, f2//10, f2%10]:
                 if 0 <= h <= 9: method_scores["Method_A"][h] += 1
 
-    # Method B: रीसेंट 15 दिनों का वेटेड ट्रेंड
     for idx, num in enumerate(vals[-15:]):
         h1, h2 = num // 10, num % 10
-        weight = idx + 1 # जो जितना ताज़ा, उतना ज़्यादा वज़न
+        weight = idx + 1
         method_scores["Method_B"][h1] += weight
         method_scores["Method_B"][h2] += weight
 
-    # Method C: राशि + पैटर्न मोमेंटम
     for num in vals[-10:]:
         d1, d2 = num // 10, num % 10
         r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
         for h in [d1, d2, r1, r2]:
             method_scores["Method_C"][h] += 1
 
-    # पिछले 20 दिनों पर बैकटेस्टिंग करके देखना कि किस मेथड की पासिंग रेट सबसे बेहतर रही
     accuracy = {"Method_A": 0, "Method_B": 0, "Method_C": 0}
     test_range = range(max(10, len(vals) - 20), len(vals) - 1)
 
@@ -169,13 +165,10 @@ def get_statistically_analyzed_crossing(df, col):
         for m_name, scores in method_scores.items():
             top_6_m = sorted(scores.keys(), key=lambda x: scores[x], reverse=True)[:6]
             if act_h1 in top_6_m and act_h2 in top_6_m:
-                accuracy[m_name] += 1  # 36 जोड़ी डायरेक्ट पासिंग
+                accuracy[m_name] += 1
 
-    # सबसे सटीक प्रदर्शन करने वाले मेथड का चुनाव
     best_method = max(accuracy, key=accuracy.get)
-    best_scores = method_scores[best_method]
 
-    # अगर बैकटेस्ट में टाई हो जाए तो तीनों का मिला-जुला फ़ॉर्मूला लागू करें
     combined_scores = {d: method_scores["Method_A"][d]*2 + method_scores["Method_B"][d] + method_scores["Method_C"][d]*1.5 for d in range(10)}
     
     top_6 = sorted(combined_scores.keys(), key=lambda x: combined_scores[x], reverse=True)[:6]
@@ -252,11 +245,11 @@ if uploaded_file is not None:
                 else:
                     st.warning("⚠️ कोई मैच नहीं मिला।")
 
-    # ================= TAB 2: ANALYZED CROSSING ENGINE =================
+    # ================= TAB 2: ANALYZED CROSSING ENGINE + WHATSAPP SHARE =================
     with main_tab2:
-        st.subheader("Top 6 Haruf Crossing Engine (एनालाइज्ड बैकटेस्टेड डेटा)")
+        st.subheader("🤖 Top 6 Haruf Crossing Engine (ऑटो शेयरिंग सुविधा के साथ)")
 
-        crossing_summary = []
+        all_whatsapp_msgs = []
 
         for col in available_cols:
             vals = df[col].dropna().astype(int).tolist()
@@ -272,18 +265,58 @@ if uploaded_file is not None:
                 crossing_str = "N/A"
                 top_3_str = "N/A"
 
-            crossing_summary.append({
-                "लोकेशन / गेम": col,
-                "🎯 ताज़ा रिज़ल्ट": f"{last_num:02d}",
-                "🔥 6 हरूफ़ की ख़ास क्रॉसिंग": crossing_str,
-                "👑 टॉप 3 मेन हरूफ़": top_3_str,
-                "💡 कुल जोड़ियाँ": "36 जोड़ियाँ"
-            })
+            # WhatsApp सिंगल मैसेज फ़ॉर्मैट
+            wa_text = (
+                f"🔥 *6 HARUF CROSSING REPORT* 🔥\n\n"
+                f"📍 *गेम:* `{col}`\n"
+                f"🎯 *ताज़ा रिज़ल्ट:* *{last_num:02d}*\n\n"
+                f"⚡ *6-हरूफ़ क्रॉसिंग:* [{crossing_str}]\n"
+                f"👑 *टॉप 3 मेन हरूफ़:* [{top_3_str}]\n"
+                f"📊 *टोटल जोड़ियाँ:* 36 Direct Pairs\n"
+                f"💡 _{note}_"
+            )
+            
+            encoded_wa = urllib.parse.quote(wa_text)
+            wa_url = f"https://api.whatsapp.com/send?text={encoded_wa}"
 
-        if crossing_summary:
-            st.dataframe(pd.DataFrame(crossing_summary), use_container_width=True, hide_index=True)
-        else:
-            st.warning("डेटा उपलब्ध नहीं है।")
+            all_whatsapp_msgs.append(wa_text)
+
+            # कार्ड लेआउट फ़ॉर्मेट
+            with st.container():
+                c1, c2, c3, c4 = st.columns([1.5, 2.5, 2, 2])
+                with c1:
+                    st.markdown(f"### 📍 {col}")
+                    st.caption(f"लास्ट रिज़ल्ट: **{last_num:02d}**")
+                with c2:
+                    st.markdown(f"🔥 **6-हरूफ़ क्रॉसिंग:** `{crossing_str}`")
+                    st.caption(f"👑 **टॉप 3 हरूफ़:** `{top_3_str}`")
+                with c3:
+                    st.info(f"💡 {note}")
+                with c4:
+                    st.markdown(
+                        f'<a href="{wa_url}" target="_blank">'
+                        f'<button style="background-color:#25D366; color:white; border:none; padding:10px 16px; '
+                        f'font-size:14px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-top:8px;">'
+                        f'📲 WhatsApp पर शेयर करें'
+                        f'</button></a>',
+                        unsafe_allow_html=True
+                    )
+                st.markdown("---")
+
+        # सभी गेम्स की एक साथ ऑल-इन-वन रिपोर्ट भेजने का बटन
+        if all_whatsapp_msgs:
+            combined_all_wa = "📊 *ALL GAMES 6-HARUF CROSSING REPORT* 📊\n\n" + "\n\n------------------\n\n".join(all_whatsapp_msgs)
+            encoded_combined = urllib.parse.quote(combined_all_wa)
+            comb_wa_url = f"https://api.whatsapp.com/send?text={encoded_combined}"
+
+            st.markdown(
+                f'<a href="{comb_wa_url}" target="_blank">'
+                f'<button style="background-color:#075E54; color:white; border:none; padding:14px 20px; '
+                f'font-size:16px; border-radius:10px; cursor:pointer; font-weight:bold; width:100%;">'
+                f'🚀 सभी गेम्स की पूरी 6-हरूफ़ रिपोर्ट एक साथ WhatsApp पर शेयर करें'
+                f'</button></a>',
+                unsafe_allow_html=True
+            )
 
     # ================= TAB 3: AUTO-DETECT RARE NUMBER 24H SCANNER =================
     with main_tab3:
@@ -362,58 +395,4 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 ऐप शुरू करने के लिए बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")
-# ================= CUSTOM HYBRID FAMILY + MISSING FILTER FORMULA =================
-def render_custom_hybrid_formula(df, active_g, available_cols, date_col):
-    st.markdown("---")
-    st.subheader("⚙️ कस्टम हाइब्रिड फ़ॉर्मूला (फैमिली लास्ट-स्टेप + सेम-टू-सेम मिसिंग फ़िल्टर)")
-
-    # 1. फैमिली लड़ी मोड (Slider = 3 Days)
-    st.markdown("#### 1️⃣ स्टेप 1: फैमिली लड़ी (3 दिन पैटर्न) - लास्ट एक्टिव स्टेप")
-    fam_matched_recs, _ = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id="5", mode_seq_days=3)
     
-    blocked_family_numbers = set()
-    last_step_results = []
-
-    if fam_matched_recs:
-        # लास्ट एक्टिव स्टेप का रिजल्ट निकालना
-        last_step_results = sorted(list(set([r["Next Result"] for r in fam_matched_recs])))
-        
-        # इन सभी नंबरों की पूरी फैमिली निकालना
-        for num in last_step_results:
-            blocked_family_numbers.update(get_family(num))
-            
-        st.info(f"📌 **3-दिन फैमिली लड़ी के लास्ट स्टेप के नंबर ({len(last_step_results)}):** `{last_step_results}`")
-        st.caption(f"🚫 इनसे बनी कुल फैमिली जोड़ियाँ: **{len(blocked_family_numbers)}** नंबर")
-    else:
-        st.warning("फैमिली लड़ी (3 दिन) में कोई मैच नहीं मिला।")
-
-    # 2. सेम टू सेम मोड (1 Day Slider)
-    st.markdown("#### 2️⃣ स्टेप 2: सेम-टू-सेम (1 दिन पैटर्न) - मिसिंग नंबर")
-    exact_matched_recs, _ = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id="3", mode_seq_days=1)
-    
-    missing_3_numbers = set()
-    if exact_matched_recs:
-        exact_found_nums = set([r["Next Result"] for r in exact_matched_recs])
-        all_100 = set(range(100))
-        missing_3_numbers = all_100 - exact_found_nums
-        
-        st.info(f"📌 **सेम-टू-सेम (1 दिन) में आए नंबर:** `{len(exact_found_nums)}` | **मिसिंग नंबर ({len(missing_3_numbers)}):** `{sorted(list(missing_3_numbers))}`")
-    else:
-        st.warning("सेम-टू-सेम (1 दिन) में कोई मैच नहीं मिला।")
-
-    # 3. फाइनल कंबाइंड रिजेक्शन
-    st.markdown("#### 3️⃣ स्टेप 3: फाइनल फ़िल्टर्ड रिज़ल्ट")
-    total_blocked = blocked_family_numbers.union(missing_3_numbers)
-    final_output_numbers = sorted(list(set(range(100)) - total_blocked))
-
-    c1, c2 = st.columns(2)
-    with c1:
-        st.markdown("🚫 **कुल हटाए गए नंबर (फैमिली + मिसिंग):**")
-        st.text_area("ब्लॉक लिस्ट:", value=", ".join([f"{n:02d}" for n in sorted(list(total_blocked))]), height=120, key="txt_hybrid_blocked")
-
-    with c2:
-        st.markdown("👑 **शुद्ध बचे हुए फाइनल नंबर (Final Remaining):**")
-        st.text_area("कॉपी करें:", value=", ".join([f"{n:02d}" for n in final_output_numbers]), height=120, key="txt_hybrid_final")
-
-# अपनी फ़ाइल के अंत में जहाँ active_g है, वहाँ इस फ़ंक्शन को कॉल कर दें:
-# render_custom_hybrid_formula(df, active_g, available_cols, date_col)

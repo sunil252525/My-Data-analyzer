@@ -55,7 +55,9 @@ def check_single_match(mode_id, hist_val, rec_pattern):
             hist_set = {h_i, h_o} if h_i is not None else set()
             return bool(rec_pattern & hist_set)
         elif mode_id == "3": return hist_val == rec_pattern
-        elif mode_id == "4": return hist_val in rec_pattern
+        elif mode_id == "4":
+            rev_n = int(f"{hist_val:02d}"[::-1])
+            return bool(rec_pattern & {hist_val, rev_n})
         elif mode_id == "5": return bool(rec_pattern & set(get_family(hist_val)))
     except: return False
     return False
@@ -218,7 +220,7 @@ if uploaded_file is not None:
 
     # ================= TAB 1: MANUAL SEQUENCE PATTERNS =================
     with main_tab1:
-        mode_seq_days = st.slider("🎛️ मैनुअल लड़ी दिन चुनें:", min_value=1, max_value=20, value=5, key="global_seq_slider")
+        max_scan_days = st.slider("🎛️ स्कैनिंग लड़ी सीमा (दिन):", min_value=1, max_value=20, value=5, key="global_seq_slider")
         sub_tab1, sub_tab2, sub_tab3, sub_tab4, sub_tab5 = st.tabs([
             "1️⃣ हर्फ़ + राशि", "2️⃣ केवल हर्फ़", "3️⃣ सेम टू सेम", "4️⃣ अलट-पलट", "5️⃣ फैमिली"
         ])
@@ -230,51 +232,56 @@ if uploaded_file is not None:
 
         for mode_id, t_obj, k_prefix in modes:
             with t_obj:
-                matched_records, recent_nums = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id, mode_seq_days)
-                st.info(f"📌 `{active_g}` का पिछले **{mode_seq_days} दिन** का पैटर्न: `{recent_nums}`")
+                # 1. चुनी हुई लड़ी का ओरिजिनल रिज़ल्ट (जैसा पहले आता था)
+                matched_records, recent_nums = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id, max_scan_days)
+                st.info(f"📌 `{active_g}` का पिछले **{max_scan_days} दिन** का पैटर्न: `{recent_nums}`")
 
                 if matched_records:
                     match_df = pd.DataFrame(matched_records)
-                    next_results = match_df["Next Result"].tolist()
-                    clean_nums = sorted(list(set(next_results)))
+                    clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
                     box_str = ", ".join([f"{n:02d}" for n in clean_nums])
                     
                     st.success(f"✅ मैच पाए गए: `{len(matched_records)}` बार")
-
-                    # ------------ 🎯 केवल हर्फ़ टैब में रैंकिंग और मेन हर्फ़ निकालने का लॉजिक ------------
-                    if mode_id == "2":
-                        haruf_counts = {d: 0 for d in range(10)}
-                        for num_val in next_results:
-                            h_in, h_out = get_haruf(num_val)
-                            if h_in is not None and 0 <= h_in <= 9: haruf_counts[h_in] += 1
-                            if h_out is not None and 0 <= h_out <= 9: haruf_counts[h_out] += 1
-
-                        # फ्रीक्वेंसी के आधार पर सबसे ज्यादा से कम के क्रम में सॉर्ट करना
-                        sorted_harufs = sorted(haruf_counts.keys(), key=lambda d: haruf_counts[d], reverse=True)
-                        top_6_harufs = sorted_harufs[:6]
-                        top_4_harufs = sorted_harufs[:4]
-
-                        st.markdown("### 👑 इस लड़ी से निकलने वाले मेन हर्फ़ (सबसे ज्यादा आने वाले घटते क्रम में):")
-                        
-                        # 6 हरूफ़ की रैंक वाइज लिस्ट
-                        h_rank_str = " > ".join([f"**{h}** ({haruf_counts[h]} बार)" for h in top_6_harufs])
-                        st.success(f"📊 **टॉप 6 हर्फ़ फ्रीक्वेंसी रैंकिंग:** {h_rank_str}")
-
-                        hc1, hc2 = st.columns(2)
-                        with hc1:
-                            st.markdown("⚡ **4-हरूफ़ क्रॉसिंग (Top 4):**")
-                            st.code(f"[ {', '.join(map(str, sorted(top_4_harufs)))} ]", language="text")
-                        with hc2:
-                            st.markdown("🔥 **6-हरूफ़ क्रॉसिंग (Top 6):**")
-                            st.code(f"[ {', '.join(map(str, sorted(top_6_harufs)))} ]", language="text")
-
-                        st.markdown("---")
-
                     st.markdown(f"📋 **Next Result - कुल `{len(clean_nums)}` नंबर:**")
-                    st.text_area("कॉपी हेतु यहाँ क्लिक करें:", value=box_str, height=120, key=f"copy_{k_prefix}_{active_g}_{mode_seq_days}")
+                    st.text_area("कॉपी हेतु यहाँ क्लिक करें:", value=box_str, height=100, key=f"copy_{k_prefix}_{active_g}_{max_scan_days}")
                     st.dataframe(match_df, use_container_width=True)
                 else:
-                    st.warning("⚠️ कोई मैच नहीं मिला।")
+                    st.warning("⚠️ चुनी गई लड़ी का कोई मैच नहीं मिला।")
+
+                # 2. 🔥 केवल हर्फ़ मोड (Mode 2) के लिए ऑल-लड़ी (1 से Max) का ऑटो-डिटेक्टेड फ्रीक्वेंसी रिपोर्ट नीचे
+                if mode_id == "2":
+                    st.markdown("---")
+                    st.markdown(f"### 👑 **ऑटो ऑल-लड़ी हर्फ़ एनालिसिस (1 दिन से {max_scan_days} दिन की सभी लड़ियों को मिलाकर):**")
+                    
+                    all_seq_haruf_counts = {d: 0 for d in range(10)}
+                    total_all_matches = 0
+
+                    # 1 दिन से लेकर Slider में सेट दिन तक की सभी लड़ियों को बैकएंड में रन करना
+                    for d_len in range(1, max_scan_days + 1):
+                        m_rec, _ = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id, d_len)
+                        for r in m_rec:
+                            n_val = r["Next Result"]
+                            h_in, h_out = get_haruf(n_val)
+                            if h_in is not None and 0 <= h_in <= 9: all_seq_haruf_counts[h_in] += 1
+                            if h_out is not None and 0 <= h_out <= 9: all_seq_haruf_counts[h_out] += 1
+                            total_all_matches += 1
+
+                    if total_all_matches > 0:
+                        # फ्रीक्वेंसी अनुसार घटते क्रम में सॉर्ट
+                        sorted_harufs = sorted(all_seq_haruf_counts.keys(), key=lambda d: all_seq_haruf_counts[d], reverse=True)
+                        top_6_h = sorted_harufs[:6]
+                        top_4_h = sorted_harufs[:4]
+
+                        rank_display = " ➔ ".join([f"**हर्फ़ {h}** ({all_seq_haruf_counts[h]} बार)" for h in sorted_harufs])
+                        st.info(f"📊 **घटते क्रम में 0 से 9 हर्फ़ों की रैंकिंग:**\n\n{rank_display}")
+
+                        col1, col2 = st.columns(2)
+                        with col1:
+                            st.success(f"🔥 **टॉप 6 सबसे ज़्यादा आने वाले हर्फ़:** `{sorted(top_6_h)}`")
+                        with col2:
+                            st.success(f"⚡ **टॉप 4 सबसे ज़्यादा आने वाले हर्फ़:** `{sorted(top_4_h)}`")
+                    else:
+                        st.warning("स्कैन की गई लड़ियों में से पर्याप्त डेटा उपलब्ध नहीं है।")
 
     # ================= TAB 2: ANALYZED CROSSING ENGINE + WHATSAPP SHARE =================
     with main_tab2:
@@ -423,4 +430,4 @@ if uploaded_file is not None:
 
 else:
     st.info("👈 ऐप शुरू करने के लिए बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")
-    
+                            

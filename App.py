@@ -121,45 +121,49 @@ if uploaded_file is not None:
                     in_h_top2 = d1_vals.apply(lambda x: x // 10).value_counts().head(2)
                     out_h_top2 = d1_vals.apply(lambda x: x % 10).value_counts().head(2)
 
-                    in_harufs = list(in_h_top2.index)
-                    out_harufs = list(out_h_top2.index)
+                    in_harufs = list(in_h_top2.index)[:2]
+                    out_harufs = list(out_h_top2.index)[:2]
 
                     # ----------------------------------------------------
-                    # ✅ ACCURATE 3-LINE CROSSING ENGINE (DIRECT, PALAT, PAIRS+BAKI)
+                    # ✅ EXACT 3-LINE CROSSING LOGIC
                     # ----------------------------------------------------
-                    # Line 1: Inside x Outside (Direct Numbers)
-                    crossed_line1 = [f"{i}{o}" for i in in_harufs[:2] for o in out_harufs[:2]]
+                    # Line 1: Inside x Outside
+                    crossed_line1 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
                     
-                    # Line 2: Outside x Inside (Palat Numbers)
-                    crossed_line2 = [f"{o}{i}" for i in in_harufs[:2] for o in out_harufs[:2]]
+                    # Line 2: Outside x Inside (Palat of Line 1)
+                    crossed_line2 = [f"{o}{i}" for i in in_harufs for o in out_harufs]
 
-                    # Deduplicate Line 1 and Line 2
+                    # Line 3: Inside x Inside & Outside x Outside (Non-Pairs)
+                    l3_raw = []
+                    if len(in_harufs) == 2:
+                        l3_raw.extend([f"{in_harufs[0]}{in_harufs[1]}", f"{in_harufs[1]}{in_harufs[0]}"])
+                    if len(out_harufs) == 2:
+                        l3_raw.extend([f"{out_harufs[0]}{out_harufs[1]}", f"{out_harufs[1]}{out_harufs[0]}"])
+
+                    # Deduplicate while avoiding duplicates already in Line 1 / Line 2
                     seen_cross = set()
-                    l1_clean = []
+                    l1_clean, l2_clean, l3_clean = [], [], []
+
                     for num in crossed_line1:
                         if num not in seen_cross:
                             l1_clean.append(num)
                             seen_cross.add(num)
 
-                    l2_clean = []
                     for num in crossed_line2:
                         if num not in seen_cross:
                             l2_clean.append(num)
                             seen_cross.add(num)
 
-                    # Line 3: Pairs (जोड़े) + Remaining Crossing Numbers
-                    all_cross_digits = list(dict.fromkeys(in_harufs[:2] + out_harufs[:2]))
+                    for num in l3_raw:
+                        if num not in seen_cross:
+                            l3_clean.append(num)
+                            seen_cross.add(num)
+
+                    # Separate Pairs Box (जोड़े)
+                    all_cross_digits = list(dict.fromkeys(in_harufs + out_harufs))
                     pairs_list = [f"{h}{h}" for h in all_cross_digits]
-                    
-                    total_16_cross = [f"{h1}{h2}" for h1 in all_cross_digits for h2 in all_cross_digits]
-                    remaining_numbers = [num for num in total_16_cross if num not in seen_cross]
 
-                    # Group Line 3: First Pairs (जोड़े), then remaining non-pairs
-                    pairs_in_l3 = [num for num in remaining_numbers if num in pairs_list]
-                    non_pairs_in_l3 = [num for num in remaining_numbers if num not in pairs_list]
-                    l3_clean = pairs_in_l3 + non_pairs_in_l3
-
-                    # Format with brackets (Line 1: 100, Line 2 & 3: 50)
+                    # Bracket Formatting
                     crossed_line1_b = [f"{n}(100)" for n in l1_clean]
                     crossed_line2_b = [f"{n}(50)" for n in l2_clean]
                     crossed_line3_b = [f"{n}(50)" for n in l3_clean]
@@ -202,9 +206,6 @@ if uploaded_file is not None:
                     top_2d_direct = [f"{num:02d}" for num in top_2d.index]
                     top_2d_plat = [get_plat(n) for n in top_2d_direct]
 
-                    # ----------------------------------------------------
-                    # FORMATTING WITH BRACKETS (100) & (50)
-                    # ----------------------------------------------------
                     top_1d_dir_b = [f"{n}(50)" for n in top_1d_direct]
                     top_1d_plt_b = [f"{n}(50)" for n in top_1d_plat]
 
@@ -243,7 +244,7 @@ if uploaded_file is not None:
                     c_box1, c_box2 = st.columns(2)
 
                     with c_box1:
-                        st.markdown("**🎯 हरूफ़ क्रॉसिंग (Line 1: सीधे, Line 2: पलट, Line 3: जोड़े + बाकी):**")
+                        st.markdown("**🎯 हरूफ़ क्रॉसिंग (Line 1: सीधे, Line 2: पलट, Line 3: अंदर-अंदर/बाहर-बाहर):**")
                         st.code(
                             f"{', '.join(crossed_line1_b)}\n"
                             f"{', '.join(crossed_line2_b)}\n"
@@ -402,4 +403,9 @@ if uploaded_file is not None:
                                 "Last Result": f"{last_result:02d}",
                                 "Total Historical Count": total_hist_count,
                                 "Observed Rate %": f"{obs_rate}%",
-                      
+                                "Family / Rashi": str(get_family(num)),
+                                "Strength": "🔥 HIGH" if obs_rate >= 10 else "⚡ MEDIUM"
+                            })
+
+                    if fam_obs_rate >= min_rate_filter:
+                  

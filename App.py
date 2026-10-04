@@ -125,29 +125,46 @@ if uploaded_file is not None:
                     out_harufs = list(out_h_top2.index)
 
                     # ----------------------------------------------------
-                    # ✅ 3-LINE CROSSING LOGIC (16 NUMBERS IN 1 BOX)
+                    # ✅ ACCURATE 3-LINE CROSSING ENGINE (DIRECT, PALAT, PAIRS+BAKI)
                     # ----------------------------------------------------
-                    # Line 1: Inside x Outside (Direct)
-                    crossed_line1 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
+                    # Line 1: Inside x Outside (Direct Numbers)
+                    crossed_line1 = [f"{i}{o}" for i in in_harufs[:2] for o in out_harufs[:2]]
                     
-                    # Line 2: Outside x Inside (Palat)
-                    crossed_line2 = [f"{o}{i}" for i in in_harufs for o in out_harufs]
+                    # Line 2: Outside x Inside (Palat Numbers)
+                    crossed_line2 = [f"{o}{i}" for i in in_harufs[:2] for o in out_harufs[:2]]
 
-                    # Line 3: Remaining combinations from 4x4 cross (Inside x Inside, Outside x Outside, Pairs)
-                    all_cross_digits = list(dict.fromkeys(in_harufs + out_harufs))
+                    # Deduplicate Line 1 and Line 2
+                    seen_cross = set()
+                    l1_clean = []
+                    for num in crossed_line1:
+                        if num not in seen_cross:
+                            l1_clean.append(num)
+                            seen_cross.add(num)
+
+                    l2_clean = []
+                    for num in crossed_line2:
+                        if num not in seen_cross:
+                            l2_clean.append(num)
+                            seen_cross.add(num)
+
+                    # Line 3: Pairs (जोड़े) + Remaining Crossing Numbers
+                    all_cross_digits = list(dict.fromkeys(in_harufs[:2] + out_harufs[:2]))
+                    pairs_list = [f"{h}{h}" for h in all_cross_digits]
+                    
                     total_16_cross = [f"{h1}{h2}" for h1 in all_cross_digits for h2 in all_cross_digits]
-                    
-                    seen_l1_l2 = set(crossed_line1 + crossed_line2)
-                    crossed_line3 = [num for num in total_16_cross if num not in seen_l1_l2]
+                    remaining_numbers = [num for num in total_16_cross if num not in seen_cross]
 
-                    # Format with brackets
-                    crossed_line1_b = [f"{n}(100)" for n in crossed_line1]
-                    crossed_line2_b = [f"{n}(50)" for n in crossed_line2]
-                    crossed_line3_b = [f"{n}(50)" for n in crossed_line3]
+                    # Group Line 3: First Pairs (जोड़े), then remaining non-pairs
+                    pairs_in_l3 = [num for num in remaining_numbers if num in pairs_list]
+                    non_pairs_in_l3 = [num for num in remaining_numbers if num not in pairs_list]
+                    l3_clean = pairs_in_l3 + non_pairs_in_l3
 
-                    all_harufs = list(dict.fromkeys(in_harufs + out_harufs))
-                    haruf_pairs = [f"{h}{h}" for h in all_harufs]
-                    haruf_pairs_b = [f"{n}(50)" for n in haruf_pairs]
+                    # Format with brackets (Line 1: 100, Line 2 & 3: 50)
+                    crossed_line1_b = [f"{n}(100)" for n in l1_clean]
+                    crossed_line2_b = [f"{n}(50)" for n in l2_clean]
+                    crossed_line3_b = [f"{n}(50)" for n in l3_clean]
+
+                    haruf_pairs_b = [f"{n}(50)" for n in pairs_list]
 
                     # ----------------------------------------------------
                     # B. 24-HOUR ALL-GAMES ENGINE LOGIC
@@ -226,7 +243,7 @@ if uploaded_file is not None:
                     c_box1, c_box2 = st.columns(2)
 
                     with c_box1:
-                        st.markdown("**🎯 हरूफ़ क्रॉसिंग (3 लाइन्स - कुल 16 नंबर):**")
+                        st.markdown("**🎯 हरूफ़ क्रॉसिंग (Line 1: सीधे, Line 2: पलट, Line 3: जोड़े + बाकी):**")
                         st.code(
                             f"{', '.join(crossed_line1_b)}\n"
                             f"{', '.join(crossed_line2_b)}\n"
@@ -261,7 +278,6 @@ if uploaded_file is not None:
                         crossed_line1_b,
                         crossed_line2_b,
                         crossed_line3_b,
-                        haruf_pairs_b,
                         top_1d_dir_b,
                         top_1d_plt_b,
                         top_2d_dir_b,
@@ -386,18 +402,4 @@ if uploaded_file is not None:
                                 "Last Result": f"{last_result:02d}",
                                 "Total Historical Count": total_hist_count,
                                 "Observed Rate %": f"{obs_rate}%",
-                                "Family / Rashi": str(get_family(num)),
-                                "Strength": "🔥 HIGH" if obs_rate >= 10 else "⚡ MEDIUM"
-                            })
-
-                    if fam_obs_rate >= min_rate_filter:
-                        results_table.append({
-                            "पैटर्न / नियम": f"Same Family Repeat ({last_result:02d})",
-                            "Last Result": f"{last_result:02d}",
-                            "Total Historical Count": total_hist_count,
-                            "Observed Rate %": f"{fam_obs_rate}%",
-                            "Family / Rashi": str(target_fam),
-                            "Strength": "🎯 100% SOLID" if fam_obs_rate == 100 else "🔥 HIGH"
-                        })
-
-          
+                      

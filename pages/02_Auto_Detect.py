@@ -436,4 +436,41 @@ if uploaded_file is not None:
                 val = int(col_series.iloc[idx])
                 if val == scan_target or val in target_family:
                     # अगले 24 घंटों/रो में आए नंबर्स निकालें
-                    next_24_vals =
+                    next_24_vals = []
+                    for k in range(1, 25):
+                        if idx + k < len(col_series):
+                            next_24_vals.append(int(col_series.iloc[idx + k]))
+                    
+                    if next_24_vals:
+                        rec_date = df.loc[idx, date_col] if date_col else f"Row #{idx}"
+                        match_type = "Direct" if val == scan_target else "Family"
+                        hist_records_24h.append({
+                            "तारीख / रो": rec_date,
+                            "गेम का नाम": col,
+                            "मैच प्रकार": match_type,
+                            "आया हुआ नंबर": f"{val:02d}",
+                            "अगले 24H नंबर्स": next_24_vals
+                        })
+
+        if hist_records_24h:
+            st.success(f"🔍 कुल रिकॉर्ड्स पाए गए: `{len(hist_records_24h)}` बार")
+            scan_df = pd.DataFrame(hist_records_24h)
+            
+            # सभी अगले 24H के नंबर्स का एक फ्लैट लिस्ट
+            all_next_nums = []
+            for item in hist_records_24h:
+                all_next_nums.extend(item["अगले 24H नंबर्स"])
+
+            if all_next_nums:
+                unique_next = sorted(list(set(all_next_nums)))
+                box_24h_str = ", ".join([f"{n:02d}" for n in unique_next])
+
+                st.markdown(f"📋 **अगले 24 घंटों में संभावित `{len(unique_next)}` यूनिक नंबर्स:**")
+                st.text_area("कॉपी करने के लिए यहाँ क्लिक करें:", value=box_24h_str, height=100, key="copy_rare_24h")
+                
+            st.dataframe(scan_df, use_container_width=True)
+        else:
+            st.warning("⚠️ इस नंबर के लिए कोई इतिहास उपलब्ध नहीं है।")
+
+else:
+    st.info("👈 कृपया डैशबोर्ड शुरू करने के लिए बाईं ओर (Sidebar) से अपनी CSV फ़ाइल अपलोड करें।")

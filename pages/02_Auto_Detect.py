@@ -235,12 +235,43 @@ if uploaded_file is not None:
 
                 if matched_records:
                     match_df = pd.DataFrame(matched_records)
-                    clean_nums = sorted(list(set(match_df["Next Result"].tolist())))
+                    next_results = match_df["Next Result"].tolist()
+                    clean_nums = sorted(list(set(next_results)))
                     box_str = ", ".join([f"{n:02d}" for n in clean_nums])
                     
                     st.success(f"✅ मैच पाए गए: `{len(matched_records)}` बार")
+
+                    # ------------ 🎯 केवल हर्फ़ टैब में रैंकिंग और मेन हर्फ़ निकालने का लॉजिक ------------
+                    if mode_id == "2":
+                        haruf_counts = {d: 0 for d in range(10)}
+                        for num_val in next_results:
+                            h_in, h_out = get_haruf(num_val)
+                            if h_in is not None and 0 <= h_in <= 9: haruf_counts[h_in] += 1
+                            if h_out is not None and 0 <= h_out <= 9: haruf_counts[h_out] += 1
+
+                        # फ्रीक्वेंसी के आधार पर सबसे ज्यादा से कम के क्रम में सॉर्ट करना
+                        sorted_harufs = sorted(haruf_counts.keys(), key=lambda d: haruf_counts[d], reverse=True)
+                        top_6_harufs = sorted_harufs[:6]
+                        top_4_harufs = sorted_harufs[:4]
+
+                        st.markdown("### 👑 इस लड़ी से निकलने वाले मेन हर्फ़ (सबसे ज्यादा आने वाले घटते क्रम में):")
+                        
+                        # 6 हरूफ़ की रैंक वाइज लिस्ट
+                        h_rank_str = " > ".join([f"**{h}** ({haruf_counts[h]} बार)" for h in top_6_harufs])
+                        st.success(f"📊 **टॉप 6 हर्फ़ फ्रीक्वेंसी रैंकिंग:** {h_rank_str}")
+
+                        hc1, hc2 = st.columns(2)
+                        with hc1:
+                            st.markdown("⚡ **4-हरूफ़ क्रॉसिंग (Top 4):**")
+                            st.code(f"[ {', '.join(map(str, sorted(top_4_harufs)))} ]", language="text")
+                        with hc2:
+                            st.markdown("🔥 **6-हरूफ़ क्रॉसिंग (Top 6):**")
+                            st.code(f"[ {', '.join(map(str, sorted(top_6_harufs)))} ]", language="text")
+
+                        st.markdown("---")
+
                     st.markdown(f"📋 **Next Result - कुल `{len(clean_nums)}` नंबर:**")
-                    st.text_area("कॉपी हेतु यहाँ क्लिक करें:", value=box_str, height=140, key=f"copy_{k_prefix}_{active_g}_{mode_seq_days}")
+                    st.text_area("कॉपी हेतु यहाँ क्लिक करें:", value=box_str, height=120, key=f"copy_{k_prefix}_{active_g}_{mode_seq_days}")
                     st.dataframe(match_df, use_container_width=True)
                 else:
                     st.warning("⚠️ कोई मैच नहीं मिला।")
@@ -265,7 +296,6 @@ if uploaded_file is not None:
                 crossing_str = "N/A"
                 top_3_str = "N/A"
 
-            # WhatsApp सिंगल मैसेज फ़ॉर्मैट
             wa_text = (
                 f"🔥 *6 HARUF CROSSING REPORT* 🔥\n\n"
                 f"📍 *गेम:* `{col}`\n"
@@ -281,7 +311,6 @@ if uploaded_file is not None:
 
             all_whatsapp_msgs.append(wa_text)
 
-            # कार्ड लेआउट फ़ॉर्मेट
             with st.container():
                 c1, c2, c3, c4 = st.columns([1.5, 2.5, 2, 2])
                 with c1:
@@ -303,7 +332,6 @@ if uploaded_file is not None:
                     )
                 st.markdown("---")
 
-        # सभी गेम्स की एक साथ ऑल-इन-वन रिपोर्ट भेजने का बटन
         if all_whatsapp_msgs:
             combined_all_wa = "📊 *ALL GAMES 6-HARUF CROSSING REPORT* 📊\n\n" + "\n\n------------------\n\n".join(all_whatsapp_msgs)
             encoded_combined = urllib.parse.quote(combined_all_wa)

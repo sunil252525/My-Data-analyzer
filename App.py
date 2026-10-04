@@ -125,7 +125,7 @@ if uploaded_file is not None:
                     out_harufs = list(out_h_top2.index)[:2]
 
                     # ----------------------------------------------------
-                    # ✅ EXACT 3-LINE CROSSING LOGIC
+                    # ✅ EXACT 16-NUMBER CROSSING ENGINE (3 LINES)
                     # ----------------------------------------------------
                     # Line 1: Inside x Outside
                     crossed_line1 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
@@ -133,16 +133,15 @@ if uploaded_file is not None:
                     # Line 2: Outside x Inside (Palat of Line 1)
                     crossed_line2 = [f"{o}{i}" for i in in_harufs for o in out_harufs]
 
-                    # Line 3: Inside x Inside & Outside x Outside (Non-Pairs)
-                    l3_raw = []
-                    if len(in_harufs) == 2:
-                        l3_raw.extend([f"{in_harufs[0]}{in_harufs[1]}", f"{in_harufs[1]}{in_harufs[0]}"])
-                    if len(out_harufs) == 2:
-                        l3_raw.extend([f"{out_harufs[0]}{out_harufs[1]}", f"{out_harufs[1]}{out_harufs[0]}"])
+                    # All 4 unique digits involved in this 2x2 crossing
+                    all_cross_digits = list(dict.fromkeys(in_harufs + out_harufs))
+                    
+                    # Total 16 combinations (4x4)
+                    total_16_cross = [f"{d1}{d2}" for d1 in all_cross_digits for d2 in all_cross_digits]
 
-                    # Deduplicate while avoiding duplicates already in Line 1 / Line 2
+                    # Deduplicate Line 1 and Line 2
                     seen_cross = set()
-                    l1_clean, l2_clean, l3_clean = [], [], []
+                    l1_clean, l2_clean = [], []
 
                     for num in crossed_line1:
                         if num not in seen_cross:
@@ -154,16 +153,13 @@ if uploaded_file is not None:
                             l2_clean.append(num)
                             seen_cross.add(num)
 
-                    for num in l3_raw:
-                        if num not in seen_cross:
-                            l3_clean.append(num)
-                            seen_cross.add(num)
+                    # Line 3: ALL remaining numbers (Pairs + remaining crossing numbers) -> Total 16 covered
+                    l3_clean = [num for num in total_16_cross if num not in seen_cross]
 
-                    # Separate Pairs Box (जोड़े)
-                    all_cross_digits = list(dict.fromkeys(in_harufs + out_harufs))
+                    # Separate Pairs list for reference
                     pairs_list = [f"{h}{h}" for h in all_cross_digits]
 
-                    # Bracket Formatting
+                    # Bracket Formatting (Line 1: 100, Line 2 & 3: 50)
                     crossed_line1_b = [f"{n}(100)" for n in l1_clean]
                     crossed_line2_b = [f"{n}(50)" for n in l2_clean]
                     crossed_line3_b = [f"{n}(50)" for n in l3_clean]
@@ -244,7 +240,7 @@ if uploaded_file is not None:
                     c_box1, c_box2 = st.columns(2)
 
                     with c_box1:
-                        st.markdown("**🎯 हरूफ़ क्रॉसिंग (Line 1: सीधे, Line 2: पलट, Line 3: अंदर-अंदर/बाहर-बाहर):**")
+                        st.markdown("**🎯 हरूफ़ क्रॉसिंग 16 नंबर (Line 1: सीधे, Line 2: पलट, Line 3: जोड़े + बाकी):**")
                         st.code(
                             f"{', '.join(crossed_line1_b)}\n"
                             f"{', '.join(crossed_line2_b)}\n"
@@ -408,4 +404,6 @@ if uploaded_file is not None:
                             })
 
                     if fam_obs_rate >= min_rate_filter:
-                  
+                        results_table.append({
+                            "पैटर्न / नियम": f"Same Family Repeat ({last_result:02d})",
+                            "Last Re

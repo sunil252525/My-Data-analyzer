@@ -47,9 +47,9 @@ def get_plat(num_val):
     except:
         return ""
 
-# ✅ लाइन के आख़िर में ब्रैकेट जोड़ने का स्पेशल फ़ंक्शन
-def fmt_line(num_list, rate):
-    clean_nums = [f"{int(n):02d}" if isinstance(n, int) else str(n) for n in num_list]
+# ✅ हर नंबर से ब्रैकेट हटाकर सिर्फ़ लाइन के आख़िर में ब्रैकेट लगाने का फ़ंक्शन
+def fmt_line_end(num_list, rate):
+    clean_nums = [f"{int(n):02d}" if isinstance(n, (int, str)) and str(n).isdigit() else str(n) for n in num_list]
     if not clean_nums:
         return ""
     return f"{', '.join(clean_nums)} ({rate})"
@@ -76,7 +76,7 @@ if uploaded_file is not None:
         min_rate_filter = st.slider("न्यूनतम Observed Rate % फ़िल्टर", 10, 100, 100)
         
     with col2:
-        st.info("💡 सिस्टम हर गेम का सबसे आख़िरी रिजल्ट स्वतः (Automatically) फ़ेच करेगा।")
+        st.info("💡 सिस्टम हर गेम का सबसे आख़िरी रिजल्ट स्वतः फ़ेच करेगा।")
 
     run_scan = st.button("🔥 Run Multi-Game Auto Scan (एक साथ सभी गेम देखें)", use_container_width=True)
 
@@ -98,7 +98,7 @@ if uploaded_file is not None:
                 total_hist_count = len(t_idx)
                 
                 # ----------------------------------------------------
-                # A. 1-DAY AND 2-DAY SINGLE-GAME SCAN LOGIC
+                # A. SINGLE GAME SCAN LOGIC
                 # ----------------------------------------------------
                 d1_idx = [i + 1 for i in t_idx if i + 1 < len(df)]
                 d2_idx = [i + 2 for i in t_idx if i + 2 < len(df)]
@@ -130,7 +130,7 @@ if uploaded_file is not None:
                     out_harufs = list(out_h_top2.index)[:2]
 
                     # ----------------------------------------------------
-                    # ✅ 16-NUMBER CROSSING ENGINE (3 LINES)
+                    # 16-NUMBER CROSSING ENGINE
                     # ----------------------------------------------------
                     crossed_line1 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
                     crossed_line2 = [f"{o}{i}" for i in in_harufs for o in out_harufs]
@@ -151,7 +151,6 @@ if uploaded_file is not None:
                             l2_clean.append(num)
                             seen_cross.add(num)
 
-                    # Line 3: 8 numbers (Pairs + Remaining)
                     l3_clean = [num for num in total_16_cross if num not in seen_cross]
                     pairs_list = [f"{h}{h}" for h in all_cross_digits]
 
@@ -189,9 +188,9 @@ if uploaded_file is not None:
                     top_1d_plat = [get_plat(n) for n in top_1d_direct]
 
                     top_2d_direct = [f"{num:02d}" for num in top_2d.index]
-                    top_2d_plat = [get_plat(n) for n in top_2d_plat] if 'top_2d_plat' in locals() else [get_plat(n) for n in top_2d_direct]
+                    top_2d_plat = [get_plat(n) for n in top_2d_direct]
 
-                    # Sections data: (numbers_list, rate)
+                    # ✅ शुद्ध नंबरों की लिस्ट और उनके रेट का ग्रुप
                     raw_sections = [
                         (l1_clean, 100),
                         (l2_clean, 50),
@@ -207,7 +206,7 @@ if uploaded_file is not None:
                     ]
 
                     # ----------------------------------------------------
-                    # 1. EXECUTIVE SUMMARY & HISTORICAL STATS
+                    # 1. EXECUTIVE SUMMARY
                     # ----------------------------------------------------
                     st.subheader(f"📌 {col} का ऐतिहासिक विश्लेषण (Last Result: {last_result:02d})")
                     st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** 13 साल के रिकॉर्ड में **{col}** में **{last_result:02d}** कुल **{total_hist_count} बार** आया है।")
@@ -217,34 +216,48 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     # 2. INDIVIDUAL CATEGORY BOXES
                     # ----------------------------------------------------
-                    st.markdown("### 📋 अलग-अलग कैटेगरी बॉक्स (Line End Bracket Format)")
+                    st.markdown("### 📋 अलग-अलग कैटेगरी बॉक्स")
                     
                     c_box1, c_box2 = st.columns(2)
 
                     with c_box1:
                         st.markdown("**🎯 हरूफ़ क्रॉसिंग 16 नंबर:**")
                         st.code(
-                            f"{fmt_line(l1_clean, 100)}\n"
-                            f"{fmt_line(l2_clean, 50)}\n"
-                            f"{fmt_line(l3_clean, 50)}", 
+                            f"{fmt_line_end(l1_clean, 100)}\n"
+                            f"{fmt_line_end(l2_clean, 50)}\n"
+                            f"{fmt_line_end(l3_clean, 50)}", 
                             language="text"
                         )
 
                         st.markdown("**📋 1-Day Follow-up Numbers:**")
                         st.code(
-                            f"{fmt_line(top_1d_direct, 50)}\n"
-                            f"{fmt_line(top_1d_plat, 50)}", 
+                            f"{fmt_line_end(top_1d_direct, 50)}\n"
+                            f"{fmt_line_end(top_1d_plat, 50)}", 
+                            language="text"
+                        )
+
+                        st.markdown("**⚡ 24-Hour All-Games Numbers:**")
+                        st.code(
+                            f"{fmt_line_end(top_24h_direct, 100)}\n"
+                            f"{fmt_line_end(top_24h_plat, 50)}", 
                             language="text"
                         )
 
                     with c_box2:
                         st.markdown("**👯 हरूफ के जोड़े (Pairs):**")
-                        st.code(fmt_line(pairs_list, 50), language="text")
+                        st.code(fmt_line_end(pairs_list, 50), language="text")
 
                         st.markdown("**📋 2-Day Follow-up Numbers:**")
                         st.code(
-                            f"{fmt_line(top_2d_direct, 50)}\n"
-                            f"{fmt_line(top_2d_plat, 50)}", 
+                            f"{fmt_line_end(top_2d_direct, 50)}\n"
+                            f"{fmt_line_end(top_2d_plat, 50)}", 
+                            language="text"
+                        )
+
+                        st.markdown("**🎲 24-Hour Haruf Numbers & Pairs:**")
+                        st.code(
+                            f"{fmt_line_end(all_24h_haruf_nums, 50)}\n"
+                            f"{fmt_line_end(all_24h_haruf_plat, 50)}", 
                             language="text"
                         )
 
@@ -253,7 +266,7 @@ if uploaded_file is not None:
                     # ----------------------------------------------------
                     # 3. PATTERN-PRESERVING UNIQUE COMBINED BOX
                     # ----------------------------------------------------
-                    st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Duplicate Removed)")
+                    st.markdown("### 🎯 Preserved - Duplicate Removed")
 
                     seen_base = set()
                     unique_pattern_lines = []
@@ -263,16 +276,18 @@ if uploaded_file is not None:
                     for n_list, rate in raw_sections:
                         filtered_nums = []
                         for num in n_list:
-                            if num not in seen_base:
-                                seen_base.add(num)
-                                filtered_nums.append(num)
+                            # शुद्ध नंबर स्टैक बनाना (ताकि 66(100) जैसा कुछ न बने)
+                            clean_num = f"{int(num):02d}" if isinstance(num, (int, str)) and str(num).isdigit() else str(num)
+                            if clean_num not in seen_base:
+                                seen_base.add(clean_num)
+                                filtered_nums.append(clean_num)
                                 if rate == 100:
                                     count_100 += 1
                                 elif rate == 50:
                                     count_50 += 1
                         
                         if filtered_nums:
-                            unique_pattern_lines.append(fmt_line(filtered_nums, rate))
+                            unique_pattern_lines.append(fmt_line_end(filtered_nums, rate))
 
                     final_unique_count = len(seen_base)
 
@@ -282,11 +297,7 @@ if uploaded_file is not None:
                     grand_total_payment = total_100_amt + total_50_amt
 
                     st.info(
-                        f"🔢 **यूनिक पैटर्न बॉक्स गिनती एवं पेमेंट समरी (Payment Summary):**\n"
-                        f"• **कुल यूनिक नंबर:** **{final_unique_count}**\n"
-                        f"• **(100) वाले नंबर:** {count_100} × 100 = **₹{total_100_amt}**\n"
-                        f"• **(50) वाले नंबर:** {count_50} × 50 = **₹{total_50_amt}**\n"
-                        f"• 💰 **कुल पेमेंट (Grand Total):** **₹{grand_total_payment}**"
+                        f"🔢 **यूनिक पैटर्न बॉक्स गिनती एवं पेमेंट समरी (Payment Summary):** • **कुल यूनिक नंबर:** **{final_unique_count}** • **(100) वाले नंबर:** {count_100} × 100 = **₹{total_100_amt}** • **(50) वाले नंबर:** {count_50} × 50 = **₹{total_50_amt}** • 💰 **कुल पेमेंट (Grand Total):** **₹{grand_total_payment}**"
                     )
 
                     unique_pattern_box_text = "\n".join(unique_pattern_lines)
@@ -311,5 +322,46 @@ if uploaded_file is not None:
                         f'📲 WhatsApp पर भेजें (Click to Share on WhatsApp)'
                         f'</button></a>',
                         unsafe_allow_html=True
-                )
+                    )
+
+                    st.markdown("---")
+
+                    # ----------------------------------------------------
+                    # 4. STRUCTURED TABLE OUTPUT
+                    # ----------------------------------------------------
+                    st.markdown("#### 📊 50-Point Scan Table Filtered")
+                    results_table = []
+                    all_exact_nums = set(top_1d.index).union(set(top_2d.index))
+                    
+                    for num in all_exact_nums:
+                        c1 = (d1_vals == num).sum()
+                        c2 = (d2_vals == num).sum()
+                        tot_c = c1 + c2
+                        tot_opps = opps_d1 + opps_d2
+                        obs_rate = round((tot_c / tot_opps) * 100, 2) if tot_opps > 0 else 0.0
+                        
+                        if obs_rate >= min_rate_filter:
+                            results_table.append({
+                                "पैटर्न / नियम": f"Exact Follow-up -> {num:02d}",
+                                "Last Result": f"{last_result:02d}",
+                                "Total Historical Count": total_hist_count,
+                                "Observed Rate %": f"{obs_rate}%",
+                                "Family / Rashi": str(get_family(num)),
+                                "Strength": "🔥 HIGH" if obs_rate >= 10 else "⚡ MEDIUM"
+                            })
+
+                    if fam_obs_rate >= min_rate_filter:
+                        results_table.append({
+                            "पैटर्न / नियम": f"Same Family Repeat ({last_result:02d})",
+                            "Last Result": f"{last_result:02d}",
+                            "Total Historical Count": total_hist_count,
+                            "Observed Rate %": f"{fam_obs_rate}%",
+                            "Family / Rashi": str(target_fam),
+                            "Strength": "🎯 100% SOLID" if fam_obs_rate == 100 else "🔥 HIGH"
+                        })
+
+                    if results_table:
+                        st.table(pd.DataFrame(results_table))
+                    else:
+                        st.info(f"Observed Rate >= {min_rate_filter}% का कोई रिकॉर्ड नहीं मिला।")
                     

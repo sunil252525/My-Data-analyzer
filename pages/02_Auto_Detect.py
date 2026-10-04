@@ -3,9 +3,9 @@ import pandas as pd
 import numpy as np
 import urllib.parse
 
-st.set_page_config(page_title="Auto-Detect & Multi-Formula Dashboard", layout="wide")
+st.set_page_config(page_title="Auto-Detect Sequence Dashboard", layout="wide")
 
-st.title("⚡ ऑटो-डिटेक्ट एडवांस डैशबोर्ड")
+st.title("⚡ ऑटो-डिटेक्ट एडवांस डैशबोर्ड (Fully Automatic)")
 
 # ================= HELPER FUNCTIONS =================
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -62,44 +62,34 @@ def check_single_match(mode_id, hist_val, rec_pattern):
 
 # ================= FAST CACHED SEARCH ENGINE =================
 @st.cache_data
-def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_seq_days, skip_recent=0):
+def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_seq_days):
     clean_series = df[g_sel].dropna().astype(int).tolist()
-    if skip_recent > 0:
-        clean_series = clean_series[:-skip_recent]
-        
     max_possible_days = len(clean_series)
     recent_nums = clean_series[-mode_seq_days:] if max_possible_days >= mode_seq_days else clean_series
-    full_recent_nums = clean_series[-25:] if max_possible_days >= 25 else clean_series
 
-    full_patterns = []
-    for n in full_recent_nums:
-        if mode_id == "1": full_patterns.append(get_haruf_and_rashi_set(n))
+    recent_patterns = []
+    for n in recent_nums:
+        if mode_id == "1": recent_patterns.append(get_haruf_and_rashi_set(n))
         elif mode_id == "2":
             h_i, h_o = get_haruf(n)
-            full_patterns.append({h_i, h_o} if h_i is not None else set())
-        elif mode_id == "3": full_patterns.append(int(n))
+            recent_patterns.append({h_i, h_o} if h_i is not None else set())
+        elif mode_id == "3": recent_patterns.append(int(n))
         elif mode_id == "4":
             rev_n = int(f"{int(n):02d}"[::-1])
-            full_patterns.append({int(n), rev_n})
-        elif mode_id == "5": full_patterns.append(set(get_family(n)))
+            recent_patterns.append({int(n), rev_n})
+        elif mode_id == "5": recent_patterns.append(set(get_family(n)))
 
-    recent_patterns = full_patterns[-mode_seq_days:]
     matched_records = []
     seen_rows = set()
 
     for col in available_cols:
         col_vals = df[col].tolist()
         n_vals = len(col_vals)
-        
         end_idx_limit = n_vals - len(recent_nums) - 1
-        if skip_recent > 0:
-            end_idx_limit -= skip_recent
 
         for i in range(end_idx_limit):
             target_idx = i + len(recent_nums)
-            
-            if (col, target_idx) in seen_rows:
-                continue
+            if (col, target_idx) in seen_rows: continue
 
             sub_seq = col_vals[i : target_idx]
             if any(pd.isna(v) for v in sub_seq): continue
@@ -125,7 +115,21 @@ def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_
 
     return matched_records, recent_nums
 
-# ================= REAL STATISTICAL ANALYSIS & BACKTESTING ENGINE =================
+# ================= AUTO-DETECT OPTIMAL SEQUENCE LENGTH =================
+def find_auto_best_sequence(df, g_sel, available_cols, date_col, mode_id, max_check_days=15):
+    """
+    यह फ़ंक्शन खुद बैकग्राउंड में चेक करेगा कि सबसे लंबी मैचिंग लड़ी कितने दिनों पर बन रही है (जैसे 12, 10, 8 दिन)।
+    """
+    for test_days in range(max_check_days, 1, -1):
+        matched_records, recent_nums = run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, test_days)
+        if matched_records:
+            return test_days, matched_records, recent_nums
+    
+    # अगर लंबी लड़ी नहीं मिली तो डिफ़ॉल्ट 2 दिन पर सेट करेगा
+    matched_records, recent_nums = run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, 2)
+    return 2, matched_records, recent_nums
+
+# ================= STATISTICAL ANALYSIS =================
 def get_statistically_analyzed_crossing(df, col):
     vals = df[col].dropna().astype(int).tolist()
     if len(vals) < 20:
@@ -168,9 +172,7 @@ def get_statistically_analyzed_crossing(df, col):
                 accuracy[m_name] += 1
 
     best_method = max(accuracy, key=accuracy.get)
-
     combined_scores = {d: method_scores["Method_A"][d]*2 + method_scores["Method_B"][d] + method_scores["Method_C"][d]*1.5 for d in range(10)}
-    
     top_6 = sorted(combined_scores.keys(), key=lambda x: combined_scores[x], reverse=True)[:6]
     top_6.sort()
     
@@ -214,11 +216,17 @@ if uploaded_file is not None:
     st.markdown("---")
 
     # ---------------- MAIN SECTION TABS ----------------
-    main_tab1, main_tab2, main_tab3 = st.tabs(["📊 मैनुअल लड़ी पैटर्न", "🤖 ऑटो 6-हरूफ़ स्मार्ट क्रॉसिंग", "⚡ ऑटो-डिटेक्ट Rare Number 24H"])
+    main_tab1, main_tab2, main_tab3 = st.tabs(["📊 ऑटो-डिटेक्टेड लड़ी पैटर्न", "🤖 ऑटो 6-हरूफ़ स्मार्ट क्रॉसिंग", "⚡ ऑटो-डिटेक्ट Rare Number 24H"])
 
     # ================= TAB 1: MANUAL SEQUENCE PATTERNS =================
     with main_tab1:
-        mode_seq_days = st.slider("🎛️ मैनुअल लड़ी दिन चुनें:", min_value=1, max_value=20, value=5, key="global_seq_slider")
+        st.markdown("💡 **नोट:** अब आपको स्लाइडर खिसकाने की ज़रूरत नहीं है! सिस्टम खुद ताज़ा और सबसे सटीक लड़ी पर ऑटो-सेट हो जाता है।")
+        
+        use_manual = st.checkbox("⚙️ अगर खुद स्लाइडर से दिन सेट करना चाहें तो यहाँ टिक करें")
+        manual_days = 5
+        if use_manual:
+            manual_days = st.slider("🎛️ दिन चुनें:", min_value=1, max_value=20, value=5, key="global_seq_slider")
+
         sub_tab1, sub_tab2, sub_tab3, sub_tab4, sub_tab5 = st.tabs([
             "1️⃣ हर्फ़ + राशि", "2️⃣ केवल हर्फ़", "3️⃣ सेम टू सेम", "4️⃣ अलट-पलट", "5️⃣ फैमिली"
         ])
@@ -230,8 +238,13 @@ if uploaded_file is not None:
 
         for mode_id, t_obj, k_prefix in modes:
             with t_obj:
-                matched_records, recent_nums = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id, mode_seq_days)
-                st.info(f"📌 `{active_g}` का पिछले **{mode_seq_days} दिन** का पैटर्न: `{recent_nums}`")
+                if use_manual:
+                    auto_days = manual_days
+                    matched_records, recent_nums = run_fast_sequence_search(df, active_g, available_cols, date_col, mode_id, auto_days)
+                else:
+                    auto_days, matched_records, recent_nums = find_auto_best_sequence(df, active_g, available_cols, date_col, mode_id)
+
+                st.info(f"🎯 **{active_g}** ऑटो-सेट लड़ी लंबाई: **`{auto_days} दिन`** | ताज़ा पैटर्न: `{recent_nums}`")
 
                 if matched_records:
                     match_df = pd.DataFrame(matched_records)
@@ -239,9 +252,9 @@ if uploaded_file is not None:
                     clean_nums = sorted(list(set(next_results)))
                     box_str = ", ".join([f"{n:02d}" for n in clean_nums])
                     
-                    st.success(f"✅ मैच पाए गए: `{len(matched_records)}` बार")
+                    st.success(f"✅ ऑटो-मैच पाए गए: `{len(matched_records)}` बार")
 
-                    # ------------ 🎯 केवल हर्फ़ टैब में रैंकिंग और मेन हर्फ़ निकालने का लॉजिक ------------
+                    # ------------ 🎯 केवल हर्फ़ टैब: ऑटो-क्रॉसिंग जेनरेशन ------------
                     if mode_id == "2":
                         haruf_counts = {d: 0 for d in range(10)}
                         for num_val in next_results:
@@ -249,16 +262,14 @@ if uploaded_file is not None:
                             if h_in is not None and 0 <= h_in <= 9: haruf_counts[h_in] += 1
                             if h_out is not None and 0 <= h_out <= 9: haruf_counts[h_out] += 1
 
-                        # फ्रीक्वेंसी के आधार पर सबसे ज्यादा से कम के क्रम में सॉर्ट करना
                         sorted_harufs = sorted(haruf_counts.keys(), key=lambda d: haruf_counts[d], reverse=True)
                         top_6_harufs = sorted_harufs[:6]
                         top_4_harufs = sorted_harufs[:4]
 
-                        st.markdown("### 👑 इस लड़ी से निकलने वाले मेन हर्फ़ (सबसे ज्यादा आने वाले घटते क्रम में):")
+                        st.markdown("### 👑 ऑटो-सेट लड़ी की मुख्य क्रॉसिंग:")
                         
-                        # 6 हरूफ़ की रैंक वाइज लिस्ट
                         h_rank_str = " > ".join([f"**{h}** ({haruf_counts[h]} बार)" for h in top_6_harufs])
-                        st.success(f"📊 **टॉप 6 हर्फ़ फ्रीक्वेंसी रैंकिंग:** {h_rank_str}")
+                        st.success(f"📊 **हर्फ़ रैंकिंग:** {h_rank_str}")
 
                         hc1, hc2 = st.columns(2)
                         with hc1:
@@ -268,15 +279,80 @@ if uploaded_file is not None:
                             st.markdown("🔥 **6-हरूफ़ क्रॉसिंग (Top 6):**")
                             st.code(f"[ {', '.join(map(str, sorted(top_6_harufs)))} ]", language="text")
 
+                        # ---- व्हाट्सएप मैसेज (सिंगल गेम) ----
+                        haruf_wa_text = (
+                            f"🔥 *ऑटो-सेट केवल हर्फ़ लड़ी रिपोर्ट* 🔥\n\n"
+                            f"📍 *गेम:* `{active_g}`\n"
+                            f"🗓️️ *ऑटो-सेट लड़ी:* {auto_days} दिन\n"
+                            f"📊 *लास्ट पैटर्न:* {recent_nums}\n\n"
+                            f"⚡ *4-हरूफ़ क्रॉसिंग:* [{', '.join(map(str, sorted(top_4_harufs)))}]\n"
+                            f"🔥 *6-हरूफ़ क्रॉसिंग:* [{', '.join(map(str, sorted(top_6_harufs)))}]\n"
+                            f"🎯 *मैचिंग रिज़ल्ट्स:* {box_str}"
+                        )
+                        
+                        encoded_h_wa = urllib.parse.quote(haruf_wa_text)
+                        h_wa_url = f"https://api.whatsapp.com/send?text={encoded_h_wa}"
+
+                        st.markdown(
+                            f'<a href="{h_wa_url}" target="_blank">'
+                            f'<button style="background-color:#25D366; color:white; border:none; padding:10px 16px; '
+                            f'font-size:14px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%; margin-top:8px;">'
+                            f'📲 {active_g} की हर्फ़ क्रॉसिंग WhatsApp पर शेयर करें'
+                            f'</button></a>',
+                            unsafe_allow_html=True
+                        )
+
                         st.markdown("---")
 
                     st.markdown(f"📋 **Next Result - कुल `{len(clean_nums)}` नंबर:**")
-                    st.text_area("कॉपी हेतु यहाँ क्लिक करें:", value=box_str, height=120, key=f"copy_{k_prefix}_{active_g}_{mode_seq_days}")
+                    st.text_area("कॉपी करने के लिए यहाँ क्लिक करें:", value=box_str, height=120, key=f"copy_{k_prefix}_{active_g}_{auto_days}")
                     st.dataframe(match_df, use_container_width=True)
                 else:
-                    st.warning("⚠️ कोई मैच नहीं मिला।")
+                    st.warning("⚠️ इस गेम के लिए कोई पुराना रिकॉर्ड मैच नहीं हुआ।")
 
-    # ================= TAB 2: ANALYZED CROSSING ENGINE + WHATSAPP SHARE =================
+        # ---- सभी गेम्स की हर्फ़ लड़ी व्हाट्सएप शेयरिंग मास्टर सेक्शन ----
+        st.markdown("---")
+        st.markdown("### 🚀 सभी गेम्स की ऑटो-सेट हर्फ़ लड़ी रिपोर्ट (WhatsApp Master Share):")
+        all_games_h_msgs = []
+        for g_name in available_cols:
+            if use_manual:
+                a_d = manual_days
+                m_recs, r_nums = run_fast_sequence_search(df, g_name, available_cols, date_col, "2", a_d)
+            else:
+                a_d, m_recs, r_nums = find_auto_best_sequence(df, g_name, available_cols, date_col, "2")
+
+            if m_recs:
+                n_res = [r["Next Result"] for r in m_recs]
+                h_cnts = {d: 0 for d in range(10)}
+                for nv in n_res:
+                    hi, ho = get_haruf(nv)
+                    if hi is not None and 0 <= hi <= 9: h_cnts[hi] += 1
+                    if ho is not None and 0 <= ho <= 9: h_cnts[ho] += 1
+                srt_h = sorted(h_cnts.keys(), key=lambda d: h_cnts[d], reverse=True)
+                top6_h = sorted(srt_h[:6])
+                top4_h = sorted(srt_h[:4])
+                
+                all_games_h_msgs.append(
+                    f"📍 *{g_name}* (ऑटो सेट: {a_d} दिन - {r_nums})\n"
+                    f"⚡ 4-हरूफ़: [{', '.join(map(str, top4_h))}]\n"
+                    f"🔥 6-हरूफ़: [{', '.join(map(str, top6_h))}]"
+                )
+
+        if all_games_h_msgs:
+            comb_h_wa = f"📊 *ALL GAMES AUTO-SET KEWAL HARUF CROSSING* 📊\n\n" + "\n\n------------------\n\n".join(all_games_h_msgs)
+            encoded_comb_h = urllib.parse.quote(comb_h_wa)
+            comb_h_wa_url = f"https://api.whatsapp.com/send?text={encoded_comb_h}"
+
+            st.markdown(
+                f'<a href="{comb_h_wa_url}" target="_blank">'
+                f'<button style="background-color:#075E54; color:white; border:none; padding:12px 18px; '
+                f'font-size:15px; border-radius:10px; cursor:pointer; font-weight:bold; width:100%;">'
+                f'📲 सभी गेम्स की ऑटो-सेट हर्फ़ क्रॉसिंग WhatsApp पर शेयर करें'
+                f'</button></a>',
+                unsafe_allow_html=True
+            )
+
+    # ================= TAB 2: ANALYZED CROSSING ENGINE =================
     with main_tab2:
         st.subheader("🤖 Top 6 Haruf Crossing Engine (ऑटो शेयरिंग सुविधा के साथ)")
 
@@ -362,65 +438,4 @@ if uploaded_file is not None:
 
         for col in available_cols:
             col_series = df[col].dropna().reset_index(drop=True)
-            for idx in range(len(col_series) - 1):
-                if int(col_series[idx]) == scan_target:
-                    target_row_idx = idx + 1
-                    next_found_nums = []
-
-                    if target_row_idx < len(df):
-                        for g_col in available_cols:
-                            val = df.loc[target_row_idx, g_col]
-                            if pd.notna(val):
-                                val_int = int(val)
-                                next_found_nums.append(val_int)
-                                location_hits.append(g_col)
-
-                    for n in next_found_nums:
-                        direct_hits.append(n)
-                        fam_list = get_family(n)
-                        if fam_list:
-                            family_hits.append(f"फैमिली {fam_list[0]:02d}")
-
-                    rec_date = df.loc[idx, 'Date'] if 'Date' in df.columns else f"Row #{idx}"
-                    unique_next_nums = sorted(list(set(next_found_nums)))
-                    
-                    hist_records_24h.append({
-                        "तारीख / रो": rec_date,
-                        "गेम": col,
-                        "टारगेट": f"{scan_target:02d}",
-                        "अगले नंबर": ", ".join([f"{n:02d}" for n in unique_next_nums])
-                    })
-
-        if hist_records_24h:
-            st.success(f"🎯 **नंबर `{scan_target:02d}` के 24 घंटे का डेटा (कुल `{len(hist_records_24h)}` मैच):**")
-            
-            top_direct_series = pd.Series(direct_hits).value_counts()
-            top_family_series = pd.Series(family_hits).value_counts()
-            top_location_series = pd.Series(location_hits).value_counts()
-
-            best_number = top_direct_series.index[0] if not top_direct_series.empty else "N/A"
-            best_number_count = top_direct_series.iloc[0] if not top_direct_series.empty else 0
-
-            best_family = top_family_series.index[0] if not top_family_series.empty else "N/A"
-            best_family_count = top_family_series.iloc[0] if not top_family_series.empty else 0
-
-            st.info(f"🏆 **टॉप 24H नंबर:** `{best_number}` ({best_number_count} बार) | **टॉप 24H फैमिली:** `{best_family}` ({best_family_count} बार)")
-
-            col_res1, col_res2, col_res3 = st.columns(3)
-            with col_res1:
-                st.markdown("🔥 **टॉप 5 नंबर:**")
-                st.table(top_direct_series.head(5).rename("पासिंग"))
-            with col_res2:
-                st.markdown("👑 **टॉप 5 फैमिली:**")
-                st.table(top_family_series.head(5).rename("पासिंग"))
-            with col_res3:
-                st.markdown("📍 **टॉप 5 गेम:**")
-                st.table(top_location_series.head(5).rename("पासिंग"))
-
-            st.dataframe(pd.DataFrame(hist_records_24h), use_container_width=True)
-        else:
-            st.warning(f"नंबर `{scan_target:02d}` का कोई रिकॉर्ड नहीं मिला।")
-
-else:
-    st.info("👈 ऐप शुरू करने के लिए बाएँ साइडबार से CSV फ़ाइल अपलोड करें।")
-            
+            for idx in range(len(co

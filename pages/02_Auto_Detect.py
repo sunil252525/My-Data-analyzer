@@ -117,15 +117,11 @@ def run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, mode_
 
 # ================= AUTO-DETECT OPTIMAL SEQUENCE LENGTH =================
 def find_auto_best_sequence(df, g_sel, available_cols, date_col, mode_id, max_check_days=15):
-    """
-    यह फ़ंक्शन खुद बैकग्राउंड में चेक करेगा कि सबसे लंबी मैचिंग लड़ी कितने दिनों पर बन रही है (जैसे 12, 10, 8 दिन)।
-    """
     for test_days in range(max_check_days, 1, -1):
         matched_records, recent_nums = run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, test_days)
         if matched_records:
             return test_days, matched_records, recent_nums
     
-    # अगर लंबी लड़ी नहीं मिली तो डिफ़ॉल्ट 2 दिन पर सेट करेगा
     matched_records, recent_nums = run_fast_sequence_search(df, g_sel, available_cols, date_col, mode_id, 2)
     return 2, matched_records, recent_nums
 
@@ -283,7 +279,7 @@ if uploaded_file is not None:
                         haruf_wa_text = (
                             f"🔥 *ऑटो-सेट केवल हर्फ़ लड़ी रिपोर्ट* 🔥\n\n"
                             f"📍 *गेम:* `{active_g}`\n"
-                            f"🗓️️ *ऑटो-सेट लड़ी:* {auto_days} दिन\n"
+                            f"🗓 *ऑटो-सेट लड़ी:* {auto_days} दिन\n"
                             f"📊 *लास्ट पैटर्न:* {recent_nums}\n\n"
                             f"⚡ *4-हरूफ़ क्रॉसिंग:* [{', '.join(map(str, sorted(top_4_harufs)))}]\n"
                             f"🔥 *6-हरूफ़ क्रॉसिंग:* [{', '.join(map(str, sorted(top_6_harufs)))}]\n"
@@ -308,7 +304,7 @@ if uploaded_file is not None:
                     st.text_area("कॉपी करने के लिए यहाँ क्लिक करें:", value=box_str, height=120, key=f"copy_{k_prefix}_{active_g}_{auto_days}")
                     st.dataframe(match_df, use_container_width=True)
                 else:
-                    st.warning("⚠️ इस गेम के लिए कोई पुराना रिकॉर्ड मैच नहीं हुआ।")
+                    st.warning("⚠️️ इस गेम के लिए कोई पुराना रिकॉर्ड मैच नहीं हुआ।")
 
         # ---- सभी गेम्स की हर्फ़ लड़ी व्हाट्सएप शेयरिंग मास्टर सेक्शन ----
         st.markdown("---")
@@ -432,10 +428,12 @@ if uploaded_file is not None:
         scan_target = st.number_input(f"टारगेट नंबर (ऑटो-डिटेक्टेड: `{auto_detected_num:02d}`):", 0, 99, auto_detected_num, key="scan_target_num_auto_24h")
         
         hist_records_24h = []
-        direct_hits = []
-        family_hits = []
-        location_hits = []
+        target_family = set(get_family(scan_target))
 
         for col in available_cols:
             col_series = df[col].dropna().reset_index(drop=True)
-            for idx in range(len(co
+            for idx in range(len(col_series)):
+                val = int(col_series.iloc[idx])
+                if val == scan_target or val in target_family:
+                    # अगले 24 घंटों/रो में आए नंबर्स निकालें
+                    next_24_vals =

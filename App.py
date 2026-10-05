@@ -51,7 +51,12 @@ def get_plat(num_val):
 
 # Helper to format a line with rate at the end
 def fmt_line(num_list, rate):
-    clean_nums = [f"{int(n):02d}" if isinstance(n, int) else str(n) for n in num_list]
+    clean_nums = []
+    for n in num_list:
+        try:
+            clean_nums.append(f"{int(n):02d}")
+        except:
+            clean_nums.append(str(n))
     if not clean_nums:
         return ""
     return f"{', '.join(clean_nums)} ({rate})"
@@ -186,8 +191,25 @@ if uploaded_file is not None:
                     all_24h_harufs = list(dict.fromkeys(top_in_24h + top_out_24h))
                     haruf_24h_pairs = [f"{h}{h}" for h in all_24h_harufs]
 
-                    all_24h_haruf_nums = crossed_24h_direct + haruf_24h_pairs
-                    all_24h_haruf_plat = [get_plat(p) for p in all_24h_haruf_nums]
+                    # --- HARUF DEDUPLICATION (कोई रिपीट नंबर/जोड़ा नहीं होगा) ---
+                    seen_haruf_nums = set()
+                    
+                    h_nums_clean = []
+                    for n in crossed_24h_direct:
+                        if n not in seen_haruf_nums:
+                            h_nums_clean.append(n)
+                            seen_haruf_nums.add(n)
+
+                    h_plat_clean = []
+                    for n in [get_plat(p) for p in crossed_24h_direct]:
+                        if n not in seen_haruf_nums:
+                            h_plat_clean.append(n)
+                            seen_haruf_nums.add(n)
+
+                    for p in haruf_24h_pairs:
+                        if p not in seen_haruf_nums:
+                            h_plat_clean.append(p)
+                            seen_haruf_nums.add(p)
 
                     top_1d_direct = [f"{num:02d}" for num in top_1d.index]
                     top_1d_plat = [get_plat(n) for n in top_1d_direct]
@@ -205,8 +227,8 @@ if uploaded_file is not None:
                         (top_2d_plat, 50),
                         (top_24h_direct, 100),
                         (top_24h_plat, 50),
-                        (all_24h_haruf_nums, 50),
-                        (all_24h_haruf_plat, 50)
+                        (h_nums_clean, 50),
+                        (h_plat_clean, 50)
                     ]
 
                     # ----------------------------------------------------
@@ -270,8 +292,8 @@ if uploaded_file is not None:
 
                         st.markdown("**🎲 24-Hour Haruf Numbers & Pairs (24 घंटे हर्फ़ के नंबर और जोड़े - सीधी + पलट):**")
                         st.code(
-                            f"{fmt_line(all_24h_haruf_nums, 50)}\n"
-                            f"{fmt_line(all_24h_haruf_plat, 50)}", 
+                            f"{fmt_line(h_nums_clean, 50)}\n"
+                            f"{fmt_line(h_plat_clean, 50)}", 
                             language="text"
                         )
 
@@ -348,15 +370,14 @@ if uploaded_file is not None:
                     unique_pattern_box_text = "\n".join(unique_pattern_lines)
                     st.code(unique_pattern_box_text, language="text")
 
-                    # --- Collect 24h Box details for All-Game Summary ---
+                    # --- EXACT WHATSAPP FORMAT AS REQUESTED BY USER ---
                     game_24h_str = (
-                        f"🎮 *{col} (Last Result: {last_result:02d})*\n"
-                        f"⚡ *24-Hour Numbers (सीधी + पलट):*\n"
+                        f"🎮 *{col}*⚡\n"
                         f"{fmt_line(top_24h_direct, 100)}\n"
-                        f"{fmt_line(top_24h_plat, 50)}\n"
-                        f"🎲 *24-Hour Haruf & Pairs:*\n"
-                        f"{fmt_line(all_24h_haruf_nums, 50)}\n"
-                        f"{fmt_line(all_24h_haruf_plat, 50)}"
+                        f"{fmt_line(top_24h_plat, 50)}\n\n"
+                        f"🎲\n"
+                        f"{fmt_line(h_nums_clean, 50)}\n"
+                        f"{fmt_line(h_plat_clean, 50)}"
                     )
                     all_games_24h_summary.append(game_24h_str)
 
@@ -366,7 +387,7 @@ if uploaded_file is not None:
         st.markdown("---")
         st.subheader("📲 सभी गेम्स का 24-घंटे वाला बॉक्स एक साथ भेजें (All-Game WhatsApp Sender)")
         
-        full_whatsapp_msg = "🔥 *ALL GAMES - 24 HOUR ANALYTICS BOXES* 🔥\n\n" + "\n\n------------------\n\n".join(all_games_24h_summary)
+        full_whatsapp_msg = "\n\n".join(all_games_24h_summary)
         
         encoded_all_msg = urllib.parse.quote(full_whatsapp_msg)
         all_whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_all_msg}"
@@ -378,5 +399,5 @@ if uploaded_file is not None:
             f'📲 सभी गेम्स (ALL GAMES 24H BOXES) को एक साथ WhatsApp पर शेयर करें'
             f'</button></a>',
             unsafe_allow_html=True
-                        )
-        
+                )
+                    

@@ -87,6 +87,9 @@ if uploaded_file is not None:
         
         tabs = st.tabs([f"🎯 {col}" for col in available_cols])
         
+        # 24 घंटे के सभी गेम्स के डेटा को एकत्र करने के लिए लिस्ट
+        all_games_24h_summary = []
+        
         for idx, col in enumerate(available_cols):
             with tabs[idx]:
                 valid_series = df[col].dropna().astype(int)
@@ -132,7 +135,7 @@ if uploaded_file is not None:
                     out_harufs = list(out_h_top2.index)[:2]
 
                     # ----------------------------------------------------
-                    # ✅ EXACT 16-NUMBER CROSSING ENGINE (3 LINES)
+                    # EXACT 16-NUMBER CROSSING ENGINE (3 LINES)
                     # ----------------------------------------------------
                     crossed_line1 = [f"{i}{o}" for i in in_harufs for o in out_harufs]
                     crossed_line2 = [f"{o}{i}" for i in in_harufs for o in out_harufs]
@@ -153,7 +156,6 @@ if uploaded_file is not None:
                             l2_clean.append(num)
                             seen_cross.add(num)
 
-                    # Line 3: Remaining (Pairs + Remaining Cross)
                     l3_clean = [num for num in total_16_cross if num not in seen_cross]
                     pairs_list = [f"{h}{h}" for h in all_cross_digits]
 
@@ -193,7 +195,6 @@ if uploaded_file is not None:
                     top_2d_direct = [f"{num:02d}" for num in top_2d.index]
                     top_2d_plat = [get_plat(n) for n in top_2d_direct]
 
-                    # Structured sections data format: (number_list, rate)
                     raw_sections = [
                         (l1_clean, 100),
                         (l2_clean, 50),
@@ -306,7 +307,7 @@ if uploaded_file is not None:
                     st.code(all_in_one_text, language="text")
 
                     # ----------------------------------------------------
-                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX WITH AUTOMATIC PAYMENT CALCULATOR
+                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX
                     # ----------------------------------------------------
                     st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Pattern Preserved - Duplicate Removed)")
 
@@ -347,24 +348,35 @@ if uploaded_file is not None:
                     unique_pattern_box_text = "\n".join(unique_pattern_lines)
                     st.code(unique_pattern_box_text, language="text")
 
-                    # --- WHATSAPP SHARE LINK GENERATOR WITH PAYMENT DETAILS ---
-                    msg_text = (
-                        f"🎯 *{col}*\n"
-                        f"Total Numbers: {final_unique_count}\n"
-                        f"• 100 वाले: {count_100} (₹{total_100_amt})\n"
-                        f"• 50 वाले: {count_50} (₹{total_50_amt})\n"
-                        f"💰 Total Payment: ₹{grand_total_payment}\n\n"
-                        f"{unique_pattern_box_text}"
+                    # --- Collect 24h Box details for All-Game Summary ---
+                    game_24h_str = (
+                        f"🎮 *{col} (Last Result: {last_result:02d})*\n"
+                        f"⚡ *24-Hour Numbers (सीधी + पलट):*\n"
+                        f"{fmt_line(top_24h_direct, 100)}\n"
+                        f"{fmt_line(top_24h_plat, 50)}\n"
+                        f"🎲 *24-Hour Haruf & Pairs:*\n"
+                        f"{fmt_line(all_24h_haruf_nums, 50)}\n"
+                        f"{fmt_line(all_24h_haruf_plat, 50)}"
                     )
-                    encoded_msg = urllib.parse.quote(msg_text)
-                    whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
+                    all_games_24h_summary.append(game_24h_str)
 
-                    # Clickable WhatsApp Link Button
-                    st.markdown(
-                        f'<a href="{whatsapp_url}" target="_blank">'
-                        f'<button style="background-color:#25D366; color:white; border:none; padding:12px 24px; '
-                        f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">'
-                        f'📲 WhatsApp पर भेजें (Click to Share on WhatsApp)'
-                        f'</button></a>',
-                        unsafe_allow_html=True
-                    )
+        # ----------------------------------------------------
+        # ALL GAMES SUMMARY & SINGLE WHATSAPP SHARE BUTTON
+        # ----------------------------------------------------
+        st.markdown("---")
+        st.subheader("📲 सभी गेम्स का 24-घंटे वाला बॉक्स एक साथ भेजें (All-Game WhatsApp Sender)")
+        
+        full_whatsapp_msg = "🔥 *ALL GAMES - 24 HOUR ANALYTICS BOXES* 🔥\n\n" + "\n\n------------------\n\n".join(all_games_24h_summary)
+        
+        encoded_all_msg = urllib.parse.quote(full_whatsapp_msg)
+        all_whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_all_msg}"
+
+        st.markdown(
+            f'<a href="{all_whatsapp_url}" target="_blank">'
+            f'<button style="background-color:#25D366; color:white; border:none; padding:15px 30px; '
+            f'font-size:18px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">'
+            f'📲 सभी गेम्स (ALL GAMES 24H BOXES) को एक साथ WhatsApp पर शेयर करें'
+            f'</button></a>',
+            unsafe_allow_html=True
+                        )
+        

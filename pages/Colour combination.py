@@ -181,5 +181,37 @@ if df is not None:
             fb, gb, gl, ds = clean_num(p_row['FRBD']), clean_num(p_row['GZBD']), clean_num(p_row['GALI']), clean_num(p_row['DSWR'])
             p_table.append({
                 "Date": p_row['DATE_DT'].strftime('%d/%m/%Y'),
-                "FRBD": f"{fb or 'XX'}
-        
+                "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
+                "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
+                "GALI": f"{gl or 'XX'} ({get_family(gl)})",
+                "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+            })
+        if p_table:
+            st.dataframe(pd.DataFrame(p_table), use_container_width=True)
+
+        if not c_data.empty:
+            c_row = c_data.iloc[0]
+            c_nums = { "FB": clean_num(c_row['FRBD']), "GB": clean_num(c_row['GZBD']), "GL": clean_num(c_row['GALI']), "DS": clean_num(c_row['DSWR']) }
+            
+            st.write("🔍 **मैचिंग पैटर्न परिणाम (Matches Found):**")
+            matches = []
+            for _, p_row in p_data.iterrows():
+                p_day = p_row['DATE_DT'].day
+                p_nums = { "FB": clean_num(p_row['FRBD']), "GB": clean_num(p_row['GZBD']), "GL": clean_num(p_row['GALI']), "DS": clean_num(p_row['DSWR']) }
+                
+                for c_game, cn in c_nums.items():
+                    for p_game, pn in p_nums.items():
+                        if cn and pn:
+                            if cn == pn:
+                                matches.append(f"🔥 **SINGLE NUMBER MATCH**: पिछले महीने की तारीख {p_day} ({p_game}: {pn}) ➡️ आज {target_day} तारीख ({c_game}: {cn})")
+                            elif get_family(cn) == get_family(pn) and get_family(cn) != "Other":
+                                matches.append(f"✨ **FAMILY MATCH ({get_family(cn)})**: पिछले महीने की तारीख {p_day} ({p_game}: {pn}) ➡️ आज {target_day} तारीख ({c_game}: {cn})")
+            
+            if matches:
+                for m in matches:
+                    st.success(m)
+            else:
+                st.warning("पिछले महीने की 20-30 तारीख से कोई डायरेक्ट मैच नहीं मिला।")
+        else:
+            st.info("चुनी हुई तारीख का इस साल में रिजल्ट उपलब्ध नहीं है।")
+            

@@ -1,7 +1,34 @@
+import streamlit as st
 import pandas as pd
-import numpy as np
 
-# 1. आपकी 10 मुख्य फैमिली कॉम्बिनेशन
+# 1. स्ट्रीमलिट पेज कंफीग्रेशन (यह हमेशा सबसे ऊपर होना चाहिए)
+st.set_page_config(page_title="13-Year Pattern & Combination Analyzer", layout="wide")
+
+st.title("🎯 13-Year Pattern & Combination Search Engine")
+
+# 2. CSV डेटा लोड करना
+@st.cache_data
+def load_data():
+    # अपनी CSV फाइल का सही नाम यहाँ दें
+    df = pd.read_csv("06_10_2026 result  (1).csv")
+    df['DATE_DT'] = pd.to_datetime(df['DATE'], format='%d/%m/%Y', errors='coerce')
+    df = df.dropna(subset=['DATE_DT'])
+    return df
+
+try:
+    df = load_data()
+    st.sidebar.success("✅ डेटा सफलता से लोड हो गया!")
+except Exception as e:
+    st.error(f"❌ डेटा लोड करने में समस्या आई: {e}")
+    st.stop()
+
+# 3. साइडबार में तारीख, महीना और साल चुनने के फिल्टर
+st.sidebar.header("🔍 फिल्टर सेट करें")
+target_day = st.sidebar.slider("तारीख (Day):", 1, 31, 7)
+target_month = st.sidebar.slider("महीना (Month):", 1, 12, 10)
+target_year = st.sidebar.selectbox("साल (Target Year):", list(range(2026, 2012, -1)), index=1)
+
+# 4. 10 फैमिली कॉम्बिनेशन
 FAMILY_GROUPS = {
     "Fam_01": ['01', '10', '51', '15', '06', '60', '56', '65'],
     "Fam_02": ['02', '20', '52', '25', '07', '70', '57', '75'],
@@ -31,83 +58,81 @@ def get_family(num_str):
             return fam_name
     return "Other"
 
-def get_haruf(num_str):
-    if not num_str or len(num_str) < 2:
-        return None, None
-    return num_str[0], num_str[1] # Inside (Ander), Outside (Bahar)
+# 5. तीनों पैटर्न के लिए अलग-अलग टैब
+tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (Yearly)", "2️⃣ 3-Month Block", "3️⃣ Cross-Month Lift"])
 
-def run_full_pattern_analysis(csv_file, target_day=7, target_month=10, target_year=2025):
-    df = pd.read_csv(csv_file)
-    df['DATE_DT'] = pd.to_datetime(df['DATE'], format='%d/%m/%Y', errors='coerce')
-    df = df.dropna(subset=['DATE_DT'])
-
-    print(f"================================================================")
-    print(f"  मास्टर पैटर्न एनालिसिस: तारीख {target_day}/{target_month} (13-14 साल डेटा)")
-    print(f"================================================================\n")
-
-    # -------------------------------------------------------------
-    # PATTERN 1: Same Date Across All Years (2013 - 2026)
-    # -------------------------------------------------------------
-    print(f"--- [पैटर्न 1] सेम डेट ({target_day}/{target_month}) ईयर-वाइज़ रिकॉर्ड ---")
-    same_date_df = df[(df['DATE_DT'].dt.day == target_day) & (df['DATE_DT'].dt.month == target_month)].sort_values('DATE_DT')
+# --- TAB 1: हर साल की सेम डेट का पैटर्न ---
+with tab1:
+    st.subheader(f"📅 Pattern 1: {target_day}/{target_month} तारीख का 13 साल का इतिहास")
+    same_date_df = df[(df['DATE_DT'].dt.day == target_day) & (df['DATE_DT'].dt.month == target_month)].sort_values('DATE_DT', ascending=False)
     
+    table_data = []
     for _, row in same_date_df.iterrows():
         yr = row['DATE_DT'].year
-        frbd = clean_num(row['FRBD'])
-        gzbd = clean_num(row['GZBD'])
-        gali = clean_num(row['GALI'])
-        dswr = clean_num(row['DSWR'])
-        
-        print(f"साल {yr} | FB: {frbd or 'XX'} ({get_family(frbd)}) | GB: {gzbd or 'XX'} ({get_family(gzbd)}) | GL: {gali or 'XX'} ({get_family(gali)}) | DS: {dswr or 'XX'} ({get_family(dswr)})")
+        fb, gb, gl, ds = clean_num(row['FRBD']), clean_num(row['GZBD']), clean_num(row['GALI']), clean_num(row['DSWR'])
+        table_data.append({
+            "Year": yr,
+            "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
+            "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
+            "GALI": f"{gl or 'XX'} ({get_family(gl)})",
+            "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+        })
+    st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-    # -------------------------------------------------------------
-    # PATTERN 2: 3-Month Block Analysis (Aug -> Sep -> Oct)
-    # -------------------------------------------------------------
-    print(f"\n--- [पैटर्न 2] 3-मंथ ब्लॉक (पिछले 2 महीने + चालू महीना) सेम डेट ---")
-    months_block = [target_month-2 if target_month>2 else target_month+10, 
-                    target_month-1 if target_month>1 else 12, 
-                    target_month]
+# --- TAB 2: 3-मंथ ब्लॉक पैटर्न ---
+with tab2:
+    st.subheader(f"🗓️ Pattern 2: 3-मंथ सीक्वेंस (पिछले 2 महीने + चालू महीना)")
+    m1 = target_month - 2 if target_month > 2 else target_month + 10
+    m2 = target_month - 1 if target_month > 1 else 12
+    m3 = target_month
     
-    for yr in range(2019, target_year + 1):
-        print(f"\n>> वर्ष {yr} का 3-मंथ पैटर्न ({target_day} तारीख):")
-        for m in months_block:
+    st.write(f"चेक हो रहे महीने: **महीना {m1} ➡️ महीना {m2} ➡️ महीना {m3}** (तारीख: **{target_day}**)")
+    
+    block_data = []
+    for yr in range(target_year, 2012, -1):
+        for m in [m1, m2, m3]:
             m_yr = yr if m <= target_month else yr - 1
-            m_data = df[(df['DATE_DT'].dt.year == m_yr) & (df['DATE_DT'].dt.month == m) & (df['DATE_DT'].dt.day == target_day)]
-            if not m_data.empty:
-                r = m_data.iloc[0]
+            m_df = df[(df['DATE_DT'].dt.year == m_yr) & (df['DATE_DT'].dt.month == m) & (df['DATE_DT'].dt.day == target_day)]
+            if not m_df.empty:
+                r = m_df.iloc[0]
                 fb, gb, gl, ds = clean_num(r['FRBD']), clean_num(r['GZBD']), clean_num(r['GALI']), clean_num(r['DSWR'])
-                print(f"  महीना {m}/{m_yr} | FB: {fb or 'XX'} ({get_family(fb)}) | GB: {gb or 'XX'} ({get_family(gb)}) | GL: {gl or 'XX'} ({get_family(gl)}) | DS: {ds or 'XX'} ({get_family(ds)})")
+                block_data.append({
+                    "Year": m_yr,
+                    "Month": m,
+                    "Day": target_day,
+                    "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
+                    "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
+                    "GALI": f"{gl or 'XX'} ({get_family(gl)})",
+                    "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                })
+    st.dataframe(pd.DataFrame(block_data), use_container_width=True)
 
-    # -------------------------------------------------------------
-    # PATTERN 3: Cross-Month Date Lift (पिछले महीने की 20-30 तारीख से जंप)
-    # -------------------------------------------------------------
-    print(f"\n--- [पैटर्न 3] पिछले महीने से नंबर/फैमिली लिफ्ट का इतिहास ---")
+# --- TAB 3: क्रॉस-मंथ लिफ्ट पैटर्न ---
+with tab3:
+    st.subheader(f"🔀 Pattern 3: पिछले महीने से नंबर/फैमिली का उठना")
     prev_m = target_month - 1 if target_month > 1 else 12
+    prev_m_yr = target_year if target_month > 1 else target_year - 1
     
-    for yr in range(2021, target_year + 1):
-        prev_m_yr = yr if target_month > 1 else yr - 1
-        # पिछले महीने की 20 से 30 तारीख
-        p_data = df[(df['DATE_DT'].dt.year == prev_m_yr) & (df['DATE_DT'].dt.month == prev_m) & (df['DATE_DT'].dt.day.between(22, 28))]
-        # चालू महीने की target_day
-        c_data = df[(df['DATE_DT'].dt.year == yr) & (df['DATE_DT'].dt.month == target_month) & (df['DATE_DT'].dt.day == target_day)]
+    st.write(f"चेक हो रहा है: क्या **{target_day}/{target_month}/{target_year}** का नंबर **महीने {prev_m}/{prev_m_yr} की 22 से 28 तारीख** से उठा है?")
+    
+    p_data = df[(df['DATE_DT'].dt.year == prev_m_yr) & (df['DATE_DT'].dt.month == prev_m) & (df['DATE_DT'].dt.day.between(22, 28))]
+    c_data = df[(df['DATE_DT'].dt.year == target_year) & (df['DATE_DT'].dt.month == target_month) & (df['DATE_DT'].dt.day == target_day)]
+    
+    if c_data.empty:
+        st.info("चुनी हुई तारीख का इस साल में अभी रिजल्ट नहीं आया है।")
+    else:
+        c_row = c_data.iloc[0]
+        c_nums = { "FB": clean_num(c_row['FRBD']), "GB": clean_num(c_row['GZBD']), "GL": clean_num(c_row['GALI']), "DS": clean_num(c_row['DSWR']) }
         
-        if not c_data.empty and not p_data.empty:
-            c_row = c_data.iloc[0]
-            c_nums = [clean_num(c_row['FRBD']), clean_num(c_row['GZBD']), clean_num(c_row['GALI']), clean_num(c_row['DSWR'])]
-            c_nums = [n for n in c_nums if n]
+        matches = []
+        for _, p_row in p_data.iterrows():
+            p_day = p_row['DATE_DT'].day
+            p_nums = { "FB": clean_num(p_row['FRBD']), "GB": clean_num(p_row['GZBD']), "GL": clean_num(p_row['GALI']), "DS": clean_num(p_row['DSWR']) }
             
-            for _, p_row in p_data.iterrows():
-                p_day = p_row['DATE_DT'].day
-                p_nums = [clean_num(p_row['FRBD']), clean_num(p_row['GZBD']), clean_num(p_row['GALI']), clean_num(p_row['DSWR'])]
-                p_nums = [n for n in p_nums if n]
-                
-                # चेक फैमिली या नंबर मैच
-                for cn in c_nums:
-                    for pn in p_nums:
+            for c_game, cn in c_nums.items():
+                for p_game, pn in p_nums.items():
+                    if cn and pn:
                         if cn == pn:
-                            print(f"  साल {yr}: पिछले महीने {prev_m} की {p_day} तारीख का सिंगल नंबर {pn} -> {target_month} की {target_day} तारीख को रिपीट हुआ!")
-                        elif get_family(cn) == get_family(pn) and get_family(cn) != "Other":
-                            print(f"  साल {yr}: पिछले महीने {prev_m} की {p_day} तारीख से {get_family(cn)} फैमिली का नंबर खिसका ({pn} -> {cn})")
-
-# कोड रन करने का तरीका:
-# run_full_pattern_analysis("06_10_2026 result  (1).csv", target_day=7, target_month=10, target_year=2025)
+                            matches.append(f"🔥 **सिंगल नंबर मैच**: पिछले महीने की तारीख {p_day} ({p_game}: {pn}) ➡️ चालू तारीख {target_day} ({c_game}: {cn})")
+                        elif get_family(cn)
+    

@@ -1,4 +1,4 @@
-import streamlit as st
+Import streamlit as st
 import pandas as pd
 
 # 1. Page Configuration
@@ -45,7 +45,7 @@ if df is not None and not df.empty:
     else:
         default_day, default_month, default_year = 6, 10, 2026
 
-    # Session State Controls
+    # Session State Initialization for Controls
     if 'target_day' not in st.session_state:
         st.session_state.target_day = default_day
     if 'target_month' not in st.session_state:
@@ -56,7 +56,7 @@ if df is not None and not df.empty:
     st.info(f"📌 **Auto-Detected Latest Date:** {default_day}/{default_month}/{default_year}")
 
     # -------------------------------------------------------------
-    # 4. PLUS / MINUS BUTTON CONTROLS
+    # 4. PLUS / MINUS BUTTON CONTROLS (NO SLIDERS)
     # -------------------------------------------------------------
     st.sidebar.header("⚙️ Date & Margin Controls (+ / -)")
 
@@ -142,7 +142,7 @@ if df is not None and not df.empty:
     # UI Tabs
     tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (+/- Range)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift"])
 
-    # --- TAB 1: EXACT CODE AS REQUESTED ---
+    # --- TAB 1: SAME DATE WITH PLUS/MINUS MARGIN ---
     with tab1:
         st.subheader(f"📅 Pattern 1: Dates {target_days_range} / Month {target_month} Across All Years (+/- {day_margin} Days)")
         
@@ -281,4 +281,5 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
-            
+
+        

@@ -1,4 +1,4 @@
-Import streamlit as st
+import streamlit as st
 import pandas as pd
 
 # 1. Page Configuration
@@ -34,7 +34,7 @@ else:
 
 if df is not None and not df.empty:
 
-    # 3. Auto Detect Latest Date
+    # 3. Auto Detect Latest Date with Actual Results
     valid_data_df = df.dropna(subset=['FRBD', 'GZBD', 'GALI', 'DSWR'], how='all')
     
     if not valid_data_df.empty:
@@ -45,23 +45,23 @@ if df is not None and not df.empty:
     else:
         default_day, default_month, default_year = 6, 10, 2026
 
-    # Session State Initialization for Controls
+    # Session State Setup
     if 'target_day' not in st.session_state:
         st.session_state.target_day = default_day
     if 'target_month' not in st.session_state:
         st.session_state.target_month = default_month
     if 'day_margin' not in st.session_state:
-        st.session_state.day_margin = 1
+        st.session_state.day_margin = 0  # Default 0 to show exact date first
 
-    st.info(f"📌 **Auto-Detected Latest Date:** {default_day}/{default_month}/{default_year}")
+    st.info(f"📌 **Auto-Detected Latest Result Date:** {default_day}/{default_month}/{default_year}")
 
     # -------------------------------------------------------------
-    # 4. PLUS / MINUS BUTTON CONTROLS (NO SLIDERS)
+    # 4. PLUS / MINUS BUTTON CONTROLS
     # -------------------------------------------------------------
-    st.sidebar.header("⚙️ Date & Margin Controls (+ / -)")
+    st.sidebar.header("⚙️ Date Controls (+ / - Buttons)")
 
     # Day Control
-    st.sidebar.subheader("📅 Date Adjustment (Tarikh)")
+    st.sidebar.subheader("📅 Date Adjustment (तारीख)")
     col_d1, col_d2, col_d3 = st.sidebar.columns([1, 2, 1])
     if col_d1.button("➖ Day"):
         if st.session_state.target_day > 1:
@@ -72,7 +72,7 @@ if df is not None and not df.empty:
             st.session_state.target_day += 1
 
     # Month Control
-    st.sidebar.subheader("🗓️ Month Adjustment (Mahina)")
+    st.sidebar.subheader("🗓️ Month Adjustment (महीना)")
     col_m1, col_m2, col_m3 = st.sidebar.columns([1, 2, 1])
     if col_m1.button("➖ Month"):
         if st.session_state.target_month > 1:
@@ -82,8 +82,8 @@ if df is not None and not df.empty:
         if st.session_state.target_month < 12:
             st.session_state.target_month += 1
 
-    # Margin Range Control
-    st.sidebar.subheader("↔️ Margin Range (+/- Days)")
+    # Margin Range Control (+/- Days)
+    st.sidebar.subheader("↔️ Margin Range (+/- Range)")
     col_r1, col_r2, col_r3 = st.sidebar.columns([1, 2, 1])
     if col_r1.button("➖ Margin"):
         if st.session_state.day_margin > 0:
@@ -93,15 +93,15 @@ if df is not None and not df.empty:
         if st.session_state.day_margin < 5:
             st.session_state.day_margin += 1
 
-    # Target Year Dropdown
-    available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
-    target_year = st.sidebar.selectbox("Select Target Year (Saal)", available_years, index=0)
-
     target_day = st.session_state.target_day
     target_month = st.session_state.target_month
     day_margin = st.session_state.day_margin
 
-    # Calculate Range of Days
+    # Target Years
+    available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
+    target_year = st.sidebar.selectbox("Select Target Year", available_years, index=0)
+
+    # Calculate Days Range
     target_days_range = [d for d in range(target_day - day_margin, target_day + day_margin + 1) if 1 <= d <= 31]
 
     # 5. Family Groups
@@ -128,7 +128,7 @@ if df is not None and not df.empty:
 
     def get_family(num_str):
         if not num_str:
-            return "N/A"
+            return None
         for fam_name, members in FAMILY_GROUPS.items():
             if num_str in members:
                 return fam_name
@@ -140,9 +140,9 @@ if df is not None and not df.empty:
         return num_str[0], num_str[1]
 
     # UI Tabs
-    tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (+/- Range)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift"])
+    tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (Yearly)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift"])
 
-    # --- TAB 1: SAME DATE WITH PLUS/MINUS MARGIN ---
+    # --- TAB 1: SAME DATE (YEARLY) ---
     with tab1:
         st.subheader(f"📅 Pattern 1: Dates {target_days_range} / Month {target_month} Across All Years (+/- {day_margin} Days)")
         
@@ -161,10 +161,11 @@ if df is not None and not df.empty:
             gl = clean_num(row['GALI'])
             ds = clean_num(row['DSWR'])
             
+            # ONLY COUNT REAL NUMBERS (EXCLUDE XX / BLANKS)
             for n in [fb, gb, gl, ds]:
                 if n:
                     fam = get_family(n)
-                    if fam != "Other":
+                    if fam and fam != "Other":
                         all_families.append(fam)
                     h_in, h_out = get_haruf(n)
                     if h_in:
@@ -175,10 +176,10 @@ if df is not None and not df.empty:
             table_data.append({
                 "Year": yr,
                 "Date": f"{day_val}/{target_month}/{yr}",
-                "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
-                "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
-                "GALI": f"{gl or 'XX'} ({get_family(gl)})",
-                "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                "FRBD": f"{fb or 'XX'} ({get_family(fb) or 'N/A'})",
+                "GZBD": f"{gb or 'XX'} ({get_family(gb) or 'N/A'})",
+                "GALI": f"{gl or 'XX'} ({get_family(gl) or 'N/A'})",
+                "DSWR": f"{ds or 'XX'} ({get_family(ds) or 'N/A'})"
             })
 
         st.markdown("### 📊 Auto-Pattern Detection Insights")
@@ -187,14 +188,20 @@ if df is not None and not df.empty:
         if all_families:
             top_fam = pd.Series(all_families).mode().tolist()
             col1.success(f"🔥 **Top Recurring Family:** {', '.join(top_fam)}")
-        
+        else:
+            col1.info("🔥 **Top Recurring Family:** No valid data yet")
+
         if inside_harufs:
             top_in = pd.Series(inside_harufs).mode().tolist()
-            col2.info(f"🎯 **Top Inside Haruf:** {', '.join(top_in)}")
-            
+            col2.info(f"🎯 **Top Inside Haruf (अंदर का हरूफ):** {', '.join(top_in)}")
+        else:
+            col2.info("🎯 **Top Inside Haruf:** N/A")
+
         if outside_harufs:
             top_out = pd.Series(outside_harufs).mode().tolist()
-            col3.info(f"🎯 **Top Outside Haruf:** {', '.join(top_out)}")
+            col3.info(f"🎯 **Top Outside Haruf (बाहर का हरूफ):** {', '.join(top_out)}")
+        else:
+            col3.info("🎯 **Top Outside Haruf:** N/A")
 
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
@@ -222,10 +229,10 @@ if df is not None and not df.empty:
                             "Year": m_yr,
                             "Month": m,
                             "Date": f"{r['DATE_DT'].day}/{m}/{m_yr}",
-                            "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
-                            "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
-                            "GALI": f"{gl or 'XX'} ({get_family(gl)})",
-                            "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                            "FRBD": f"{fb or 'XX'} ({get_family(fb) or 'N/A'})",
+                            "GZBD": f"{gb or 'XX'} ({get_family(gb) or 'N/A'})",
+                            "GALI": f"{gl or 'XX'} ({get_family(gl) or 'N/A'})",
+                            "DSWR": f"{ds or 'XX'} ({get_family(ds) or 'N/A'})"
                         })
         if block_data:
             st.dataframe(pd.DataFrame(block_data), use_container_width=True)
@@ -249,10 +256,10 @@ if df is not None and not df.empty:
             ds = clean_num(p_row['DSWR'])
             p_table.append({
                 "Date": p_row['DATE_DT'].strftime('%d/%m/%Y'),
-                "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
-                "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
-                "GALI": f"{gl or 'XX'} ({get_family(gl)})",
-                "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                "FRBD": f"{fb or 'XX'} ({get_family(fb) or 'N/A'})",
+                "GZBD": f"{gb or 'XX'} ({get_family(gb) or 'N/A'})",
+                "GALI": f"{gl or 'XX'} ({get_family(gl) or 'N/A'})",
+                "DSWR": f"{ds or 'XX'} ({get_family(ds) or 'N/A'})"
             })
         if p_table:
             st.dataframe(pd.DataFrame(p_table), use_container_width=True)
@@ -273,7 +280,7 @@ if df is not None and not df.empty:
                             if cn and pn:
                                 if cn == pn:
                                     matches.append(f"🔥 **SINGLE MATCH**: Prev Month Day {p_day} ({p_game}: {pn}) ➡️ Target Day {c_day} ({c_game}: {cn})")
-                                elif get_family(cn) == get_family(pn) and get_family(cn) != "Other":
+                                elif get_family(cn) and get_family(cn) == get_family(pn) and get_family(cn) != "Other":
                                     matches.append(f"✨ **FAMILY MATCH ({get_family(cn)})**: Prev Month Day {p_day} ({p_game}: {pn}) ➡️ Target Day {c_day} ({c_game}: {cn})")
             
             if matches:
@@ -281,3 +288,4 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
+    

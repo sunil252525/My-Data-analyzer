@@ -4,9 +4,9 @@ import pandas as pd
 # 1. Page Configuration
 st.set_page_config(page_title="13-Year Pattern Search Engine", layout="wide")
 
-st.title("🎯 13-Year Pattern & Combination Search Engine")
+st.title("🎯 13-Year Pattern & Combination Auto-Search Engine")
 
-# 2. File Uploader Option (डायरेक्ट फाइल अपलोड करने का ऑप्शन)
+# 2. File Uploader & Default Data Load
 st.sidebar.header("📁 Step 1: Upload Your File")
 uploaded_file = st.sidebar.file_uploader("Upload CSV File", type=["csv"])
 
@@ -17,35 +17,32 @@ def load_csv_data(file_source):
     df = df.dropna(subset=['DATE_DT'])
     return df
 
-# डेटा लोड करने का लॉजिक (अपलोड की गई फ़ाइल से या डिफ़ॉल्ट फ़ाइल से)
 df = None
 
 if uploaded_file is not None:
     try:
         df = load_csv_data(uploaded_file)
-        st.sidebar.success("✅ Uploaded CSV Loaded Successfully!")
+        st.sidebar.success("✅ Uploaded CSV Loaded!")
     except Exception as e:
-        st.sidebar.error(f"Error loading uploaded file: {e}")
+        st.sidebar.error(f"Error: {e}")
 else:
-    # अगर यूजर ने फाइल अपलोड नहीं की, तो रिपॉजिटरी में मौजूद फाइल को ढूंढने की कोशिश करेगा
     try:
         df = load_csv_data("06_10_2026 result  (1).csv")
-        st.sidebar.info("ℹ️ Using default CSV from repository.")
+        st.sidebar.info("ℹ️ Using Repository CSV")
     except Exception:
-        st.warning("⚠️ कृपया बाईं तरफ (Sidebar) 'Upload CSV File' बटन पर क्लिक करके अपनी CSV फाइल अपलोड करें!")
+        st.warning("⚠️ कृपया बाईं तरफ (Sidebar) 'Upload CSV File' से फ़ाइल अपलोड करें!")
 
-# अगर डेटा लोड हो गया है, तभी आगे का ऐप दिखेगा
 if df is not None:
 
     # 3. Sidebar Filters
-    st.sidebar.header("🔍 Step 2: Select Pattern Filters")
-    target_day = st.sidebar.slider("Select Day (तारीख)", 1, 31, 7)
-    target_month = st.sidebar.slider("Select Month (महीना)", 1, 12, 10)
+    st.sidebar.header("🔍 Step 2: Select Date & Filters")
+    target_day = st.sidebar.slider("तारीख (Select Day)", 1, 31, 7)
+    target_month = st.sidebar.slider("महीना (Select Month)", 1, 12, 10)
     
     available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
-    target_year = st.sidebar.selectbox("Select Target Year (साल)", available_years, index=0)
+    target_year = st.sidebar.selectbox("साल (Select Target Year)", available_years, index=0)
 
-    # 4. Family Mapping
+    # 4. Family Groups
     FAMILY_GROUPS = {
         "Fam_01": ['01', '10', '51', '15', '06', '60', '56', '65'],
         "Fam_02": ['02', '20', '52', '25', '07', '70', '57', '75'],
@@ -75,21 +72,36 @@ if df is not None:
                 return fam_name
         return "Other"
 
-    # 5. UI Tabs
-    tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (Yearly)", "2️⃣ 3-Month Block", "3️⃣ Cross-Month Lift"])
+    def get_haruf(num_str):
+        if not num_str or len(num_str) < 2:
+            return None, None
+        return num_str[0], num_str[1] # Inside, Outside
 
-    # TAB 1: Same Date
+    # UI Tabs
+    tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (Yearly)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift (20-30 Date)"])
+
+    # --- TAB 1: SAME DATE (YEARLY) WITH AUTO MATCH ---
     with tab1:
         st.subheader(f"📅 Pattern 1: Same Date ({target_day}/{target_month}) Across All Years")
         same_date_df = df[(df['DATE_DT'].dt.day == target_day) & (df['DATE_DT'].dt.month == target_month)].sort_values('DATE_DT', ascending=False)
         
         table_data = []
+        all_families = []
+        inside_harufs = []
+        outside_harufs = []
+
         for _, row in same_date_df.iterrows():
             yr = row['DATE_DT'].year
-            fb = clean_num(row['FRBD'])
-            gb = clean_num(row['GZBD'])
-            gl = clean_num(row['GALI'])
-            ds = clean_num(row['DSWR'])
+            fb, gb, gl, ds = clean_num(row['FRBD']), clean_num(row['GZBD']), clean_num(row['GALI']), clean_num(row['DSWR'])
+            
+            for n in [fb, gb, gl, ds]:
+                if n:
+                    fam = get_family(n)
+                    if fam != "Other": all_families.append(fam)
+                    h_in, h_out = get_haruf(n)
+                    if h_in: inside_harufs.append(h_in)
+                    if h_out: outside_harufs.append(h_out)
+
             table_data.append({
                 "Year": yr,
                 "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
@@ -97,20 +109,77 @@ if df is not None:
                 "GALI": f"{gl or 'XX'} ({get_family(gl)})",
                 "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
             })
+
+        # Display Auto Insights/Alerts
+        st.markdown("### 📊 Auto-Pattern Detection Insights")
+        col1, col2, col3 = st.columns(3)
+        
+        # Most frequent family
+        if all_families:
+            top_fam = pd.Series(all_families).mode().tolist()
+            col1.success(f"🔥 **Top Recurring Family:** {', '.join(top_fam)}")
+        
+        # Most frequent Inside Haruf
+        if inside_harufs:
+            top_in = pd.Series(inside_harufs).mode().tolist()
+            col2.info(f"🎯 **Top Inside Haruf (अंदर का हरूफ):** {', '.join(top_in)}")
+            
+        # Most frequent Outside Haruf
+        if outside_harufs:
+            top_out = pd.Series(outside_harufs).mode().tolist()
+            col3.info(f"🎯 **Top Outside Haruf (बाहर का हरूफ):** {', '.join(top_out)}")
+
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-    # TAB 2: 3-Month Block
+    # --- TAB 2: 3-MONTH BLOCK SEQUENCE ---
     with tab2:
-        st.subheader("🗓️ Pattern 2: 3-Month Block Analysis")
+        st.subheader("🗓️ Pattern 2: 3-Month Block Sequence Analysis")
         m1 = target_month - 2 if target_month > 2 else target_month + 10
         m2 = target_month - 1 if target_month > 1 else 12
         m3 = target_month
         
-        st.write(f"Months Sequence: **{m1} ➡️ {m2} ➡️ {m3}** | Day: **{target_day}**")
+        st.write(f"Sequence: **Month {m1} ➡️ Month {m2} ➡️ Month {m3}** | Date: **{target_day}**")
         
         block_data = []
         for yr in sorted(df['DATE_DT'].dt.year.unique(), reverse=True):
             if yr <= target_year:
                 for m in [m1, m2, m3]:
-                    m_yr = yr if m <= target_month else yr
-                    
+                    m_yr = yr if m <= target_month else yr - 1
+                    m_df = df[(df['DATE_DT'].dt.year == m_yr) & (df['DATE_DT'].dt.month == m) & (df['DATE_DT'].dt.day == target_day)]
+                    if not m_df.empty:
+                        r = m_df.iloc[0]
+                        fb, gb, gl, ds = clean_num(r['FRBD']), clean_num(r['GZBD']), clean_num(r['GALI']), clean_num(r['DSWR'])
+                        block_data.append({
+                            "Year": m_yr,
+                            "Month": m,
+                            "Day": target_day,
+                            "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
+                            "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
+                            "GALI": f"{gl or 'XX'} ({get_family(gl)})",
+                            "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                        })
+        if block_data:
+            st.dataframe(pd.DataFrame(block_data), use_container_width=True)
+        else:
+            st.warning("कोई 3-मंथ डेटा नहीं मिला।")
+
+    # --- TAB 3: CROSS-MONTH LIFT ---
+    with tab3:
+        st.subheader("🔀 Pattern 3: Cross-Month Lift Analysis")
+        prev_m = target_month - 1 if target_month > 1 else 12
+        prev_m_yr = target_year if target_month > 1 else target_year - 1
+        
+        st.write(f"Comparing target **{target_day}/{target_month}/{target_year}** with **Month {prev_m}/{prev_m_yr} (Dates 20 to 30)**")
+        
+        p_data = df[(df['DATE_DT'].dt.year == prev_m_yr) & (df['DATE_DT'].dt.month == prev_m) & (df['DATE_DT'].dt.day.between(20, 30))]
+        c_data = df[(df['DATE_DT'].dt.year == target_year) & (df['DATE_DT'].dt.month == target_month) & (df['DATE_DT'].dt.day == target_day)]
+        
+        # Display previous month's 20-30 dates grid
+        st.write("📋 **पिछले महीने का 20-30 तारीख का रिकॉर्ड:**")
+        p_table = []
+        for _, p_row in p_data.iterrows():
+            fb, gb, gl, ds = clean_num(p_row['FRBD']), clean_num(p_row['GZBD']), clean_num(p_row['GALI']), clean_num(p_row['DSWR'])
+            p_table.append({
+                "Date": p_row['DATE_DT'].strftime('%d/%m/%Y'),
+                "FRBD": f"{fb or 'XX'}
+        

@@ -2,19 +2,19 @@ import streamlit as st
 import pandas as pd
 
 # 1. Page Configuration
-st.set_page_config(page_title="13-Year Pattern Search Engine", layout="wide")
+st.set_page_config(page_title="Auto Pattern Search Engine", layout="wide")
 
-st.title("🎯 13-Year Pattern & Combination Auto-Search Engine")
+st.title("🎯 Auto 13-Year Pattern & Combination Analyzer")
 
-# 2. File Uploader & Default Data Load
-st.sidebar.header("📁 Step 1: Upload Your File")
+# 2. Sidebar File Upload
+st.sidebar.header("📁 Upload Your Result CSV")
 uploaded_file = st.sidebar.file_uploader("Upload CSV File", type=["csv"])
 
 @st.cache_data
 def load_csv_data(file_source):
     df = pd.read_csv(file_source)
     df['DATE_DT'] = pd.to_datetime(df['DATE'], format='%d/%m/%Y', errors='coerce')
-    df = df.dropna(subset=['DATE_DT'])
+    df = df.dropna(subset=['DATE_DT']).sort_values('DATE_DT')
     return df
 
 df = None
@@ -22,25 +22,41 @@ df = None
 if uploaded_file is not None:
     try:
         df = load_csv_data(uploaded_file)
-        st.sidebar.success("✅ Uploaded CSV Loaded!")
+        st.sidebar.success("✅ File Loaded Successfully!")
     except Exception as e:
-        st.sidebar.error(f"Error: {e}")
+        st.sidebar.error(f"Error reading file: {e}")
 else:
     try:
         df = load_csv_data("06_10_2026 result  (1).csv")
-        st.sidebar.info("ℹ️ Using Repository CSV")
+        st.sidebar.info("ℹ️ Using default repository CSV")
     except Exception:
-        st.warning("⚠️ कृपया बाईं तरफ (Sidebar) 'Upload CSV File' से फ़ाइल अपलोड करें!")
+        st.warning("⚠️ कृपया बाईं तरफ 'Upload CSV File' बटन से अपनी CSV फ़ाइल अपलोड करें!")
 
-if df is not None:
+if df is not None and not df.empty:
 
-    # 3. Sidebar Filters
-    st.sidebar.header("🔍 Step 2: Select Date & Filters")
-    target_day = st.sidebar.slider("तारीख (Select Day)", 1, 31, 7)
-    target_month = st.sidebar.slider("महीना (Select Month)", 1, 12, 10)
+    # -------------------------------------------------------------
+    # 3. ऑटोमैटिक लेटेस्ट डेट डिटेक्ट करना (Latest Date Identification)
+    # -------------------------------------------------------------
+    # जिस रो में कम से कम एक मार्केट का रिजल्ट मौजूद हो
+    valid_data_df = df.dropna(subset=['FRBD', 'GZBD', 'GALI', 'DSWR'], how='all')
     
-    available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
-    target_year = st.sidebar.selectbox("साल (Select Target Year)", available_years, index=0)
+    if not valid_data_df.empty:
+        latest_row = valid_data_df.iloc[-1]
+        default_day = latest_row['DATE_DT'].day
+        default_month = latest_row['DATE_DT'].month
+        default_year = latest_row['DATE_DT'].year
+    else:
+        default_day, default_month, default_year = 6, 10, 2026
+
+    # यूज़र को दिखाई जाने वाली ऑटो-डिटेक्ट जानकारी
+    st.info(f"📌 **ऑटो-डिटेक्टेड लेटेस्ट डेट (Auto-Detected Latest Date):** {default_day}/{default_month}/{default_year}")
+
+    # ऑप्शनल मैनुअल फिल्टर (अगर किसी और तारीख का देखना हो)
+    with st.sidebar.expander("⚙️ बदलें (Manual Override Filters)"):
+        target_day = st.slider("Select Day (तारीख)", 1, 31, int(default_day))
+        target_month = st.slider("Select Month (महीना)", 1, 12, int(default_month))
+        available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
+        target_year = st.selectbox("Select Target Year (साल)", available_years, index=0)
 
     # 4. Family Groups
     FAMILY_GROUPS = {
@@ -61,7 +77,7 @@ if df is not None:
             return None
         try:
             return str(int(float(val))).zfill(2)
-        except:
+        except Exception:
             return str(val).strip().zfill(2)
 
     def get_family(num_str):
@@ -75,12 +91,12 @@ if df is not None:
     def get_haruf(num_str):
         if not num_str or len(num_str) < 2:
             return None, None
-        return num_str[0], num_str[1] # Inside, Outside
+        return num_str[0], num_str[1]
 
-    # UI Tabs
-    tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (Yearly)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift (20-30 Date)"])
+    # Tabs
+    tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (Yearly)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift"])
 
-    # --- TAB 1: SAME DATE (YEARLY) WITH AUTO MATCH ---
+    # --- TAB 1: SAME DATE (YEARLY) ---
     with tab1:
         st.subheader(f"📅 Pattern 1: Same Date ({target_day}/{target_month}) Across All Years")
         same_date_df = df[(df['DATE_DT'].dt.day == target_day) & (df['DATE_DT'].dt.month == target_month)].sort_values('DATE_DT', ascending=False)
@@ -92,15 +108,21 @@ if df is not None:
 
         for _, row in same_date_df.iterrows():
             yr = row['DATE_DT'].year
-            fb, gb, gl, ds = clean_num(row['FRBD']), clean_num(row['GZBD']), clean_num(row['GALI']), clean_num(row['DSWR'])
+            fb = clean_num(row['FRBD'])
+            gb = clean_num(row['GZBD'])
+            gl = clean_num(row['GALI'])
+            ds = clean_num(row['DSWR'])
             
             for n in [fb, gb, gl, ds]:
                 if n:
                     fam = get_family(n)
-                    if fam != "Other": all_families.append(fam)
+                    if fam != "Other":
+                        all_families.append(fam)
                     h_in, h_out = get_haruf(n)
-                    if h_in: inside_harufs.append(h_in)
-                    if h_out: outside_harufs.append(h_out)
+                    if h_in:
+                        inside_harufs.append(h_in)
+                    if h_out:
+                        outside_harufs.append(h_out)
 
             table_data.append({
                 "Year": yr,
@@ -110,28 +132,24 @@ if df is not None:
                 "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
             })
 
-        # Display Auto Insights/Alerts
         st.markdown("### 📊 Auto-Pattern Detection Insights")
         col1, col2, col3 = st.columns(3)
         
-        # Most frequent family
         if all_families:
             top_fam = pd.Series(all_families).mode().tolist()
             col1.success(f"🔥 **Top Recurring Family:** {', '.join(top_fam)}")
         
-        # Most frequent Inside Haruf
         if inside_harufs:
             top_in = pd.Series(inside_harufs).mode().tolist()
-            col2.info(f"🎯 **Top Inside Haruf (अंदर का हरूफ):** {', '.join(top_in)}")
+            col2.info(f"🎯 **Top Inside Haruf:** {', '.join(top_in)}")
             
-        # Most frequent Outside Haruf
         if outside_harufs:
             top_out = pd.Series(outside_harufs).mode().tolist()
-            col3.info(f"🎯 **Top Outside Haruf (बाहर का हरूफ):** {', '.join(top_out)}")
+            col3.info(f"🎯 **Top Outside Haruf:** {', '.join(top_out)}")
 
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-    # --- TAB 2: 3-MONTH BLOCK SEQUENCE ---
+    # --- TAB 2: 3-MONTH BLOCK ---
     with tab2:
         st.subheader("🗓️ Pattern 2: 3-Month Block Sequence Analysis")
         m1 = target_month - 2 if target_month > 2 else target_month + 10
@@ -148,7 +166,10 @@ if df is not None:
                     m_df = df[(df['DATE_DT'].dt.year == m_yr) & (df['DATE_DT'].dt.month == m) & (df['DATE_DT'].dt.day == target_day)]
                     if not m_df.empty:
                         r = m_df.iloc[0]
-                        fb, gb, gl, ds = clean_num(r['FRBD']), clean_num(r['GZBD']), clean_num(r['GALI']), clean_num(r['DSWR'])
+                        fb = clean_num(r['FRBD'])
+                        gb = clean_num(r['GZBD'])
+                        gl = clean_num(r['GALI'])
+                        ds = clean_num(r['DSWR'])
                         block_data.append({
                             "Year": m_yr,
                             "Month": m,
@@ -160,8 +181,6 @@ if df is not None:
                         })
         if block_data:
             st.dataframe(pd.DataFrame(block_data), use_container_width=True)
-        else:
-            st.warning("कोई 3-मंथ डेटा नहीं मिला।")
 
     # --- TAB 3: CROSS-MONTH LIFT ---
     with tab3:
@@ -169,16 +188,17 @@ if df is not None:
         prev_m = target_month - 1 if target_month > 1 else 12
         prev_m_yr = target_year if target_month > 1 else target_year - 1
         
-        st.write(f"Comparing target **{target_day}/{target_month}/{target_year}** with **Month {prev_m}/{prev_m_yr} (Dates 20 to 30)**")
+        st.write(f"Target Date: **{target_day}/{target_month}/{target_year}** vs **Month {prev_m}/{prev_m_yr} (Dates 20 to 30)**")
         
         p_data = df[(df['DATE_DT'].dt.year == prev_m_yr) & (df['DATE_DT'].dt.month == prev_m) & (df['DATE_DT'].dt.day.between(20, 30))]
         c_data = df[(df['DATE_DT'].dt.year == target_year) & (df['DATE_DT'].dt.month == target_month) & (df['DATE_DT'].dt.day == target_day)]
         
-        # Display previous month's 20-30 dates grid
-        st.write("📋 **पिछले महीने का 20-30 तारीख का रिकॉर्ड:**")
         p_table = []
         for _, p_row in p_data.iterrows():
-            fb, gb, gl, ds = clean_num(p_row['FRBD']), clean_num(p_row['GZBD']), clean_num(p_row['GALI']), clean_num(p_row['DSWR'])
+            fb = clean_num(p_row['FRBD'])
+            gb = clean_num(p_row['GZBD'])
+            gl = clean_num(p_row['GALI'])
+            ds = clean_num(p_row['DSWR'])
             p_table.append({
                 "Date": p_row['DATE_DT'].strftime('%d/%m/%Y'),
                 "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
@@ -193,7 +213,6 @@ if df is not None:
             c_row = c_data.iloc[0]
             c_nums = { "FB": clean_num(c_row['FRBD']), "GB": clean_num(c_row['GZBD']), "GL": clean_num(c_row['GALI']), "DS": clean_num(c_row['DSWR']) }
             
-            st.write("🔍 **मैचिंग पैटर्न परिणाम (Matches Found):**")
             matches = []
             for _, p_row in p_data.iterrows():
                 p_day = p_row['DATE_DT'].day
@@ -203,15 +222,13 @@ if df is not None:
                     for p_game, pn in p_nums.items():
                         if cn and pn:
                             if cn == pn:
-                                matches.append(f"🔥 **SINGLE NUMBER MATCH**: पिछले महीने की तारीख {p_day} ({p_game}: {pn}) ➡️ आज {target_day} तारीख ({c_game}: {cn})")
+                                matches.append(f"🔥 **SINGLE MATCH**: Prev Month Day {p_day} ({p_game}: {pn}) ➡️ Today ({c_game}: {cn})")
                             elif get_family(cn) == get_family(pn) and get_family(cn) != "Other":
-                                matches.append(f"✨ **FAMILY MATCH ({get_family(cn)})**: पिछले महीने की तारीख {p_day} ({p_game}: {pn}) ➡️ आज {target_day} तारीख ({c_game}: {cn})")
+                                matches.append(f"✨ **FAMILY MATCH ({get_family(cn)})**: Prev Month Day {p_day} ({p_game}: {pn}) ➡️ Today ({c_game}: {cn})")
             
             if matches:
                 for m in matches:
                     st.success(m)
             else:
-                st.warning("पिछले महीने की 20-30 तारीख से कोई डायरेक्ट मैच नहीं मिला।")
-        else:
-            st.info("चुनी हुई तारीख का इस साल में रिजल्ट उपलब्ध नहीं है।")
+                st.warning("कोई डायरेक्ट मैच नहीं मिला।")
             

@@ -397,13 +397,20 @@ if df is not None and not df.empty:
             unsafe_allow_html=True
         )
 
-                        # ==============================================================================
-        # --- SECTION 6: 📲 WHATSAPP SHARE BOX 2 (DIRECT FORMATTED NUMBERS) ---
+                                # ==============================================================================
+        # --- SECTION 6: 📲 WHATSAPP SHARE BOX 2 (DIRECT FORMATTED WITH PALAT) ---
         # ==============================================================================
         st.markdown("---")
-        st.markdown("### 📲 **WhatsApp Share Box 2 (Direct Formatted Families & Numbers)**")
+        st.markdown("### 📲 **WhatsApp Share Box 2 (Direct Formatted Families, Numbers & Palat)**")
 
-        # 1. Format Each Family Line Separately with [100]
+        def get_palat(num_str):
+            num_str = str(num_str).zfill(2)
+            return num_str[::-1]
+
+        # 1. Date Line
+        date_header_line = f"📅 Date: {str(target_day).zfill(2)}/{str(target_month).zfill(2)}/{target_year}"
+
+        # 2. Format Each Family Line Separately with [100]
         family_lines = []
         for fam_key in extracted_families:
             if fam_key in FAMILY_GROUPS:
@@ -413,11 +420,15 @@ if df is not None and not df.empty:
 
         formatted_family_block = "\n".join(family_lines) if family_lines else "None [100]"
 
-        # 2. Format Margin Single Numbers Line with [100]
+        # 3. Margin Single Numbers Line (Straight [100] & Palat [50])
         clean_single_str = ", ".join(extracted_single_numbers) if extracted_single_numbers else "None"
-        formatted_single_line = f"{clean_single_str} [100]"
+        formatted_single_straight = f"{clean_single_str} [100]"
+        
+        single_palat_list = [get_palat(n) for n in extracted_single_numbers] if extracted_single_numbers else []
+        clean_single_palat_str = ", ".join(single_palat_list) if single_palat_list else "None"
+        formatted_single_palat = f"{clean_single_palat_str} [50]"
 
-        # 3. Format Target Day TOP SINGLE NUMBERS (Photo वाले Same Card से Exact Mode Single Numbers)
+        # 4. Target Day Single Numbers Line (Straight [100] & Palat [50])
         target_day_df = df[(df['DATE_DT'].dt.day == target_day) & (df['DATE_DT'].dt.month == target_month)]
         target_day_nums = []
         for _, r in target_day_df.iterrows():
@@ -426,19 +437,29 @@ if df is not None and not df.empty:
                 if val != "XX":
                     target_day_nums.append(val)
         
-        # Exact Top Mode Single Numbers for Target Day (जैसा कार्ड में दिखता है)
         if target_day_nums:
             top_target_day_nums = pd.Series(target_day_nums).mode().tolist()
             target_day_str = ", ".join(top_target_day_nums)
+            target_palat_list = [get_palat(n) for n in top_target_day_nums]
+            target_palat_str = ", ".join(target_palat_list)
         else:
             target_day_str = "None"
+            target_palat_str = "None"
 
-        formatted_target_day_line = f"{target_day_str} [100]"
+        formatted_target_straight = f"{target_day_str} [100]"
+        formatted_target_palat = f"{target_palat_str} [50]"
 
-        # Build Clean Whatsapp Message (Direct Formatted Output)
-        wa_text_2 = f"{formatted_family_block}\n\n{formatted_single_line}\n\n{formatted_target_day_line}"
+        # Build Clean Whatsapp Message
+        wa_text_2 = (
+            f"{date_header_line}\n\n"
+            f"{formatted_family_block}\n\n"
+            f"{formatted_single_straight}\n"
+            f"{formatted_single_palat}\n\n"
+            f"{formatted_target_straight}\n"
+            f"{formatted_target_palat}"
+        )
 
-        st.text_area("📋 Clean Whatsapp Formatted Output:", value=wa_text_2, height=220, key="wa_box_2")
+        st.text_area("📋 Clean Whatsapp Formatted Output (With Palat):", value=wa_text_2, height=280, key="wa_box_2")
 
         encoded_wa_text_2 = urllib.parse.quote(wa_text_2)
         wa_url_2 = f"https://api.whatsapp.com/send?text={encoded_wa_text_2}"

@@ -68,13 +68,11 @@ if df is not None and not df.empty:
             return None, None
         return num_str[0], num_str[1]
 
-    # Dynamically detect all game columns present in CSV
     possible_games = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     game_columns = [col for col in possible_games if col in df.columns]
     if not game_columns:
         game_columns = [col for col in df.columns if col not in ['DATE', 'DATE_DT', 'Unnamed: 0'] and not col.startswith('Unnamed')]
 
-    # Auto Detect Latest Date
     valid_data_df = df.dropna(subset=game_columns, how='all')
     
     if not valid_data_df.empty:
@@ -87,7 +85,7 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # 4. RECENT RESULTS CARDS
+    # RECENT RESULTS CARDS
     st.markdown("### 📦 **हाल ही के रिजल्ट्स (Last 5 Results):**")
 
     for g_col in game_columns:
@@ -118,7 +116,6 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # Session State Initialization
     if 'target_day' not in st.session_state:
         st.session_state.target_day = default_day
     if 'target_month' not in st.session_state:
@@ -126,7 +123,7 @@ if df is not None and not df.empty:
     if 'day_margin' not in st.session_state:
         st.session_state.day_margin = 1
 
-    # 5. COMPACT CONTROLS
+    # CONTROLS
     st.markdown("### ⚙️ **Date & Pattern Controls (+ / -)**")
 
     c_day, c_month, c_margin, c_year = st.columns(4)
@@ -154,15 +151,13 @@ if df is not None and not df.empty:
     target_month = st.session_state.target_month
     day_margin = st.session_state.day_margin
 
-    # Calculate Range of Days
     target_days_range = [d for d in range(target_day - day_margin, target_day + day_margin + 1) if 1 <= d <= 31]
 
     st.markdown("---")
 
-    # 6. UI Tabs for Patterns Analysis
+    # UI Tabs
     tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (+/- Range)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift"])
 
-    # --- TAB 1: SAME DATE WITH PLUS/MINUS MARGIN ---
     with tab1:
         st.subheader(f"📅 Pattern 1: Dates {target_days_range} / Month {target_month} Across All Years (+/- {day_margin} Days)")
         
@@ -170,6 +165,7 @@ if df is not None and not df.empty:
         
         table_data = []
         all_families = []
+        all_numbers = []
         inside_harufs = []
         outside_harufs = []
 
@@ -184,6 +180,7 @@ if df is not None and not df.empty:
                 row_dict[g_col] = f"{g_val} ({get_family(g_val)})"
                 
                 if g_val != "XX":
+                    all_numbers.append(g_val)
                     fam = get_family(g_val)
                     if fam not in ["N/A", "Other"]:
                         all_families.append(fam)
@@ -195,27 +192,29 @@ if df is not None and not df.empty:
 
             table_data.append(row_dict)
 
-        st.markdown("### 📊 Auto-Pattern Detection Insights (Selected Range)")
+        # --- SECTION 1: ORIGINAL FAMILY & HARUF INSIGHTS ---
+        st.markdown("### 📊 Auto-Pattern Detection Insights (Family & Haruf)")
         col1, col2, col3 = st.columns(3)
         
         if all_families:
             top_fam = pd.Series(all_families).mode().tolist()
-            col1.success(f"🔥 **Top Recurring Family:** {', '.join(top_fam)}")
-        
+            col1.success(f"🔥 **Top Family:** {', '.join(top_fam)}")
+
         if inside_harufs:
             top_in = pd.Series(inside_harufs).mode().tolist()
-            col2.info(f"🎯 **Top Inside Haruf:** {', '.join(top_in)}")
+            col2.info(f"🎯 **Inside Haruf:** {', '.join(top_in)}")
             
         if outside_harufs:
             top_out = pd.Series(outside_harufs).mode().tolist()
-            col3.info(f"🎯 **Top Outside Haruf:** {', '.join(top_out)}")
+            col3.info(f"🎯 **Outside Haruf:** {', '.join(top_out)}")
 
+        # MAIN TABLE
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-        # --- DAY-BY-DAY TOP RECURRING FAMILY CARDS (-7 Days to +4 Days) ---
+        # --- SECTION 2: ORIGINAL DAY-BY-DAY FAMILY PATTERN ---
         st.markdown("---")
-        st.markdown("### 🗓️ **Day-by-Day Top Recurring Family (-7 Days to +4 Days)**")
-        st.caption(f"महीना {target_month} के लिए हर तारीख की Top Recurring Family अलग-अलग (सभी वर्षों का डेटा):")
+        st.markdown("### 🗓️ **Day-by-Day Family Pattern (-7 Days to +4 Days)**")
+        st.caption(f"महीना {target_month} के लिए हर तारीख की सबसे रिपीटेड **फैमिली (Family)**:")
 
         ext_start_day = max(1, target_day - 7)
         ext_end_day = min(31, target_day + 4)
@@ -232,10 +231,7 @@ if df is not None and not df.empty:
                         if f_name not in ["N/A", "Other"]:
                             day_fams.append(f_name)
             
-            if day_fams:
-                top_day_fam = ", ".join(pd.Series(day_fams).mode().tolist())
-            else:
-                top_day_fam = "N/A"
+            top_day_fam = ", ".join(pd.Series(day_fams).mode().tolist()) if day_fams else "N/A"
 
             tag_label = "(Target Day)" if single_day == target_day else ("(Past Day)" if single_day < target_day else "(Next Day)")
             bg_color = "#e8f5e9" if single_day == target_day else "#ffffff"
@@ -252,21 +248,18 @@ if df is not None and not df.empty:
                     font-size: 16px;
                     font-weight: 600;
                     color: #111111;">
-                    📅 <strong>तारीख {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
+                    📅 <strong>तारीख {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 
+                    🔥 Top Recurring Family: <span style="color: #2e7d32; font-size: 17px;"><strong>{top_day_fam}</strong></span>
                 </div>
                 """,
                 unsafe_allow_html=True
             )
 
-        # -------------------------------------------------------------
-        # NEW SECTION: MARGIN 1 TO 5 COMPLETE BREAKDOWN & SUMMARY
-        # -------------------------------------------------------------
+        # --- SECTION 3: ORIGINAL MARGIN RANGE BREAKDOWN (FAMILY) ---
         st.markdown("---")
-        st.markdown(f"### 📊 **Margin Range Breakdown (मार्जिन 1 से 5 का पूरा हिसाब)**")
-        st.caption(f"तारीख **{target_day}/{target_month}** के लिए मार्जिन 1 से 5 तक लगाने पर निकलने वाली फैमिली की पूरी डिटेल:")
+        st.markdown("### 📊 **Margin Range Breakdown (Family Pattern)**")
 
         margin_summary_data = []
-        all_combined_fams = []
 
         for m_val in range(1, 6):
             m_range = [d for d in range(target_day - m_val, target_day + m_val + 1) if 1 <= d <= 31]
@@ -281,39 +274,89 @@ if df is not None and not df.empty:
                         if f_name not in ["N/A", "Other"]:
                             m_fams.append(f_name)
             
-            if m_fams:
-                unique_fams = sorted(list(set(m_fams)))
-                top_m_fams = ", ".join(pd.Series(m_fams).mode().tolist())
-                fam_counts = len(unique_fams)
-                fams_str = ", ".join(unique_fams)
-                all_combined_fams.extend(m_fams)
-            else:
-                top_m_fams = "N/A"
-                fam_counts = 0
-                fams_str = "N/A"
+            top_m_fams = ", ".join(pd.Series(m_fams).mode().tolist()) if m_fams else "N/A"
 
             margin_summary_data.append({
-                "Margin Range": f"+/- {m_val} Days (तारीख {m_range[0]} से {m_range[-1]})",
-                "Top Recurring Family": top_m_fams,
-                "कुल फैमिली संख्या": fam_counts,
-                "आने वाली फैमिली लिस्ट": fams_str
+                "Margin Range": f"+/- {m_val} Days ({m_range[0]} to {m_range[-1]})",
+                "Top Recurring Family": top_m_fams
             })
 
         st.dataframe(pd.DataFrame(margin_summary_data), use_container_width=True)
 
-        # Total Summary Calculation
-        if all_combined_fams:
-            overall_unique = sorted(list(set(all_combined_fams)))
-            overall_top = ", ".join(pd.Series(all_combined_fams).mode().tolist())
-            
-            st.success(f"""
-            🏆 **मार्जिन 1 से 5 तक का Total रिपोर्ट:**
-            * **सबसे ज़्यादा रिपीट होने वाली मेन फैमिली (Top Overall):** `{overall_top}`
-            * **मार्जिन 1 से 5 में आने वाली कुल यूनिक फैमिली की संख्या:** `{len(overall_unique)}`
-            * **सभी फैमिली की लिस्ट:** `{", ".join(overall_unique)}`
-            """)
+        # ==============================================================================
+        # --- SECTION 4 (NEW & SEPARATE): 🎯 SINGLE NUMBER PATTERN ANALYSIS ---
+        # ==============================================================================
+        st.markdown("---")
+        st.markdown("## 🎯 **Single Number Pattern Analysis (सिंगल नंबर पैटर्न विश्लेषण)**")
+        st.caption("यह सेक्शन 13 वर्षों के डेटा से सबसे ज़्यादा बार आने वाले **सिंगल नंबर (Single Numbers)** का विश्लेषण करता है:")
 
-    # --- TAB 2: 3-MONTH BLOCK SEQUENCE ---
+        # 1. Top Single Numbers Overview
+        if all_numbers:
+            top_num_counts = pd.Series(all_numbers).value_counts().head(5).index.tolist()
+            st.warning(f"🎯 **Top Most Recurring Single Numbers (Selected Target Range):** {', '.join(top_num_counts)}")
+
+        # 2. Day-by-Day Single Numbers (-7 to +4 Days)
+        st.markdown("#### 🗓️ **Day-by-Day Top Single Number (-7 Days to +4 Days)**")
+
+        for single_day in range(ext_start_day, ext_end_day + 1):
+            single_day_df = df[(df['DATE_DT'].dt.day == single_day) & (df['DATE_DT'].dt.month == target_month)]
+            day_nums = []
+            
+            for _, r in single_day_df.iterrows():
+                for g_c in game_columns:
+                    val = clean_num(r.get(g_c))
+                    if val != "XX":
+                        day_nums.append(val)
+            
+            top_day_num = ", ".join(pd.Series(day_nums).mode().tolist()) if day_nums else "N/A"
+
+            tag_label = "(Target Day)" if single_day == target_day else ("(Past Day)" if single_day < target_day else "(Next Day)")
+            bg_color = "#fff3e0" if single_day == target_day else "#ffffff"
+
+            st.markdown(
+                f"""
+                <div style="
+                    border: 1px solid #ffe0b2;
+                    border-radius: 10px;
+                    padding: 10px 18px;
+                    margin-bottom: 8px;
+                    background-color: {bg_color};
+                    box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #111111;">
+                    📅 <strong>तारीख {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 
+                    🎯 Top Single Number: <span style="color: #d9534f; font-size: 18px;"><strong>{top_day_num}</strong></span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+
+        # 3. Margin Range Breakdown for Single Numbers
+        st.markdown("#### 📊 **Margin Range Breakdown (Single Numbers)**")
+
+        single_num_margin_data = []
+
+        for m_val in range(1, 6):
+            m_range = [d for d in range(target_day - m_val, target_day + m_val + 1) if 1 <= d <= 31]
+            m_df = df[(df['DATE_DT'].dt.day.isin(m_range)) & (df['DATE_DT'].dt.month == target_month)]
+            
+            m_nums = []
+            for _, r in m_df.iterrows():
+                for g_c in game_columns:
+                    val = clean_num(r.get(g_c))
+                    if val != "XX":
+                        m_nums.append(val)
+            
+            top_m_nums = ", ".join(pd.Series(m_nums).mode().head(3).tolist()) if m_nums else "N/A"
+
+            single_num_margin_data.append({
+                "Margin Range": f"+/- {m_val} Days ({m_range[0]} to {m_range[-1]})",
+                "Top Single Numbers (Most Repeated)": top_m_nums
+            })
+
+        st.dataframe(pd.DataFrame(single_num_margin_data), use_container_width=True)
+
     with tab2:
         st.subheader("🗓️ Pattern 2: 3-Month Block Sequence Analysis")
         m1 = target_month - 2 if target_month > 2 else target_month + 10
@@ -337,7 +380,6 @@ if df is not None and not df.empty:
         if block_data:
             st.dataframe(pd.DataFrame(block_data), use_container_width=True)
 
-    # --- TAB 3: CROSS-MONTH LIFT ---
     with tab3:
         st.subheader("🔀 Pattern 3: Cross-Month Lift Analysis")
         prev_m = target_month - 1 if target_month > 1 else 12
@@ -358,29 +400,4 @@ if df is not None and not df.empty:
             
         if p_table:
             st.dataframe(pd.DataFrame(p_table), use_container_width=True)
-
-        if not c_data.empty:
-            st.write("🔍 **Matching Results:**")
-            matches = []
-            for _, c_row in c_data.iterrows():
-                c_day = c_row['DATE_DT'].day
-                c_nums = {g_c: clean_num(c_row.get(g_c)) for g_c in game_columns}
-                
-                for _, p_row in p_data.iterrows():
-                    p_day = p_row['DATE_DT'].day
-                    p_nums = {g_c: clean_num(p_row.get(g_c)) for g_c in game_columns}
-                    
-                    for c_game, cn in c_nums.items():
-                        for p_game, pn in p_nums.items():
-                            if cn != "XX" and pn != "XX":
-                                if cn == pn:
-                                    matches.append(f"🔥 **SINGLE MATCH**: Prev Month Day {p_day} ({p_game}: {pn}) ➡️ Target Day {c_day} ({c_game}: {cn})")
-                                elif get_family(cn) == get_family(pn) and get_family(cn) != "Other":
-                                    matches.append(f"✨ **FAMILY MATCH ({get_family(cn)})**: Prev Month Day {p_day} ({p_game}: {pn}) ➡️ Target Day {c_day} ({c_game}: {cn})")
-            
-            if matches:
-                for m in matches:
-                    st.success(m)
-            else:
-                st.warning("Koi direct ya family match nahi mila.")
-            
+        

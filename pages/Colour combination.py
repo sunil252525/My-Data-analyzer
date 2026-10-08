@@ -68,8 +68,14 @@ if df is not None and not df.empty:
             return None, None
         return num_str[0], num_str[1]
 
-    # 3. Auto Detect Latest Date
-    valid_data_df = df.dropna(subset=['FRBD', 'GZBD', 'GALI', 'DSWR'], how='all')
+    # Dynamically detect all game columns present in CSV
+    possible_games = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
+    game_columns = [col for col in possible_games if col in df.columns]
+    if not game_columns:
+        game_columns = [col for col in df.columns if col not in ['DATE', 'DATE_DT', 'Unnamed: 0'] and not col.startswith('Unnamed')]
+
+    # Auto Detect Latest Date
+    valid_data_df = df.dropna(subset=game_columns, how='all')
     
     if not valid_data_df.empty:
         latest_row = valid_data_df.iloc[-1]
@@ -83,11 +89,6 @@ if df is not None and not df.empty:
 
     # 4. RECENT RESULTS CARDS
     st.markdown("### 📦 **हाल ही के रिजल्ट्स (Last 5 Results):**")
-    
-    possible_games = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
-    game_columns = [col for col in possible_games if col in df.columns]
-    if not game_columns:
-        game_columns = [col for col in df.columns if col not in ['DATE', 'DATE_DT', 'Unnamed: 0'] and not col.startswith('Unnamed')]
 
     for g_col in game_columns:
         col_vals = df[g_col].dropna().astype(str).str.strip()
@@ -117,7 +118,7 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # Session State Initialization for Controls
+    # Session State Initialization
     if 'target_day' not in st.session_state:
         st.session_state.target_day = default_day
     if 'target_month' not in st.session_state:
@@ -194,30 +195,24 @@ if df is not None and not df.empty:
         for _, row in same_date_df.iterrows():
             yr = row['DATE_DT'].year
             day_val = row['DATE_DT'].day
-            fb = clean_num(row.get('FRBD'))
-            gb = clean_num(row.get('GZBD'))
-            gl = clean_num(row.get('GALI'))
-            ds = clean_num(row.get('DSWR'))
             
-            for n in [fb, gb, gl, ds]:
-                if n != "XX":
-                    fam = get_family(n)
-                    if fam != "Other":
+            row_dict = {"Year": yr, "Date": f"{day_val}/{target_month}/{yr}"}
+            
+            for g_col in game_columns:
+                g_val = clean_num(row.get(g_col))
+                row_dict[g_col] = f"{g_val} ({get_family(g_val)})"
+                
+                if g_val != "XX":
+                    fam = get_family(g_val)
+                    if fam not in ["N/A", "Other"]:
                         all_families.append(fam)
-                    h_in, h_out = get_haruf(n)
+                    h_in, h_out = get_haruf(g_val)
                     if h_in:
                         inside_harufs.append(h_in)
                     if h_out:
                         outside_harufs.append(h_out)
 
-            table_data.append({
-                "Year": yr,
-                "Date": f"{day_val}/{target_month}/{yr}",
-                "FRBD": f"{fb} ({get_family(fb)})",
-                "GZBD": f"{gb} ({get_family(gb)})",
-                "GALI": f"{gl} ({get_family(gl)})",
-                "DSWR": f"{ds} ({get_family(ds)})"
-            })
+            table_data.append(row_dict)
 
         st.markdown("### 📊 Auto-Pattern Detection Insights (Selected Range)")
         col1, col2, col3 = st.columns(3)
@@ -239,7 +234,7 @@ if df is not None and not df.empty:
         # --- DAY-BY-DAY TOP RECURRING FAMILY CARDS (-7 Days to +4 Days) ---
         st.markdown("---")
         st.markdown("### 🗓️ **Day-by-Day Top Recurring Family (-7 Days to +4 Days)**")
-        st.caption(f"महीना {target_month} के लिए हर तारीख की Top Recurring Family अलग-अलग:")
+        st.caption(f"महीना {target_month} के लिए हर तारीख की Top Recurring Family अलग-अलग (सभी वर्षों का डेटा):")
 
         ext_start_day = max(1, target_day - 7)
         ext_end_day = min(31, target_day + 4)
@@ -249,7 +244,7 @@ if df is not None and not df.empty:
             day_fams = []
             
             for _, r in single_day_df.iterrows():
-                for g_c in ['FRBD', 'GZBD', 'GALI', 'DSWR']:
+                for g_c in game_columns:  # Correctly checking ALL game columns
                     val = clean_num(r.get(g_c))
                     if val != "XX":
                         f_name = get_family(val)
@@ -262,7 +257,7 @@ if df is not None and not df.empty:
                 top_day_fam = "N/A"
 
             # Tag for Current/Target Day
-            tag_label = "🎯 (Target Day)" if single_day == target_day else ("⬅️ (Past Day)" if single_day < target_day else "➡️ (Next Day)")
+            tag_label = "(Target Day)" if single_day == target_day else ("(Past Day)" if single_day < target_day else "(Next Day)")
             bg_color = "#e8f5e9" if single_day == target_day else "#ffffff"
 
             st.markdown(
@@ -277,7 +272,7 @@ if df is not None and not df.empty:
                     font-size: 16px;
                     font-weight: 600;
                     color: #111111;">
-                    📅 <strong>تاريخ {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
+                    📅 <strong>तारीख {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -299,19 +294,11 @@ if df is not None and not df.empty:
                     m_yr = yr if m <= target_month else yr - 1
                     m_df = df[(df['DATE_DT'].dt.year == m_yr) & (df['DATE_DT'].dt.month == m) & (df['DATE_DT'].dt.day.isin(target_days_range))]
                     for _, r in m_df.iterrows():
-                        fb = clean_num(r.get('FRBD'))
-                        gb = clean_num(r.get('GZBD'))
-                        gl = clean_num(r.get('GALI'))
-                        ds = clean_num(r.get('DSWR'))
-                        block_data.append({
-                            "Year": m_yr,
-                            "Month": m,
-                            "Date": f"{r['DATE_DT'].day}/{m}/{m_yr}",
-                            "FRBD": f"{fb} ({get_family(fb)})",
-                            "GZBD": f"{gb} ({get_family(gb)})",
-                            "GALI": f"{gl} ({get_family(gl)})",
-                            "DSWR": f"{ds} ({get_family(ds)})"
-                        })
+                        b_row = {"Year": m_yr, "Month": m, "Date": f"{r['DATE_DT'].day}/{m}/{m_yr}"}
+                        for g_col in game_columns:
+                            b_val = clean_num(r.get(g_col))
+                            b_row[g_col] = f"{b_val} ({get_family(b_val)})"
+                        block_data.append(b_row)
         if block_data:
             st.dataframe(pd.DataFrame(block_data), use_container_width=True)
 
@@ -328,17 +315,12 @@ if df is not None and not df.empty:
         
         p_table = []
         for _, p_row in p_data.iterrows():
-            fb = clean_num(p_row.get('FRBD'))
-            gb = clean_num(p_row.get('GZBD'))
-            gl = clean_num(p_row.get('GALI'))
-            ds = clean_num(p_row.get('DSWR'))
-            p_table.append({
-                "Date": p_row['DATE_DT'].strftime('%d/%m/%Y'),
-                "FRBD": f"{fb} ({get_family(fb)})",
-                "GZBD": f"{gb} ({get_family(gb)})",
-                "GALI": f"{gl} ({get_family(gl)})",
-                "DSWR": f"{ds} ({get_family(ds)})"
-            })
+            p_dict = {"Date": p_row['DATE_DT'].strftime('%d/%m/%Y')}
+            for g_col in game_columns:
+                p_val = clean_num(p_row.get(g_col))
+                p_dict[g_col] = f"{p_val} ({get_family(p_val)})"
+            p_table.append(p_dict)
+            
         if p_table:
             st.dataframe(pd.DataFrame(p_table), use_container_width=True)
 
@@ -347,11 +329,11 @@ if df is not None and not df.empty:
             matches = []
             for _, c_row in c_data.iterrows():
                 c_day = c_row['DATE_DT'].day
-                c_nums = { "FB": clean_num(c_row.get('FRBD')), "GB": clean_num(c_row.get('GZBD')), "GL": clean_num(c_row.get('GALI')), "DS": clean_num(c_row.get('DSWR')) }
+                c_nums = {g_c: clean_num(c_row.get(g_c)) for g_c in game_columns}
                 
                 for _, p_row in p_data.iterrows():
                     p_day = p_row['DATE_DT'].day
-                    p_nums = { "FB": clean_num(p_row.get('FRBD')), "GB": clean_num(p_row.get('GZBD')), "GL": clean_num(p_row.get('GALI')), "DS": clean_num(p_row.get('DSWR')) }
+                    p_nums = {g_c: clean_num(p_row.get(g_c)) for g_c in game_columns}
                     
                     for c_game, cn in c_nums.items():
                         for p_game, pn in p_nums.items():
@@ -366,4 +348,4 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
-        
+            

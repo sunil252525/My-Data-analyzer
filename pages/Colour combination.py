@@ -13,7 +13,7 @@ def load_csv_data(file_source):
     df = df.dropna(subset=['DATE_DT']).sort_values('DATE_DT')
     return df
 
-# 2. Main Page File Upload (Sidebar se hatakar Main Page par laya gaya)
+# 2. Main Page File Upload
 st.markdown("### 📁 **Upload Your Result CSV File**")
 uploaded_file = st.file_uploader("Upload CSV File Here", type=["csv"], label_visibility="collapsed")
 
@@ -34,7 +34,6 @@ else:
 
 if df is not None and not df.empty:
 
-    # Helper Functions
     FAMILY_GROUPS = {
         "Fam_01": ['01', '10', '51', '15', '06', '60', '56', '65'],
         "Fam_02": ['02', '20', '52', '25', '07', '70', '57', '75'],
@@ -69,7 +68,7 @@ if df is not None and not df.empty:
             return None, None
         return num_str[0], num_str[1]
 
-    # 3. Auto Detect Latest Date & Latest Results
+    # 3. Auto Detect Latest Date
     valid_data_df = df.dropna(subset=['FRBD', 'GZBD', 'GALI', 'DSWR'], how='all')
     
     if not valid_data_df.empty:
@@ -82,21 +81,39 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # --- TOP SECTION: DISPLAY LATEST RESULTS ---
-    st.markdown("### 📌 **Latest Game Results**")
-    st.caption(f"📅 **Latest Result Date:** {default_day:02d}/{default_month:02d}/{default_year}")
+    # 4. RECENT RESULTS CARDS (Exact Layout as Screenshot)
+    st.markdown("### 📦 **हाल ही के रिजल्ट्स (Last 5 Results):**")
     
-    if not valid_data_df.empty:
-        res_fb = clean_num(latest_row.get('FRBD'))
-        res_gb = clean_num(latest_row.get('GZBD'))
-        res_gl = clean_num(latest_row.get('GALI'))
-        res_ds = clean_num(latest_row.get('DSWR'))
+    possible_games = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
+    game_columns = [col for col in possible_games if col in df.columns]
+    if not game_columns:
+        game_columns = [col for col in df.columns if col not in ['DATE', 'DATE_DT', 'Unnamed: 0'] and not col.startswith('Unnamed')]
 
-        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
-        m_col1.metric(label="🔴 FRBD", value=f"{res_fb}", delta=f"{get_family(res_fb)}")
-        m_col2.metric(label="🟢 GZBD", value=f"{res_gb}", delta=f"{get_family(res_gb)}")
-        m_col3.metric(label="🔵 GALI", value=f"{res_gl}", delta=f"{get_family(res_gl)}")
-        m_col4.metric(label="🟡 DSWR", value=f"{res_ds}", delta=f"{get_family(res_ds)}")
+    for g_col in game_columns:
+        col_vals = df[g_col].dropna().astype(str).str.strip()
+        cleaned_vals = [clean_num(v) for v in col_vals if v.lower() not in ['nan', 'xx', '']]
+        if cleaned_vals:
+            last_5 = cleaned_vals[-5:]
+            results_str = " - ".join(last_5)
+            st.markdown(
+                f"""
+                <div style="
+                    border: 1px solid #d0d0d0;
+                    border-radius: 12px;
+                    padding: 12px 20px;
+                    margin-bottom: 10px;
+                    text-align: center;
+                    background-color: #ffffff;
+                    box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
+                    font-size: 17px;
+                    font-weight: 600;
+                    color: #222222;
+                    letter-spacing: 0.5px;">
+                    📌 <strong>{g_col}</strong> {results_str}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     st.markdown("---")
 
@@ -108,9 +125,7 @@ if df is not None and not df.empty:
     if 'day_margin' not in st.session_state:
         st.session_state.day_margin = 1
 
-    # -------------------------------------------------------------
-    # 4. MAIN PAGE CONTROLS (DATE, MONTH, MARGIN & YEAR)
-    # -------------------------------------------------------------
+    # 5. MAIN PAGE CONTROLS (DATE, MONTH, MARGIN & YEAR)
     st.markdown("### ⚙️ **Date & Pattern Controls (+ / -)**")
 
     c_day, c_month, c_margin, c_year = st.columns([2, 2, 2, 2])
@@ -162,7 +177,7 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # 5. UI Tabs for Patterns Analysis
+    # 6. UI Tabs for Patterns Analysis
     tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (+/- Range)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift"])
 
     # --- TAB 1: SAME DATE WITH PLUS/MINUS MARGIN ---
@@ -179,10 +194,10 @@ if df is not None and not df.empty:
         for _, row in same_date_df.iterrows():
             yr = row['DATE_DT'].year
             day_val = row['DATE_DT'].day
-            fb = clean_num(row['FRBD'])
-            gb = clean_num(row['GZBD'])
-            gl = clean_num(row['GALI'])
-            ds = clean_num(row['DSWR'])
+            fb = clean_num(row.get('FRBD'))
+            gb = clean_num(row.get('GZBD'))
+            gl = clean_num(row.get('GALI'))
+            ds = clean_num(row.get('DSWR'))
             
             for n in [fb, gb, gl, ds]:
                 if n != "XX":
@@ -237,10 +252,10 @@ if df is not None and not df.empty:
                     m_yr = yr if m <= target_month else yr - 1
                     m_df = df[(df['DATE_DT'].dt.year == m_yr) & (df['DATE_DT'].dt.month == m) & (df['DATE_DT'].dt.day.isin(target_days_range))]
                     for _, r in m_df.iterrows():
-                        fb = clean_num(r['FRBD'])
-                        gb = clean_num(r['GZBD'])
-                        gl = clean_num(r['GALI'])
-                        ds = clean_num(r['DSWR'])
+                        fb = clean_num(r.get('FRBD'))
+                        gb = clean_num(r.get('GZBD'))
+                        gl = clean_num(r.get('GALI'))
+                        ds = clean_num(r.get('DSWR'))
                         block_data.append({
                             "Year": m_yr,
                             "Month": m,
@@ -266,10 +281,10 @@ if df is not None and not df.empty:
         
         p_table = []
         for _, p_row in p_data.iterrows():
-            fb = clean_num(p_row['FRBD'])
-            gb = clean_num(p_row['GZBD'])
-            gl = clean_num(p_row['GALI'])
-            ds = clean_num(p_row['DSWR'])
+            fb = clean_num(p_row.get('FRBD'))
+            gb = clean_num(p_row.get('GZBD'))
+            gl = clean_num(p_row.get('GALI'))
+            ds = clean_num(p_row.get('DSWR'))
             p_table.append({
                 "Date": p_row['DATE_DT'].strftime('%d/%m/%Y'),
                 "FRBD": f"{fb} ({get_family(fb)})",
@@ -285,11 +300,11 @@ if df is not None and not df.empty:
             matches = []
             for _, c_row in c_data.iterrows():
                 c_day = c_row['DATE_DT'].day
-                c_nums = { "FB": clean_num(c_row['FRBD']), "GB": clean_num(c_row['GZBD']), "GL": clean_num(c_row['GALI']), "DS": clean_num(c_row['DSWR']) }
+                c_nums = { "FB": clean_num(c_row.get('FRBD')), "GB": clean_num(c_row.get('GZBD')), "GL": clean_num(c_row.get('GALI')), "DS": clean_num(c_row.get('DSWR')) }
                 
                 for _, p_row in p_data.iterrows():
                     p_day = p_row['DATE_DT'].day
-                    p_nums = { "FB": clean_num(p_row['FRBD']), "GB": clean_num(p_row['GZBD']), "GL": clean_num(p_row['GALI']), "DS": clean_num(p_row['DSWR']) }
+                    p_nums = { "FB": clean_num(p_row.get('FRBD')), "GB": clean_num(p_row.get('GZBD')), "GL": clean_num(p_row.get('GALI certe')) }
                     
                     for c_game, cn in c_nums.items():
                         for p_game, pn in p_nums.items():
@@ -304,4 +319,10 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
-        
+```eof
+
+अब आपके कोड में:
+1. **फ़ाइल अपलोड** सबसे ऊपर मेन स्क्रीन पर दिखेगा।
+2. **हाल ही के रिजल्ट्स** (Last 5 results per game) बिल्कुल आपकी इमेज की तरह `📌 GameName 58 - 36 - 26 - 01 - 87` कार्ड्स में प्रदर्शित होंगे।
+3. **+ / - कंट्रोल्स** उसके नीचे दिए गए हैं।
+                    

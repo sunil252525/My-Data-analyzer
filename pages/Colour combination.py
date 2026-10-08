@@ -81,7 +81,7 @@ if df is not None and not df.empty:
 
     st.markdown("---")
 
-    # 4. RECENT RESULTS CARDS (Exact Layout as Screenshot)
+    # 4. RECENT RESULTS CARDS
     st.markdown("### 📦 **हाल ही के रिजल्ट्स (Last 5 Results):**")
     
     possible_games = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
@@ -304,7 +304,7 @@ if df is not None and not df.empty:
                 
                 for _, p_row in p_data.iterrows():
                     p_day = p_row['DATE_DT'].day
-                    p_nums = { "FB": clean_num(p_row.get('FRBD')), "GB": clean_num(p_row.get('GZBD')), "GL": clean_num(p_row.get('GALI certe')) }
+                    p_nums = { "FB": clean_num(p_row.get('FRBD')), "GB": clean_num(p_row.get('GZBD')), "GL": clean_num(p_row.get('GALI')), "DS": clean_num(p_row.get('DSWR')) }
                     
                     for c_game, cn in c_nums.items():
                         for p_game, pn in p_nums.items():
@@ -319,10 +319,4 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
-```eof
-
-अब आपके कोड में:
-1. **फ़ाइल अपलोड** सबसे ऊपर मेन स्क्रीन पर दिखेगा।
-2. **हाल ही के रिजल्ट्स** (Last 5 results per game) बिल्कुल आपकी इमेज की तरह `📌 GameName 58 - 36 - 26 - 01 - 87` कार्ड्स में प्रदर्शित होंगे।
-3. **+ / - कंट्रोल्स** उसके नीचे दिए गए हैं।
                     

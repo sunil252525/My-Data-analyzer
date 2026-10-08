@@ -68,7 +68,7 @@ if df is not None and not df.empty:
             return None, None
         return num_str[0], num_str[1]
 
-    # Dynamically detect all game columns present in CSV
+    # Dynamically detect game columns
     possible_games = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     game_columns = [col for col in possible_games if col in df.columns]
     if not game_columns:
@@ -100,16 +100,15 @@ if df is not None and not df.empty:
                 f"""
                 <div style="
                     border: 1px solid #d0d0d0;
-                    border-radius: 12px;
-                    padding: 12px 20px;
-                    margin-bottom: 10px;
+                    border-radius: 10px;
+                    padding: 8px 15px;
+                    margin-bottom: 8px;
                     text-align: center;
                     background-color: #ffffff;
-                    box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
-                    font-size: 17px;
+                    box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
+                    font-size: 16px;
                     font-weight: 600;
-                    color: #222222;
-                    letter-spacing: 0.5px;">
+                    color: #222222;">
                     📌 <strong>{g_col}</strong> {results_str}
                 </div>
                 """,
@@ -126,48 +125,29 @@ if df is not None and not df.empty:
     if 'day_margin' not in st.session_state:
         st.session_state.day_margin = 1
 
-    # 5. MAIN PAGE CONTROLS (DATE, MONTH, MARGIN & YEAR)
+    # 5. COMPACT CONTROLS (कम जगह लेने वाले छोटे कंट्रोल्स)
     st.markdown("### ⚙️ **Date & Pattern Controls (+ / -)**")
 
-    c_day, c_month, c_margin, c_year = st.columns([2, 2, 2, 2])
+    c_day, c_month, c_margin, c_year = st.columns(4)
 
     with c_day:
-        st.markdown("**📅 Day (Tarikh)**")
-        d1, d2, d3 = st.columns([1, 2, 1])
-        if d1.button("➖", key="d_minus"):
-            if st.session_state.target_day > 1:
-                st.session_state.target_day -= 1
-        d2.markdown(f"<h3 style='text-align: center; margin:0;'>{st.session_state.target_day}</h3>", unsafe_allow_html=True)
-        if d3.button("➕", key="d_plus"):
-            if st.session_state.target_day < 31:
-                st.session_state.target_day += 1
+        st.session_state.target_day = st.number_input(
+            "📅 Day (Tarikh)", min_value=1, max_value=31, value=st.session_state.target_day, step=1
+        )
 
     with c_month:
-        st.markdown("**🗓️ Month (Mahina)**")
-        m1, m2, m3 = st.columns([1, 2, 1])
-        if m1.button("➖", key="m_minus"):
-            if st.session_state.target_month > 1:
-                st.session_state.target_month -= 1
-        m2.markdown(f"<h3 style='text-align: center; margin:0;'>{st.session_state.target_month}</h3>", unsafe_allow_html=True)
-        if m3.button("➕", key="m_plus"):
-            if st.session_state.target_month < 12:
-                st.session_state.target_month += 1
+        st.session_state.target_month = st.number_input(
+            "🗓️ Month (Mahina)", min_value=1, max_value=12, value=st.session_state.target_month, step=1
+        )
 
     with c_margin:
-        st.markdown("**↔️ Margin Range**")
-        r1, r2, r3 = st.columns([1, 2, 1])
-        if r1.button("➖", key="r_minus"):
-            if st.session_state.day_margin > 0:
-                st.session_state.day_margin -= 1
-        r2.markdown(f"<h3 style='text-align: center; margin:0;'>+/- {st.session_state.day_margin}</h3>", unsafe_allow_html=True)
-        if r3.button("➕", key="r_plus"):
-            if st.session_state.day_margin < 5:
-                st.session_state.day_margin += 1
+        st.session_state.day_margin = st.number_input(
+            "↔️ Margin Range (+/-)", min_value=0, max_value=5, value=st.session_state.day_margin, step=1
+        )
 
     with c_year:
-        st.markdown("**📆 Target Year**")
         available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
-        target_year = st.selectbox("Year", available_years, index=0, label_visibility="collapsed")
+        target_year = st.selectbox("📆 Target Year", available_years, index=0)
 
     target_day = st.session_state.target_day
     target_month = st.session_state.target_month
@@ -231,20 +211,23 @@ if df is not None and not df.empty:
 
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-        # --- DAY-BY-DAY TOP RECURRING FAMILY CARDS (-7 Days to +4 Days) ---
+        # --- EXACT SAME LOGIC FOR DAY-BY-DAY TOP RECURRING FAMILY CARDS (-7 Days to +4 Days) ---
         st.markdown("---")
         st.markdown("### 🗓️ **Day-by-Day Top Recurring Family (-7 Days to +4 Days)**")
-        st.caption(f"महीना {target_month} के लिए हर तारीख की Top Recurring Family अलग-अलग (सभी वर्षों का डेटा):")
+        st.caption(f"महीना {target_month} के लिए हर तारीख़ की Top Recurring Family (+/- {day_margin} दिन के मार्जिन सहित):")
 
         ext_start_day = max(1, target_day - 7)
         ext_end_day = min(31, target_day + 4)
 
         for single_day in range(ext_start_day, ext_end_day + 1):
-            single_day_df = df[(df['DATE_DT'].dt.day == single_day) & (df['DATE_DT'].dt.month == target_month)]
+            # Applying exact same +/- margin range for each single day
+            single_day_range = [d for d in range(single_day - day_margin, single_day + day_margin + 1) if 1 <= d <= 31]
+            single_day_df = df[(df['DATE_DT'].dt.day.isin(single_day_range)) & (df['DATE_DT'].dt.month == target_month)]
+            
             day_fams = []
             
             for _, r in single_day_df.iterrows():
-                for g_c in game_columns:  # Correctly checking ALL game columns
+                for g_c in game_columns:
                     val = clean_num(r.get(g_c))
                     if val != "XX":
                         f_name = get_family(val)
@@ -264,15 +247,15 @@ if df is not None and not df.empty:
                 f"""
                 <div style="
                     border: 1px solid #c0c0c0;
-                    border-radius: 10px;
-                    padding: 10px 18px;
-                    margin-bottom: 8px;
+                    border-radius: 8px;
+                    padding: 8px 15px;
+                    margin-bottom: 6px;
                     background-color: {bg_color};
                     box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
-                    font-size: 16px;
+                    font-size: 15px;
                     font-weight: 600;
                     color: #111111;">
-                    📅 <strong>तारीख {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
+                    📅 <strong>तारीख़ {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
                 </div>
                 """,
                 unsafe_allow_html=True

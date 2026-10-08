@@ -68,7 +68,7 @@ if df is not None and not df.empty:
             return None, None
         return num_str[0], num_str[1]
 
-    # Dynamically detect game columns
+    # Dynamically detect all game columns present in CSV
     possible_games = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     game_columns = [col for col in possible_games if col in df.columns]
     if not game_columns:
@@ -100,15 +100,16 @@ if df is not None and not df.empty:
                 f"""
                 <div style="
                     border: 1px solid #d0d0d0;
-                    border-radius: 10px;
-                    padding: 8px 15px;
-                    margin-bottom: 8px;
+                    border-radius: 12px;
+                    padding: 12px 20px;
+                    margin-bottom: 10px;
                     text-align: center;
                     background-color: #ffffff;
-                    box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
-                    font-size: 16px;
+                    box-shadow: 0px 2px 5px rgba(0,0,0,0.05);
+                    font-size: 17px;
                     font-weight: 600;
-                    color: #222222;">
+                    color: #222222;
+                    letter-spacing: 0.5px;">
                     📌 <strong>{g_col}</strong> {results_str}
                 </div>
                 """,
@@ -125,7 +126,9 @@ if df is not None and not df.empty:
     if 'day_margin' not in st.session_state:
         st.session_state.day_margin = 1
 
-    # 5. COMPACT CONTROLS (कम जगह लेने वाले छोटे कंट्रोल्स)
+    # -------------------------------------------------------------
+    # 5. COMPACT CONTROLS (कम जगह घेरने वाले छोटे कंट्रोल)
+    # -------------------------------------------------------------
     st.markdown("### ⚙️ **Date & Pattern Controls (+ / -)**")
 
     c_day, c_month, c_margin, c_year = st.columns(4)
@@ -211,23 +214,20 @@ if df is not None and not df.empty:
 
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-        # --- EXACT SAME LOGIC FOR DAY-BY-DAY TOP RECURRING FAMILY CARDS (-7 Days to +4 Days) ---
+        # --- DAY-BY-DAY TOP RECURRING FAMILY CARDS (-7 Days to +4 Days) ---
         st.markdown("---")
         st.markdown("### 🗓️ **Day-by-Day Top Recurring Family (-7 Days to +4 Days)**")
-        st.caption(f"महीना {target_month} के लिए हर तारीख़ की Top Recurring Family (+/- {day_margin} दिन के मार्जिन सहित):")
+        st.caption(f"महीना {target_month} के लिए हर तारीख की Top Recurring Family अलग-अलग (सभी वर्षों का डेटा):")
 
         ext_start_day = max(1, target_day - 7)
         ext_end_day = min(31, target_day + 4)
 
         for single_day in range(ext_start_day, ext_end_day + 1):
-            # Applying exact same +/- margin range for each single day
-            single_day_range = [d for d in range(single_day - day_margin, single_day + day_margin + 1) if 1 <= d <= 31]
-            single_day_df = df[(df['DATE_DT'].dt.day.isin(single_day_range)) & (df['DATE_DT'].dt.month == target_month)]
-            
+            single_day_df = df[(df['DATE_DT'].dt.day == single_day) & (df['DATE_DT'].dt.month == target_month)]
             day_fams = []
             
             for _, r in single_day_df.iterrows():
-                for g_c in game_columns:
+                for g_c in game_columns:  # Correctly checking ALL game columns
                     val = clean_num(r.get(g_c))
                     if val != "XX":
                         f_name = get_family(val)
@@ -247,15 +247,15 @@ if df is not None and not df.empty:
                 f"""
                 <div style="
                     border: 1px solid #c0c0c0;
-                    border-radius: 8px;
-                    padding: 8px 15px;
-                    margin-bottom: 6px;
+                    border-radius: 10px;
+                    padding: 10px 18px;
+                    margin-bottom: 8px;
                     background-color: {bg_color};
                     box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
-                    font-size: 15px;
+                    font-size: 16px;
                     font-weight: 600;
                     color: #111111;">
-                    📅 <strong>तारीख़ {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
+                    📅 <strong>तारीख {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
                 </div>
                 """,
                 unsafe_allow_html=True
@@ -331,4 +331,4 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
-            
+                

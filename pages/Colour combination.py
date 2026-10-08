@@ -398,31 +398,29 @@ if df is not None and not df.empty:
         )
 
         # ==============================================================================
-        # --- SECTION 6: 📲 WHATSAPP SHARE BOX 2 (CLEAN EXTRACTED NUMBERS & FAMILY) ---
+        # --- SECTION 6 (UPDATED): 📲 WHATSAPP SHARE BOX 2 (DIRECT 3 FAMILIES + SINGLE NUMBERS) ---
         # ==============================================================================
         st.markdown("---")
-        st.markdown("### 📲 **WhatsApp Share Box 2 (Clean Extracted Numbers & Family)**")
+        st.markdown("### 📲 **WhatsApp Share Box 2 (Direct Formatted Families & Numbers)**")
 
-        # 1. Format Single Numbers
-        clean_single_str = ", ".join(extracted_single_numbers) if extracted_single_numbers else "None"
-        
-        # 2. Format Full Family Numbers
-        all_family_members = []
+        # 1. Format Each Family Line Separately with [100]
+        family_lines = []
         for fam_key in extracted_families:
             if fam_key in FAMILY_GROUPS:
-                all_family_members.extend(FAMILY_GROUPS[fam_key])
-        
-        unique_family_members = sorted(list(set(all_family_members)))
-        clean_family_str = ", ".join(unique_family_members) if unique_family_members else "None"
+                f_members = FAMILY_GROUPS[fam_key]
+                f_str = ", ".join(f_members)
+                family_lines.append(f"{f_str} [100]")
 
-        # Build clean message text
-        wa_text_2 = f"🎯 *TARGET DATE ({target_day}/{target_month}) CLEAN NUMBERS*\n"
-        wa_text_2 += f"━━━━━━━━━━━━━━━━━━━━\n"
-        wa_text_2 += f"🔢 *SINGLE NUMBERS:* [{clean_single_str}]\n\n"
-        wa_text_2 += f"🎲 *FAMILY NUMBERS:* [{clean_family_str}]\n"
-        wa_text_2 += f"━━━━━━━━━━━━━━━━━━━━"
+        formatted_family_block = "\n".join(family_lines) if family_lines else "None [100]"
 
-        st.text_area("📋 Clean Numbers Text for Copying:", value=wa_text_2, height=150, key="wa_box_2")
+        # 2. Format Single Numbers Line with [100]
+        clean_single_str = ", ".join(extracted_single_numbers) if extracted_single_numbers else "None"
+        formatted_single_line = f"{clean_single_str} [100]"
+
+        # Build Clean Whatsapp Message (Only Number Blocks)
+        wa_text_2 = f"{formatted_family_block}\n\n{formatted_single_line}"
+
+        st.text_area("📋 Clean Whatsapp Formatted Output:", value=wa_text_2, height=180, key="wa_box_2")
 
         encoded_wa_text_2 = urllib.parse.quote(wa_text_2)
         wa_url_2 = f"https://api.whatsapp.com/send?text={encoded_wa_text_2}"

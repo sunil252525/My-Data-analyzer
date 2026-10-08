@@ -1,4 +1,3 @@
-```python
 import streamlit as st
 import pandas as pd
 import urllib.parse
@@ -264,7 +263,7 @@ if df is not None and not df.empty:
 
         margin_summary_data = []
         fam_margin_whatsapp_list = []
-        extracted_families = []
+        extracted_families = set()
 
         for m_val in range(1, 6):
             m_range = [d for d in range(target_day - m_val, target_day + m_val + 1) if 1 <= d <= 31]
@@ -279,8 +278,11 @@ if df is not None and not df.empty:
                         if f_name not in ["N/A", "Other"]:
                             m_fams.append(f_name)
             
-            top_m_fams_list = pd.Series(m_fams).mode().tolist() if m_fams else []
-            top_m_fams = ", ".join(top_m_fams_list) if top_m_fams_list else "N/A"
+            top_m_fams = ", ".join(pd.Series(m_fams).mode().tolist()) if m_fams else "N/A"
+
+            if m_fams:
+                for f_item in pd.Series(m_fams).mode().tolist():
+                    extracted_families.add(f_item)
 
             margin_summary_data.append({
                 "Margin Range": f"+/- {m_val} Days ({m_range[0]} to {m_range[-1]})",
@@ -288,10 +290,6 @@ if df is not None and not df.empty:
             })
             
             fam_margin_whatsapp_list.append(f"• Margin +/-{m_val} ({m_range[0]}-{m_range[-1]}): [{top_m_fams}]")
-
-            for f_item in top_m_fams_list:
-                if f_item not in extracted_families:
-                    extracted_families.append(f_item)
 
         st.dataframe(pd.DataFrame(margin_summary_data), use_container_width=True)
 
@@ -360,6 +358,10 @@ if df is not None and not df.empty:
             top_m_nums_list = pd.Series(m_nums).mode().head(3).tolist() if m_nums else []
             top_m_nums = ", ".join(top_m_nums_list) if top_m_nums_list else "N/A"
 
+            for num_item in top_m_nums_list:
+                if num_item not in extracted_single_numbers:
+                    extracted_single_numbers.append(num_item)
+
             single_num_margin_data.append({
                 "Margin Range": f"+/- {m_val} Days ({m_range[0]} to {m_range[-1]})",
                 "Top Single Numbers (Most Repeated)": top_m_nums
@@ -367,106 +369,66 @@ if df is not None and not df.empty:
             
             num_margin_whatsapp_list.append(f"• Margin +/-{m_val} ({m_range[0]}-{m_range[-1]}): [{top_m_nums}]")
 
-            for n_item in top_m_nums_list:
-                if n_item not in extracted_single_numbers:
-                    extracted_single_numbers.append(n_item)
-
         st.dataframe(pd.DataFrame(single_num_margin_data), use_container_width=True)
 
         # ==============================================================================
-        # --- SECTION 5: 📲 WHATSAPP SUMMARY 1 (FULL BREAKDOWN) ---
+        # --- SECTION 5: 📲 WHATSAPP SUMMARY BOX 1 (DETAILED PATTERN) ---
         # ==============================================================================
         st.markdown("---")
-        st.markdown("### 📲 **WhatsApp Summary 1: Detailed Breakdown**")
+        st.markdown("### 📲 **WhatsApp Share Box 1 (Full Detailed Pattern)**")
 
-        wa_text = f"🎯 *AUTO PATTERN & MARGIN SUMMARY*\n"
-        wa_text += f"📅 Target Date: {target_day}/{target_month}\n"
-        wa_text += f"━━━━━━━━━━━━━━━━━━━━\n"
-        wa_text += f"🔥 *FAMILY MARGIN BREAKDOWN:*\n"
-        wa_text += "\n".join(fam_margin_whatsapp_list) + "\n\n"
-        wa_text += f"🎯 *SINGLE NUMBERS MARGIN BREAKDOWN:*\n"
-        wa_text += "\n".join(num_margin_whatsapp_list) + "\n"
-        wa_text += f"━━━━━━━━━━━━━━━━━━━━\n"
-        wa_text += f"📊 Analyzed from 13-Year Historical Data"
+        wa_text_1 = f"🎯 *AUTO PATTERN & MARGIN SUMMARY*\n"
+        wa_text_1 += f"📅 Target Date: {target_day}/{target_month}\n"
+        wa_text_1 += f"━━━━━━━━━━━━━━━━━━━━\n"
+        wa_text_1 += f"🔥 *FAMILY MARGIN BREAKDOWN:*\n"
+        wa_text_1 += "\n".join(fam_margin_whatsapp_list) + "\n\n"
+        wa_text_1 += f"🎯 *SINGLE NUMBERS MARGIN BREAKDOWN:*\n"
+        wa_text_1 += "\n".join(num_margin_whatsapp_list) + "\n"
+        wa_text_1 += f"━━━━━━━━━━━━━━━━━━━━\n"
+        wa_text_1 += f"📊 Analyzed from 13-Year Historical Data"
 
-        st.text_area("📋 Copy Detailed Text for WhatsApp:", value=wa_text, height=220, key="wa_box_1")
+        st.text_area("📋 Detailed Summary Text:", value=wa_text_1, height=200, key="wa_box_1")
 
-        encoded_wa_text = urllib.parse.quote(wa_text)
-        wa_url = f"https://api.whatsapp.com/send?text={encoded_wa_text}"
+        encoded_wa_text_1 = urllib.parse.quote(wa_text_1)
+        wa_url_1 = f"https://api.whatsapp.com/send?text={encoded_wa_text_1}"
 
         st.markdown(
-            f"""
-            <a href="{wa_url}" target="_blank" style="text-decoration: none;">
-                <div style="
-                    background-color: #25D366;
-                    color: white;
-                    padding: 12px 20px;
-                    border-radius: 8px;
-                    text-align: center;
-                    font-size: 16px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    box-shadow: 0px 3px 8px rgba(0,0,0,0.15);
-                    margin-top: 8px;
-                    margin-bottom: 25px;">
-                    📲 Click Here to Share Summary 1 on WhatsApp
-                </div>
-            </a>
-            """,
+            f'<a href="{wa_url_1}" target="_blank" style="text-decoration: none;"><div style="background-color: #25D366; color: white; padding: 12px 20px; border-radius: 8px; text-align: center; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px;">📲 Share Full Detailed Summary on WhatsApp</div></a>',
             unsafe_allow_html=True
         )
 
         # ==============================================================================
-        # --- SECTION 6 (NEW): 📲 WHATSAPP SUMMARY 2 (CLEAN NUMBERS & FAMILIES ONLY) ---
+        # --- SECTION 6: 📲 WHATSAPP SHARE BOX 2 (CLEAN EXTRACTED NUMBERS & FAMILY) ---
         # ==============================================================================
         st.markdown("---")
-        st.markdown("### 🔢 **WhatsApp Summary 2: Only Clean Numbers & Expanded Families**")
-        st.caption("नीचे दिए गए बॉक्स में सिर्फ़ निकाले गए सिंगल नंबर और फैमिली के पूरे 8-8 नंबर कॉमा और ब्रैकेट के साथ तैयार हैं:")
+        st.markdown("### 📲 **WhatsApp Share Box 2 (Clean Extracted Numbers & Family)**")
 
-        # 1. Format Single Numbers List
+        # 1. Format Single Numbers
         clean_single_str = ", ".join(extracted_single_numbers) if extracted_single_numbers else "None"
+        
+        # 2. Format Full Family Numbers
+        all_family_members = []
+        for fam_key in extracted_families:
+            if fam_key in FAMILY_GROUPS:
+                all_family_members.extend(FAMILY_GROUPS[fam_key])
+        
+        unique_family_members = sorted(list(set(all_family_members)))
+        clean_family_str = ", ".join(unique_family_members) if unique_family_members else "None"
 
-        # 2. Expand Families into Actual Numbers
-        expanded_family_numbers = []
-        for fam in extracted_families:
-            if fam in FAMILY_GROUPS:
-                for f_num in FAMILY_GROUPS[fam]:
-                    if f_num not in expanded_family_numbers:
-                        expanded_family_numbers.append(f_num)
+        # Build clean message text
+        wa_text_2 = f"🎯 *TARGET DATE ({target_day}/{target_month}) CLEAN NUMBERS*\n"
+        wa_text_2 += f"━━━━━━━━━━━━━━━━━━━━\n"
+        wa_text_2 += f"🔢 *SINGLE NUMBERS:* [{clean_single_str}]\n\n"
+        wa_text_2 += f"🎲 *FAMILY NUMBERS:* [{clean_family_str}]\n"
+        wa_text_2 += f"━━━━━━━━━━━━━━━━━━━━"
 
-        clean_family_str = ", ".join(expanded_family_numbers) if expanded_family_numbers else "None"
+        st.text_area("📋 Clean Numbers Text for Copying:", value=wa_text_2, height=150, key="wa_box_2")
 
-        # Build Clean Message Text
-        wa_text_clean = f"🎯 *TARGET NUMBERS ONLY*\n"
-        wa_text_clean += f"📅 Date: {target_day}/{target_month}\n"
-        wa_text_clean += f"━━━━━━━━━━━━━━━━━━━━\n"
-        wa_text_clean += f"🎯 *SINGLE NUMBERS:*\n[{clean_single_str}]\n\n"
-        wa_text_clean += f"🔥 *FULL FAMILY NUMBERS:*\n[{clean_family_str}]\n"
-        wa_text_clean += f"━━━━━━━━━━━━━━━━━━━━"
-
-        st.text_area("📋 Copy Clean Numbers Text for WhatsApp:", value=wa_text_clean, height=200, key="wa_box_2")
-
-        encoded_wa_clean = urllib.parse.quote(wa_text_clean)
-        wa_url_clean = f"https://api.whatsapp.com/send?text={encoded_wa_clean}"
+        encoded_wa_text_2 = urllib.parse.quote(wa_text_2)
+        wa_url_2 = f"https://api.whatsapp.com/send?text={encoded_wa_text_2}"
 
         st.markdown(
-            f"""
-            <a href="{wa_url_clean}" target="_blank" style="text-decoration: none;">
-                <div style="
-                    background-color: #128C7E;
-                    color: white;
-                    padding: 14px 22px;
-                    border-radius: 8px;
-                    text-align: center;
-                    font-size: 17px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    box-shadow: 0px 3px 8px rgba(0,0,0,0.15);
-                    margin-top: 8px;">
-                    📲 Click Here to Share Clean Numbers on WhatsApp (केवल नंबर सेंड करें)
-                </div>
-            </a>
-            """,
+            f'<a href="{wa_url_2}" target="_blank" style="text-decoration: none;"><div style="background-color: #075E54; color: white; padding: 12px 20px; border-radius: 8px; text-align: center; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px;">📲 Share Clean Numbers on WhatsApp</div></a>',
             unsafe_allow_html=True
         )
 

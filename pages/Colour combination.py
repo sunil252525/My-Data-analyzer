@@ -73,6 +73,7 @@ if df is not None and not df.empty:
     if not game_columns:
         game_columns = [col for col in df.columns if col not in ['DATE', 'DATE_DT', 'Unnamed: 0'] and not col.startswith('Unnamed')]
 
+    # Auto Detect Latest Date from Loaded File
     valid_data_df = df.dropna(subset=game_columns, how='all')
     
     if not valid_data_df.empty:
@@ -82,6 +83,13 @@ if df is not None and not df.empty:
         default_year = int(latest_row['DATE_DT'].year)
     else:
         default_day, default_month, default_year = 6, 10, 2026
+
+    # Update session state automatically when new file or date is loaded
+    if 'last_loaded_date' not in st.session_state or st.session_state.last_loaded_date != f"{default_day}-{default_month}-{default_year}":
+        st.session_state.target_day = default_day
+        st.session_state.target_month = default_month
+        st.session_state.day_margin = 1
+        st.session_state.last_loaded_date = f"{default_day}-{default_month}-{default_year}"
 
     st.markdown("---")
 
@@ -115,13 +123,6 @@ if df is not None and not df.empty:
             )
 
     st.markdown("---")
-
-    if 'target_day' not in st.session_state:
-        st.session_state.target_day = default_day
-    if 'target_month' not in st.session_state:
-        st.session_state.target_month = default_month
-    if 'day_margin' not in st.session_state:
-        st.session_state.day_margin = 1
 
     # CONTROLS
     st.markdown("### ⚙️ **Date & Pattern Controls (+ / -)**")
@@ -192,7 +193,7 @@ if df is not None and not df.empty:
 
             table_data.append(row_dict)
 
-        # --- SECTION 1: ORIGINAL FAMILY & HARUF INSIGHTS ---
+        # SECTION 1: ORIGINAL FAMILY & HARUF INSIGHTS
         st.markdown("### 📊 Auto-Pattern Detection Insights (Family & Haruf)")
         col1, col2, col3 = st.columns(3)
         
@@ -211,7 +212,7 @@ if df is not None and not df.empty:
         # MAIN TABLE
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-        # --- SECTION 2: ORIGINAL DAY-BY-DAY FAMILY PATTERN ---
+        # SECTION 2: DAY-BY-DAY FAMILY PATTERN
         st.markdown("---")
         st.markdown("### 🗓️ **Day-by-Day Family Pattern (-7 Days to +4 Days)**")
         st.caption(f"महीना {target_month} के लिए हर तारीख की सबसे रिपीटेड **फैमिली (Family)**:")
@@ -255,7 +256,7 @@ if df is not None and not df.empty:
                 unsafe_allow_html=True
             )
 
-        # --- SECTION 3: ORIGINAL MARGIN RANGE BREAKDOWN (FAMILY) ---
+        # SECTION 3: MARGIN RANGE BREAKDOWN (FAMILY)
         st.markdown("---")
         st.markdown("### 📊 **Margin Range Breakdown (Family Pattern)**")
 
@@ -283,19 +284,15 @@ if df is not None and not df.empty:
 
         st.dataframe(pd.DataFrame(margin_summary_data), use_container_width=True)
 
-        # ==============================================================================
-        # --- SECTION 4 (NEW & SEPARATE): 🎯 SINGLE NUMBER PATTERN ANALYSIS ---
-        # ==============================================================================
+        # SECTION 4: SINGLE NUMBER PATTERN ANALYSIS
         st.markdown("---")
         st.markdown("## 🎯 **Single Number Pattern Analysis (सिंगल नंबर पैटर्न विश्लेषण)**")
         st.caption("यह सेक्शन 13 वर्षों के डेटा से सबसे ज़्यादा बार आने वाले **सिंगल नंबर (Single Numbers)** का विश्लेषण करता है:")
 
-        # 1. Top Single Numbers Overview
         if all_numbers:
             top_num_counts = pd.Series(all_numbers).value_counts().head(5).index.tolist()
             st.warning(f"🎯 **Top Most Recurring Single Numbers (Selected Target Range):** {', '.join(top_num_counts)}")
 
-        # 2. Day-by-Day Single Numbers (-7 to +4 Days)
         st.markdown("#### 🗓️ **Day-by-Day Top Single Number (-7 Days to +4 Days)**")
 
         for single_day in range(ext_start_day, ext_end_day + 1):
@@ -332,7 +329,6 @@ if df is not None and not df.empty:
                 unsafe_allow_html=True
             )
 
-        # 3. Margin Range Breakdown for Single Numbers
         st.markdown("#### 📊 **Margin Range Breakdown (Single Numbers)**")
 
         single_num_margin_data = []

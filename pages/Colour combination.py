@@ -219,7 +219,7 @@ if df is not None and not df.empty:
                 "DSWR": f"{ds} ({get_family(ds)})"
             })
 
-        st.markdown("### 📊 Auto-Pattern Detection Insights")
+        st.markdown("### 📊 Auto-Pattern Detection Insights (Selected Range)")
         col1, col2, col3 = st.columns(3)
         
         if all_families:
@@ -236,62 +236,52 @@ if df is not None and not df.empty:
 
         st.dataframe(pd.DataFrame(table_data), use_container_width=True)
 
-        # --- NEW SECTION: EXTENDED RANGE ANALYSIS (7 Days Back & 3 Days Ahead) ---
+        # --- DAY-BY-DAY TOP RECURRING FAMILY CARDS (-7 Days to +4 Days) ---
         st.markdown("---")
+        st.markdown("### 🗓️ **Day-by-Day Top Recurring Family (-7 Days to +4 Days)**")
+        st.caption(f"महीना {target_month} के लिए हर तारीख की Top Recurring Family अलग-अलग:")
+
         ext_start_day = max(1, target_day - 7)
-        ext_end_day = min(31, target_day + 3)
-        extended_days_range = list(range(ext_start_day, ext_end_day + 1))
+        ext_end_day = min(31, target_day + 4)
 
-        st.markdown(f"### 🔍 **4️⃣ Expanded Extended Range Analysis (-7 Days to +3 Days)**")
-        st.caption(f"📅 **Showing Dates {ext_start_day} to {ext_end_day} for Month {target_month} Across All Years**")
-
-        ext_df = df[(df['DATE_DT'].dt.day.isin(extended_days_range)) & (df['DATE_DT'].dt.month == target_month)].sort_values('DATE_DT', ascending=False)
-
-        ext_table_data = []
-        ext_all_families = []
-        ext_inside_harufs = []
-        ext_outside_harufs = []
-
-        for _, row in ext_df.iterrows():
-            yr = row['DATE_DT'].year
-            day_val = row['DATE_DT'].day
-            fb = clean_num(row.get('FRBD'))
-            gb = clean_num(row.get('GZBD'))
-            gl = clean_num(row.get('GALI'))
-            ds = clean_num(row.get('DSWR'))
+        for single_day in range(ext_start_day, ext_end_day + 1):
+            single_day_df = df[(df['DATE_DT'].dt.day == single_day) & (df['DATE_DT'].dt.month == target_month)]
+            day_fams = []
             
-            for n in [fb, gb, gl, ds]:
-                if n != "XX":
-                    fam = get_family(n)
-                    if fam != "Other":
-                        ext_all_families.append(fam)
-                    h_in, h_out = get_haruf(n)
-                    if h_in:
-                        ext_inside_harufs.append(h_in)
-                    if h_out:
-                        ext_outside_harufs.append(h_out)
+            for _, r in single_day_df.iterrows():
+                for g_c in ['FRBD', 'GZBD', 'GALI', 'DSWR']:
+                    val = clean_num(r.get(g_c))
+                    if val != "XX":
+                        f_name = get_family(val)
+                        if f_name not in ["N/A", "Other"]:
+                            day_fams.append(f_name)
+            
+            if day_fams:
+                top_day_fam = ", ".join(pd.Series(day_fams).mode().tolist())
+            else:
+                top_day_fam = "N/A"
 
-            ext_table_data.append({
-                "Year": yr,
-                "Date": f"{day_val}/{target_month}/{yr}",
-                "FRBD": f"{fb} ({get_family(fb)})",
-                "GZBD": f"{gb} ({get_family(gb)})",
-                "GALI": f"{gl} ({get_family(gl)})",
-                "DSWR": f"{ds} ({get_family(ds)})"
-            })
+            # Tag for Current/Target Day
+            tag_label = "🎯 (Target Day)" if single_day == target_day else ("⬅️ (Past Day)" if single_day < target_day else "➡️ (Next Day)")
+            bg_color = "#e8f5e9" if single_day == target_day else "#ffffff"
 
-        e_col1, e_col2, e_col3 = st.columns(3)
-        if ext_all_families:
-            top_ext_fam = pd.Series(ext_all_families).mode().tolist()
-            e_col1.success(f"🔥 **Extended Top Family (-7 to +3 Days):** {', '.join(top_ext_fam)}")
-        if ext_inside_harufs:
-            top_ext_in = pd.Series(ext_inside_harufs).mode().tolist()
-            e_col2.info(f"🎯 **Extended Top Inside Haruf:** {', '.join(top_ext_in)}")
-        if ext_outside_harufs:
-            top_ext_out = pd.Series(ext_outside_harufs).mode().tolist()
-            e_col3.info(f"🎯 **Extended Top Outside Haruf:** {', '.join(top_ext_out)}")
-
-        st.dataframe(pd.DataFrame(ext_table_data), use_container_width=True)
+            st.markdown(
+                f"""
+                <div style="
+                    border: 1px solid #c0c0c0;
+                    border-radius: 10px;
+                    padding: 10px 18px;
+                    margin-bottom: 8px;
+                    background-color: {bg_color};
+                    box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
+                    font-size: 16px;
+                    font-weight: 600;
+                    color: #111111;">
+                    📅 <strong>تاريخ {single_day}/{target_month} {tag_label}:</strong> &nbsp;&nbsp; 🔥 Top Recurring Family: <span style="color: #0d6efd;">{top_day_fam}</span>
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
 
     # --- TAB 2: 3-MONTH BLOCK SEQUENCE ---
     with tab2:

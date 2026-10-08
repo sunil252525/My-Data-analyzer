@@ -6,10 +6,6 @@ st.set_page_config(page_title="Auto Pattern Search Engine", layout="wide")
 
 st.title("🎯 Auto 13-Year Pattern & Combination Analyzer")
 
-# 2. Sidebar File Upload
-st.sidebar.header("📁 Upload Your Result CSV")
-uploaded_file = st.sidebar.file_uploader("Upload CSV File", type=["csv"])
-
 @st.cache_data
 def load_csv_data(file_source):
     df = pd.read_csv(file_source)
@@ -17,94 +13,28 @@ def load_csv_data(file_source):
     df = df.dropna(subset=['DATE_DT']).sort_values('DATE_DT')
     return df
 
+# 2. Main Page File Upload (Sidebar se hatakar Main Page par laya gaya)
+st.markdown("### 📁 **Upload Your Result CSV File**")
+uploaded_file = st.file_uploader("Upload CSV File Here", type=["csv"], label_visibility="collapsed")
+
 df = None
 
 if uploaded_file is not None:
     try:
         df = load_csv_data(uploaded_file)
-        st.sidebar.success("✅ File Loaded Successfully!")
+        st.success("✅ File Loaded Successfully!")
     except Exception as e:
-        st.sidebar.error(f"Error reading file: {e}")
+        st.error(f"Error reading file: {e}")
 else:
     try:
         df = load_csv_data("06_10_2026 result  (1).csv")
-        st.sidebar.info("ℹ️ Using default repository CSV")
+        st.info("ℹ️ Using default repository CSV file.")
     except Exception:
-        st.warning("⚠️ Kripya sidebar se 'Upload CSV File' button se CSV file upload karein!")
+        st.warning("⚠️ Kripya ऊपर 'Upload CSV File' बटन से अपनी CSV फाइल अपलोड करें!")
 
 if df is not None and not df.empty:
 
-    # 3. Auto Detect Latest Date
-    valid_data_df = df.dropna(subset=['FRBD', 'GZBD', 'GALI', 'DSWR'], how='all')
-    
-    if not valid_data_df.empty:
-        latest_row = valid_data_df.iloc[-1]
-        default_day = int(latest_row['DATE_DT'].day)
-        default_month = int(latest_row['DATE_DT'].month)
-        default_year = int(latest_row['DATE_DT'].year)
-    else:
-        default_day, default_month, default_year = 6, 10, 2026
-
-    # Session State Initialization for Controls
-    if 'target_day' not in st.session_state:
-        st.session_state.target_day = default_day
-    if 'target_month' not in st.session_state:
-        st.session_state.target_month = default_month
-    if 'day_margin' not in st.session_state:
-        st.session_state.day_margin = 1
-
-    st.info(f"📌 **Auto-Detected Latest Date:** {default_day}/{default_month}/{default_year}")
-
-    # -------------------------------------------------------------
-    # 4. PLUS / MINUS BUTTON CONTROLS (NO SLIDERS)
-    # -------------------------------------------------------------
-    st.sidebar.header("⚙️ Date & Margin Controls (+ / -)")
-
-    # Day Control
-    st.sidebar.subheader("📅 Date Adjustment (Tarikh)")
-    col_d1, col_d2, col_d3 = st.sidebar.columns([1, 2, 1])
-    if col_d1.button("➖ Day"):
-        if st.session_state.target_day > 1:
-            st.session_state.target_day -= 1
-    col_d2.markdown(f"<h3 style='text-align: center; margin:0;'>{st.session_state.target_day}</h3>", unsafe_allow_html=True)
-    if col_d3.button("➕ Day"):
-        if st.session_state.target_day < 31:
-            st.session_state.target_day += 1
-
-    # Month Control
-    st.sidebar.subheader("🗓️ Month Adjustment (Mahina)")
-    col_m1, col_m2, col_m3 = st.sidebar.columns([1, 2, 1])
-    if col_m1.button("➖ Month"):
-        if st.session_state.target_month > 1:
-            st.session_state.target_month -= 1
-    col_m2.markdown(f"<h3 style='text-align: center; margin:0;'>{st.session_state.target_month}</h3>", unsafe_allow_html=True)
-    if col_m3.button("➕ Month"):
-        if st.session_state.target_month < 12:
-            st.session_state.target_month += 1
-
-    # Margin Range Control
-    st.sidebar.subheader("↔️ Margin Range (+/- Days)")
-    col_r1, col_r2, col_r3 = st.sidebar.columns([1, 2, 1])
-    if col_r1.button("➖ Margin"):
-        if st.session_state.day_margin > 0:
-            st.session_state.day_margin -= 1
-    col_r2.markdown(f"<h3 style='text-align: center; margin:0;'>+/- {st.session_state.day_margin}</h3>", unsafe_allow_html=True)
-    if col_r3.button("➕ Margin"):
-        if st.session_state.day_margin < 5:
-            st.session_state.day_margin += 1
-
-    # Target Year Dropdown
-    available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
-    target_year = st.sidebar.selectbox("Select Target Year (Saal)", available_years, index=0)
-
-    target_day = st.session_state.target_day
-    target_month = st.session_state.target_month
-    day_margin = st.session_state.day_margin
-
-    # Calculate Range of Days
-    target_days_range = [d for d in range(target_day - day_margin, target_day + day_margin + 1) if 1 <= d <= 31]
-
-    # 5. Family Groups
+    # Helper Functions
     FAMILY_GROUPS = {
         "Fam_01": ['01', '10', '51', '15', '06', '60', '56', '65'],
         "Fam_02": ['02', '20', '52', '25', '07', '70', '57', '75'],
@@ -120,14 +50,14 @@ if df is not None and not df.empty:
 
     def clean_num(val):
         if pd.isna(val) or str(val).strip().lower() in ['xx', 'nan', '']:
-            return None
+            return "XX"
         try:
             return str(int(float(val))).zfill(2)
         except Exception:
             return str(val).strip().zfill(2)
 
     def get_family(num_str):
-        if not num_str:
+        if not num_str or num_str == "XX":
             return "N/A"
         for fam_name, members in FAMILY_GROUPS.items():
             if num_str in members:
@@ -135,11 +65,104 @@ if df is not None and not df.empty:
         return "Other"
 
     def get_haruf(num_str):
-        if not num_str or len(num_str) < 2:
+        if not num_str or num_str == "XX" or len(num_str) < 2:
             return None, None
         return num_str[0], num_str[1]
 
-    # UI Tabs
+    # 3. Auto Detect Latest Date & Latest Results
+    valid_data_df = df.dropna(subset=['FRBD', 'GZBD', 'GALI', 'DSWR'], how='all')
+    
+    if not valid_data_df.empty:
+        latest_row = valid_data_df.iloc[-1]
+        default_day = int(latest_row['DATE_DT'].day)
+        default_month = int(latest_row['DATE_DT'].month)
+        default_year = int(latest_row['DATE_DT'].year)
+    else:
+        default_day, default_month, default_year = 6, 10, 2026
+
+    st.markdown("---")
+
+    # --- TOP SECTION: DISPLAY LATEST RESULTS ---
+    st.markdown("### 📌 **Latest Game Results**")
+    st.caption(f"📅 **Latest Result Date:** {default_day:02d}/{default_month:02d}/{default_year}")
+    
+    if not valid_data_df.empty:
+        res_fb = clean_num(latest_row.get('FRBD'))
+        res_gb = clean_num(latest_row.get('GZBD'))
+        res_gl = clean_num(latest_row.get('GALI'))
+        res_ds = clean_num(latest_row.get('DSWR'))
+
+        m_col1, m_col2, m_col3, m_col4 = st.columns(4)
+        m_col1.metric(label="🔴 FRBD", value=f"{res_fb}", delta=f"{get_family(res_fb)}")
+        m_col2.metric(label="🟢 GZBD", value=f"{res_gb}", delta=f"{get_family(res_gb)}")
+        m_col3.metric(label="🔵 GALI", value=f"{res_gl}", delta=f"{get_family(res_gl)}")
+        m_col4.metric(label="🟡 DSWR", value=f"{res_ds}", delta=f"{get_family(res_ds)}")
+
+    st.markdown("---")
+
+    # Session State Initialization for Controls
+    if 'target_day' not in st.session_state:
+        st.session_state.target_day = default_day
+    if 'target_month' not in st.session_state:
+        st.session_state.target_month = default_month
+    if 'day_margin' not in st.session_state:
+        st.session_state.day_margin = 1
+
+    # -------------------------------------------------------------
+    # 4. MAIN PAGE CONTROLS (DATE, MONTH, MARGIN & YEAR)
+    # -------------------------------------------------------------
+    st.markdown("### ⚙️ **Date & Pattern Controls (+ / -)**")
+
+    c_day, c_month, c_margin, c_year = st.columns([2, 2, 2, 2])
+
+    with c_day:
+        st.markdown("**📅 Day (Tarikh)**")
+        d1, d2, d3 = st.columns([1, 2, 1])
+        if d1.button("➖", key="d_minus"):
+            if st.session_state.target_day > 1:
+                st.session_state.target_day -= 1
+        d2.markdown(f"<h3 style='text-align: center; margin:0;'>{st.session_state.target_day}</h3>", unsafe_allow_html=True)
+        if d3.button("➕", key="d_plus"):
+            if st.session_state.target_day < 31:
+                st.session_state.target_day += 1
+
+    with c_month:
+        st.markdown("**🗓️ Month (Mahina)**")
+        m1, m2, m3 = st.columns([1, 2, 1])
+        if m1.button("➖", key="m_minus"):
+            if st.session_state.target_month > 1:
+                st.session_state.target_month -= 1
+        m2.markdown(f"<h3 style='text-align: center; margin:0;'>{st.session_state.target_month}</h3>", unsafe_allow_html=True)
+        if m3.button("➕", key="m_plus"):
+            if st.session_state.target_month < 12:
+                st.session_state.target_month += 1
+
+    with c_margin:
+        st.markdown("**↔️ Margin Range**")
+        r1, r2, r3 = st.columns([1, 2, 1])
+        if r1.button("➖", key="r_minus"):
+            if st.session_state.day_margin > 0:
+                st.session_state.day_margin -= 1
+        r2.markdown(f"<h3 style='text-align: center; margin:0;'>+/- {st.session_state.day_margin}</h3>", unsafe_allow_html=True)
+        if r3.button("➕", key="r_plus"):
+            if st.session_state.day_margin < 5:
+                st.session_state.day_margin += 1
+
+    with c_year:
+        st.markdown("**📆 Target Year**")
+        available_years = sorted(df['DATE_DT'].dt.year.unique(), reverse=True)
+        target_year = st.selectbox("Year", available_years, index=0, label_visibility="collapsed")
+
+    target_day = st.session_state.target_day
+    target_month = st.session_state.target_month
+    day_margin = st.session_state.day_margin
+
+    # Calculate Range of Days
+    target_days_range = [d for d in range(target_day - day_margin, target_day + day_margin + 1) if 1 <= d <= 31]
+
+    st.markdown("---")
+
+    # 5. UI Tabs for Patterns Analysis
     tab1, tab2, tab3 = st.tabs(["1️⃣ Same Date (+/- Range)", "2️⃣ 3-Month Block Sequence", "3️⃣ Cross-Month Lift"])
 
     # --- TAB 1: SAME DATE WITH PLUS/MINUS MARGIN ---
@@ -162,7 +185,7 @@ if df is not None and not df.empty:
             ds = clean_num(row['DSWR'])
             
             for n in [fb, gb, gl, ds]:
-                if n:
+                if n != "XX":
                     fam = get_family(n)
                     if fam != "Other":
                         all_families.append(fam)
@@ -175,10 +198,10 @@ if df is not None and not df.empty:
             table_data.append({
                 "Year": yr,
                 "Date": f"{day_val}/{target_month}/{yr}",
-                "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
-                "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
-                "GALI": f"{gl or 'XX'} ({get_family(gl)})",
-                "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                "FRBD": f"{fb} ({get_family(fb)})",
+                "GZBD": f"{gb} ({get_family(gb)})",
+                "GALI": f"{gl} ({get_family(gl)})",
+                "DSWR": f"{ds} ({get_family(ds)})"
             })
 
         st.markdown("### 📊 Auto-Pattern Detection Insights")
@@ -222,10 +245,10 @@ if df is not None and not df.empty:
                             "Year": m_yr,
                             "Month": m,
                             "Date": f"{r['DATE_DT'].day}/{m}/{m_yr}",
-                            "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
-                            "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
-                            "GALI": f"{gl or 'XX'} ({get_family(gl)})",
-                            "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                            "FRBD": f"{fb} ({get_family(fb)})",
+                            "GZBD": f"{gb} ({get_family(gb)})",
+                            "GALI": f"{gl} ({get_family(gl)})",
+                            "DSWR": f"{ds} ({get_family(ds)})"
                         })
         if block_data:
             st.dataframe(pd.DataFrame(block_data), use_container_width=True)
@@ -249,10 +272,10 @@ if df is not None and not df.empty:
             ds = clean_num(p_row['DSWR'])
             p_table.append({
                 "Date": p_row['DATE_DT'].strftime('%d/%m/%Y'),
-                "FRBD": f"{fb or 'XX'} ({get_family(fb)})",
-                "GZBD": f"{gb or 'XX'} ({get_family(gb)})",
-                "GALI": f"{gl or 'XX'} ({get_family(gl)})",
-                "DSWR": f"{ds or 'XX'} ({get_family(ds)})"
+                "FRBD": f"{fb} ({get_family(fb)})",
+                "GZBD": f"{gb} ({get_family(gb)})",
+                "GALI": f"{gl} ({get_family(gl)})",
+                "DSWR": f"{ds} ({get_family(ds)})"
             })
         if p_table:
             st.dataframe(pd.DataFrame(p_table), use_container_width=True)
@@ -270,7 +293,7 @@ if df is not None and not df.empty:
                     
                     for c_game, cn in c_nums.items():
                         for p_game, pn in p_nums.items():
-                            if cn and pn:
+                            if cn != "XX" and pn != "XX":
                                 if cn == pn:
                                     matches.append(f"🔥 **SINGLE MATCH**: Prev Month Day {p_day} ({p_game}: {pn}) ➡️ Target Day {c_day} ({c_game}: {cn})")
                                 elif get_family(cn) == get_family(pn) and get_family(cn) != "Other":
@@ -281,4 +304,4 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
-            
+        

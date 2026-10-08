@@ -126,9 +126,7 @@ if df is not None and not df.empty:
     if 'day_margin' not in st.session_state:
         st.session_state.day_margin = 1
 
-    # -------------------------------------------------------------
-    # 5. COMPACT CONTROLS (कम जगह घेरने वाले छोटे कंट्रोल)
-    # -------------------------------------------------------------
+    # 5. COMPACT CONTROLS
     st.markdown("### ⚙️ **Date & Pattern Controls (+ / -)**")
 
     c_day, c_month, c_margin, c_year = st.columns(4)
@@ -227,7 +225,7 @@ if df is not None and not df.empty:
             day_fams = []
             
             for _, r in single_day_df.iterrows():
-                for g_c in game_columns:  # Correctly checking ALL game columns
+                for g_c in game_columns:
                     val = clean_num(r.get(g_c))
                     if val != "XX":
                         f_name = get_family(val)
@@ -239,7 +237,6 @@ if df is not None and not df.empty:
             else:
                 top_day_fam = "N/A"
 
-            # Tag for Current/Target Day
             tag_label = "(Target Day)" if single_day == target_day else ("(Past Day)" if single_day < target_day else "(Next Day)")
             bg_color = "#e8f5e9" if single_day == target_day else "#ffffff"
 
@@ -260,6 +257,61 @@ if df is not None and not df.empty:
                 """,
                 unsafe_allow_html=True
             )
+
+        # -------------------------------------------------------------
+        # NEW SECTION: MARGIN 1 TO 5 COMPLETE BREAKDOWN & SUMMARY
+        # -------------------------------------------------------------
+        st.markdown("---")
+        st.markdown(f"### 📊 **Margin Range Breakdown (मार्जिन 1 से 5 का पूरा हिसाब)**")
+        st.caption(f"तारीख **{target_day}/{target_month}** के लिए मार्जिन 1 से 5 तक लगाने पर निकलने वाली फैमिली की पूरी डिटेल:")
+
+        margin_summary_data = []
+        all_combined_fams = []
+
+        for m_val in range(1, 6):
+            m_range = [d for d in range(target_day - m_val, target_day + m_val + 1) if 1 <= d <= 31]
+            m_df = df[(df['DATE_DT'].dt.day.isin(m_range)) & (df['DATE_DT'].dt.month == target_month)]
+            
+            m_fams = []
+            for _, r in m_df.iterrows():
+                for g_c in game_columns:
+                    val = clean_num(r.get(g_c))
+                    if val != "XX":
+                        f_name = get_family(val)
+                        if f_name not in ["N/A", "Other"]:
+                            m_fams.append(f_name)
+            
+            if m_fams:
+                unique_fams = sorted(list(set(m_fams)))
+                top_m_fams = ", ".join(pd.Series(m_fams).mode().tolist())
+                fam_counts = len(unique_fams)
+                fams_str = ", ".join(unique_fams)
+                all_combined_fams.extend(m_fams)
+            else:
+                top_m_fams = "N/A"
+                fam_counts = 0
+                fams_str = "N/A"
+
+            margin_summary_data.append({
+                "Margin Range": f"+/- {m_val} Days (तारीख {m_range[0]} से {m_range[-1]})",
+                "Top Recurring Family": top_m_fams,
+                "कुल फैमिली संख्या": fam_counts,
+                "आने वाली फैमिली लिस्ट": fams_str
+            })
+
+        st.dataframe(pd.DataFrame(margin_summary_data), use_container_width=True)
+
+        # Total Summary Calculation
+        if all_combined_fams:
+            overall_unique = sorted(list(set(all_combined_fams)))
+            overall_top = ", ".join(pd.Series(all_combined_fams).mode().tolist())
+            
+            st.success(f"""
+            🏆 **मार्जिन 1 से 5 तक का Total रिपोर्ट:**
+            * **सबसे ज़्यादा रिपीट होने वाली मेन फैमिली (Top Overall):** `{overall_top}`
+            * **मार्जिन 1 से 5 में आने वाली कुल यूनिक फैमिली की संख्या:** `{len(overall_unique)}`
+            * **सभी फैमिली की लिस्ट:** `{", ".join(overall_unique)}`
+            """)
 
     # --- TAB 2: 3-MONTH BLOCK SEQUENCE ---
     with tab2:
@@ -331,4 +383,4 @@ if df is not None and not df.empty:
                     st.success(m)
             else:
                 st.warning("Koi direct ya family match nahi mila.")
-                
+            

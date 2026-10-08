@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import urllib.parse
 
 # 1. Page Configuration
 st.set_page_config(page_title="Auto Pattern Search Engine", layout="wide")
@@ -261,6 +262,7 @@ if df is not None and not df.empty:
         st.markdown("### 📊 **Margin Range Breakdown (Family Pattern)**")
 
         margin_summary_data = []
+        fam_margin_whatsapp_list = []
 
         for m_val in range(1, 6):
             m_range = [d for d in range(target_day - m_val, target_day + m_val + 1) if 1 <= d <= 31]
@@ -281,6 +283,8 @@ if df is not None and not df.empty:
                 "Margin Range": f"+/- {m_val} Days ({m_range[0]} to {m_range[-1]})",
                 "Top Recurring Family": top_m_fams
             })
+            
+            fam_margin_whatsapp_list.append(f"• Margin +/-{m_val} ({m_range[0]}-{m_range[-1]}): [{top_m_fams}]")
 
         st.dataframe(pd.DataFrame(margin_summary_data), use_container_width=True)
 
@@ -332,6 +336,7 @@ if df is not None and not df.empty:
         st.markdown("#### 📊 **Margin Range Breakdown (Single Numbers)**")
 
         single_num_margin_data = []
+        num_margin_whatsapp_list = []
 
         for m_val in range(1, 6):
             m_range = [d for d in range(target_day - m_val, target_day + m_val + 1) if 1 <= d <= 31]
@@ -350,8 +355,53 @@ if df is not None and not df.empty:
                 "Margin Range": f"+/- {m_val} Days ({m_range[0]} to {m_range[-1]})",
                 "Top Single Numbers (Most Repeated)": top_m_nums
             })
+            
+            num_margin_whatsapp_list.append(f"• Margin +/-{m_val} ({m_range[0]}-{m_range[-1]}): [{top_m_nums}]")
 
         st.dataframe(pd.DataFrame(single_num_margin_data), use_container_width=True)
+
+        # ==============================================================================
+        # --- SECTION 5 (NEW): 📲 WHATSAPP SUMMARY & QUICK SHARE BOX ---
+        # ==============================================================================
+        st.markdown("---")
+        st.markdown("### 📲 **WhatsApp Ready Summary (एक क्लिक में शेयर करें)**")
+
+        # Build formatted text for WhatsApp
+        wa_text = f"🎯 *AUTO PATTERN & MARGIN SUMMARY*\n"
+        wa_text += f"📅 Target Date: {target_day}/{target_month}\n"
+        wa_text += f"━━━━━━━━━━━━━━━━━━━━\n"
+        wa_text += f"🔥 *FAMILY MARGIN BREAKDOWN:*\n"
+        wa_text += "\n".join(fam_margin_whatsapp_list) + "\n\n"
+        wa_text += f"🎯 *SINGLE NUMBERS MARGIN BREAKDOWN:*\n"
+        wa_text += "\n".join(num_margin_whatsapp_list) + "\n"
+        wa_text += f"━━━━━━━━━━━━━━━━━━━━\n"
+        wa_text += f"📊 Analyzed from 13-Year Historical Data"
+
+        st.text_area("📋 Copy Text for WhatsApp:", value=wa_text, height=220)
+
+        encoded_wa_text = urllib.parse.quote(wa_text)
+        wa_url = f"https://api.whatsapp.com/send?text={encoded_wa_text}"
+
+        st.markdown(
+            f"""
+            <a href="{wa_url}" target="_blank" style="text-decoration: none;">
+                <div style="
+                    background-color: #25D366;
+                    color: white;
+                    padding: 14px 24px;
+                    border-radius: 10px;
+                    text-align: center;
+                    font-size: 18px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
+                    margin-top: 10px;">
+                    📲 Click Here to Share on WhatsApp (व्हाट्सएप पर भेजें)
+                </div>
+            </a>
+            """,
+            unsafe_allow_html=True
+        )
 
     with tab2:
         st.subheader("🗓️ Pattern 2: 3-Month Block Sequence Analysis")

@@ -397,8 +397,8 @@ if df is not None and not df.empty:
             unsafe_allow_html=True
         )
 
-        # ==============================================================================
-        # --- SECTION 6 (UPDATED): 📲 WHATSAPP SHARE BOX 2 (DIRECT 3 FAMILIES + SINGLE NUMBERS) ---
+                # ==============================================================================
+        # --- SECTION 6: 📲 WHATSAPP SHARE BOX 2 (DIRECT FORMATTED NUMBERS) ---
         # ==============================================================================
         st.markdown("---")
         st.markdown("### 📲 **WhatsApp Share Box 2 (Direct Formatted Families & Numbers)**")
@@ -413,14 +413,27 @@ if df is not None and not df.empty:
 
         formatted_family_block = "\n".join(family_lines) if family_lines else "None [100]"
 
-        # 2. Format Single Numbers Line with [100]
+        # 2. Format Margin Single Numbers Line with [100]
         clean_single_str = ", ".join(extracted_single_numbers) if extracted_single_numbers else "None"
         formatted_single_line = f"{clean_single_str} [100]"
 
-        # Build Clean Whatsapp Message (Only Number Blocks)
-        wa_text_2 = f"{formatted_family_block}\n\n{formatted_single_line}"
+        # 3. Format Target Day Single Numbers Line with [100]
+        target_day_df = df[(df['DATE_DT'].dt.day == target_day) & (df['DATE_DT'].dt.month == target_month)]
+        target_day_nums = []
+        for _, r in target_day_df.iterrows():
+            for g_c in game_columns:
+                val = clean_num(r.get(g_c))
+                if val != "XX":
+                    target_day_nums.append(val)
+        
+        target_day_nums_unique = sorted(list(set(target_day_nums)))
+        target_day_str = ", ".join(target_day_nums_unique) if target_day_nums_unique else "None"
+        formatted_target_day_line = f"{target_day_str} [100]"
 
-        st.text_area("📋 Clean Whatsapp Formatted Output:", value=wa_text_2, height=180, key="wa_box_2")
+        # Build Clean Whatsapp Message (Only 3 Line Types)
+        wa_text_2 = f"{formatted_family_block}\n\n{formatted_single_line}\n\n{formatted_target_day_line}"
+
+        st.text_area("📋 Clean Whatsapp Formatted Output:", value=wa_text_2, height=220, key="wa_box_2")
 
         encoded_wa_text_2 = urllib.parse.quote(wa_text_2)
         wa_url_2 = f"https://api.whatsapp.com/send?text={encoded_wa_text_2}"
@@ -429,47 +442,3 @@ if df is not None and not df.empty:
             f'<a href="{wa_url_2}" target="_blank" style="text-decoration: none;"><div style="background-color: #075E54; color: white; padding: 12px 20px; border-radius: 8px; text-align: center; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 8px;">📲 Share Clean Numbers on WhatsApp</div></a>',
             unsafe_allow_html=True
         )
-
-    with tab2:
-        st.subheader("🗓️ Pattern 2: 3-Month Block Sequence Analysis")
-        m1 = target_month - 2 if target_month > 2 else target_month + 10
-        m2 = target_month - 1 if target_month > 1 else 12
-        m3 = target_month
-        
-        st.write(f"Sequence: **Month {m1} ➡️ Month {m2} ➡️ Month {m3}** | Dates: **{target_days_range}**")
-        
-        block_data = []
-        for yr in sorted(df['DATE_DT'].dt.year.unique(), reverse=True):
-            if yr <= target_year:
-                for m in [m1, m2, m3]:
-                    m_yr = yr if m <= target_month else yr - 1
-                    m_df = df[(df['DATE_DT'].dt.year == m_yr) & (df['DATE_DT'].dt.month == m) & (df['DATE_DT'].dt.day.isin(target_days_range))]
-                    for _, r in m_df.iterrows():
-                        b_row = {"Year": m_yr, "Month": m, "Date": f"{r['DATE_DT'].day}/{m}/{m_yr}"}
-                        for g_col in game_columns:
-                            b_val = clean_num(r.get(g_col))
-                            b_row[g_col] = f"{b_val} ({get_family(b_val)})"
-                        block_data.append(b_row)
-        if block_data:
-            st.dataframe(pd.DataFrame(block_data), use_container_width=True)
-
-    with tab3:
-        st.subheader("🔀 Pattern 3: Cross-Month Lift Analysis")
-        prev_m = target_month - 1 if target_month > 1 else 12
-        prev_m_yr = target_year if target_month > 1 else target_year - 1
-        
-        st.write(f"Target Dates: **{target_days_range}/{target_month}/{target_year}** vs **Month {prev_m}/{prev_m_yr} (Dates 20 to 30)**")
-        
-        p_data = df[(df['DATE_DT'].dt.year == prev_m_yr) & (df['DATE_DT'].dt.month == prev_m) & (df['DATE_DT'].dt.day.between(20, 30))]
-        c_data = df[(df['DATE_DT'].dt.year == target_year) & (df['DATE_DT'].dt.month == target_month) & (df['DATE_DT'].dt.day.isin(target_days_range))]
-        
-        p_table = []
-        for _, p_row in p_data.iterrows():
-            p_dict = {"Date": p_row['DATE_DT'].strftime('%d/%m/%Y')}
-            for g_col in game_columns:
-                p_val = clean_num(p_row.get(g_col))
-                p_dict[g_col] = f"{p_val} ({get_family(p_val)})"
-            p_table.append(p_dict)
-            
-        if p_table:
-            st.dataframe(pd.DataFrame(p_table), use_container_width=True)

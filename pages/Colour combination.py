@@ -397,7 +397,7 @@ if df is not None and not df.empty:
             unsafe_allow_html=True
         )
 
-                # ==============================================================================
+                        # ==============================================================================
         # --- SECTION 6: 📲 WHATSAPP SHARE BOX 2 (DIRECT FORMATTED NUMBERS) ---
         # ==============================================================================
         st.markdown("---")
@@ -417,7 +417,7 @@ if df is not None and not df.empty:
         clean_single_str = ", ".join(extracted_single_numbers) if extracted_single_numbers else "None"
         formatted_single_line = f"{clean_single_str} [100]"
 
-        # 3. Format Target Day Single Numbers Line with [100]
+        # 3. Format Target Day TOP SINGLE NUMBERS (Photo वाले Same Card से Exact Mode Single Numbers)
         target_day_df = df[(df['DATE_DT'].dt.day == target_day) & (df['DATE_DT'].dt.month == target_month)]
         target_day_nums = []
         for _, r in target_day_df.iterrows():
@@ -426,11 +426,16 @@ if df is not None and not df.empty:
                 if val != "XX":
                     target_day_nums.append(val)
         
-        target_day_nums_unique = sorted(list(set(target_day_nums)))
-        target_day_str = ", ".join(target_day_nums_unique) if target_day_nums_unique else "None"
+        # Exact Top Mode Single Numbers for Target Day (जैसा कार्ड में दिखता है)
+        if target_day_nums:
+            top_target_day_nums = pd.Series(target_day_nums).mode().tolist()
+            target_day_str = ", ".join(top_target_day_nums)
+        else:
+            target_day_str = "None"
+
         formatted_target_day_line = f"{target_day_str} [100]"
 
-        # Build Clean Whatsapp Message (Only 3 Line Types)
+        # Build Clean Whatsapp Message (Direct Formatted Output)
         wa_text_2 = f"{formatted_family_block}\n\n{formatted_single_line}\n\n{formatted_target_day_line}"
 
         st.text_area("📋 Clean Whatsapp Formatted Output:", value=wa_text_2, height=220, key="wa_box_2")

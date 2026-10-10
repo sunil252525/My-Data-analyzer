@@ -6,7 +6,7 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & Single Number Engine")
-st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए। हर टैब के नीचे उसका पास्ट रिकॉर्ड और पासिंग टेबल दी गई है।")
+st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए। हर टैब के नीचे डेट-वाइज पास्ट रिकॉर्ड और पासिंग की पूरी डिटेल दी गई है।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -15,18 +15,25 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
     
+    # डेट कॉलम की पहचान करना
+    date_col = None
+    for c in df.columns:
+        if 'date' in c.lower() - set() or 'din' in c.lower() or 'दिनांक' in c or 'tarikh' in c.lower():
+            date_col = c
+            break
+
     series_cols = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
     available_cols = [c for c in series_cols if c in df.columns]
     
     if available_cols:
-        # केवल दो ही टैब बनाए गए हैं
+        # दो ही टैब बनाए गए हैं
         tab1, tab2 = st.tabs([
             "🎯 1. Complete Crossing & Haruf Engine", 
             "🔥 2. Single Direct Number Engine (No Palat)"
         ])
         
         # ==========================================
-        # TAB 1: COMPLETE CROSSING & HARUF ENGINE + ITS PAST RECORD
+        # TAB 1: COMPLETE CROSSING & HARUF ENGINE + PAST RECORD
         # ==========================================
         with tab1:
             st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
@@ -120,15 +127,16 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- ठीक इसी टैब के नीचे क्रॉसिंग का पास्ट रिकॉर्ड ---
+            # --- क्रॉसिंग का पास्ट रिकॉर्ड और पासिंग (डेट के साथ) ---
             st.markdown("---")
-            st.subheader("📈 क्रॉसिंग इंजन पास्ट रिकॉर्ड और अंदर-बाहर (Inside/Outside) पासिंग")
+            st.subheader("📈 क्रॉसिंग इंजन पास्ट रिकॉर्ड और लोकेशन पासिंग (Date & Location Wise)")
             sel_game_crossing = st.selectbox("क्रॉसिंग इतिहास के लिए गेम चुनें:", available_cols, key="crossing_history_tab1")
             
             if sel_game_crossing:
                 raw_series_c = df[sel_game_crossing].dropna().tolist()
-                history_data_c = []
+                dates_list = df[date_col].tolist() if date_col else [f"Record {i+1}" for i in range(len(df))]
                 
+                history_data_c = []
                 for i in range(1, len(raw_series_c)):
                     try:
                         curr_val = int(raw_series_c[i])
@@ -146,19 +154,19 @@ if uploaded_file is not None:
                             
                             matched_type = []
                             if prev_in == in_digit or prev_out == in_digit:
-                                matched_type.append("अंदर (Inside)")
+                                matched_type.append("अंदर (Inside) Pass")
                             if prev_in == out_digit or prev_out == out_digit:
-                                matched_type.append("बाहर (Outside)")
+                                matched_type.append("बाहर (Outside) Pass")
                                 
-                            status_str = ", ".join(matched_type) if matched_type else "Miss"
+                            status_str = " | ".join(matched_type) if matched_type else "Fail / Miss"
+                            row_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
                             
                             history_data_c.append({
-                                "इंडेक्स / रो": f"Row {i+1}",
+                                "📅 दिनांक (Date)": row_date,
+                                "गेम / लोकेशन": sel_game_crossing,
                                 "कल का रिज़ल्ट": p_str,
                                 "आज का रिज़ल्ट": c_str,
-                                "अंदर अंक": in_digit,
-                                "बाहर अंक": out_digit,
-                                "पासिंग स्टेटस (Inside/Outside)": status_str
+                                "पासिंग स्टेटस": status_str
                             })
                     except:
                         continue
@@ -169,7 +177,7 @@ if uploaded_file is not None:
                     st.warning("पर्याप्त पास्ट डेटा उपलब्ध नहीं है।")
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE + ITS PAST RECORD
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE + PAST RECORD
         # ==========================================
         with tab2:
             st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
@@ -260,16 +268,17 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- ठीक इसी टैब के नीचे सिंगल नंबर का पास्ट रिकॉर्ड ---
+            # --- सिंगल नंबर का पास्ट रिकॉर्ड और पासिंग (डेट के साथ) ---
             st.markdown("---")
-            st.subheader("📈 सिंगल नंबर इंजन पास्ट रिकॉर्ड और पासिंग")
+            st.subheader("📈 सिंगल नंबर इंजन पास्ट रिकॉर्ड और पासिंग (Date & Game Wise)")
             sel_game_single = st.selectbox("सिंगल नंबर इतिहास के लिए गेम चुनें:", available_cols, key="single_history_tab2")
             
             if sel_game_single:
                 raw_series_s = df[sel_game_single].dropna().tolist()
-                history_data_s = []
+                dates_list_s = df[date_col].tolist() if date_col else [f"Record {i+1}" for i in range(len(df))]
                 
-                for i in range(1, len(raw_series_s)):
+                history_data_s = []
+                for i in range(2, len(raw_series_s)):
                     try:
                         curr_val = int(raw_series_s[i])
                         prev_val = int(raw_series_s[i-1])
@@ -278,11 +287,16 @@ if uploaded_file is not None:
                             c_str = f"{curr_val:02d}"
                             p_str = f"{prev_val:02d}"
                             
+                            # बैक-टेस्टिंग लॉजिक: यदि पिछला रिज़ल्ट मैच हुआ या डायरेक्ट पास हुआ
+                            pass_status = "✅ Direct Pass" if curr_val == prev_val else "❌ Fail"
+                            row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
+                            
                             history_data_s.append({
-                                "इंडेक्स / रो": f"Row {i+1}",
-                                "कल का रिज़ल्ट": p_str,
-                                "आज का रिज़ल्ट": c_str,
-                                "पासिंग स्टेटस": "डेटा ट्रैक उपलब्ध"
+                                "📅 दिनांक (Date)": row_date,
+                                "गेम / लोकेशन": sel_game_single,
+                                "पिछला रिज़ल्ट": p_str,
+                                "वास्तविक रिज़ल्ट (आज)": c_str,
+                                "पासिंग स्टेटस": pass_status
                             })
                     except:
                         continue
@@ -296,4 +310,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                        
+                

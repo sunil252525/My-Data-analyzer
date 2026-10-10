@@ -3,16 +3,17 @@ import pandas as pd
 import urllib.parse
 
 # --- Streamlit Page Config ---
-st.set_page_config(page_title="Advanced All-in-One Analytics & Single Engine", layout="wide")
+st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & Single Direct Number Engine")
-st.write("यहाँ आपको **क्रॉसिंग / हरूफ़ एनालिसिस** और **100% सिंगल डायरेक्ट नंबर इंजन** दोनों एक ही जगह मिलेंगे।")
+st.title("🎯 All-in-One Game Analytics, Single Number & Backtesting Engine")
+st.write("यहाँ आपको **क्रॉसिंग / हरूफ़ एनालिसिस**, **सिंगल डायरेक्ट नंबर इंजन**, और **पिछले रिकॉर्ड की पासिंग (Inside/Outside)** एक ही जगह मिलेगी।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH ENGINES) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
 
 if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
+    # यदि CSV में 'Date' या 'Unnamed: 0' जैसी कोई कॉलम है, तो उसे संभालना
     df.columns = df.columns.str.strip()
     
     series_cols = ['DB', 'SG', 'FRBD', 'GZBD', 'GALI', 'DSWR']
@@ -20,7 +21,11 @@ if uploaded_file is not None:
     
     if available_cols:
         # Create Tabs for Clean Navigation
-        tab1, tab2 = st.tabs(["🎯 Complete Analytics & Crossing Engine", "🔥 Single Direct Number Engine (No Palat)"])
+        tab1, tab2, tab3 = st.tabs([
+            "🎯 Complete Crossing Engine", 
+            "🔥 Single Direct Number (No Palat)", 
+            "📊 पास्ट रिकॉर्ड & हरूफ़ पासिंग (Back-testing)"
+        ])
         
         # ==========================================
         # TAB 1: COMPLETE ANALYTICS & CROSSING ENGINE
@@ -210,8 +215,73 @@ if uploaded_file is not None:
                     f'</button></a>',
                     unsafe_allow_html=True
                 )
+
+        # ==========================================
+        # TAB 3: PAST RECORD & HARUF PASSING (BACK-TESTING)
+        # ==========================================
+        with tab3:
+            st.subheader("📊 पिछले रिकॉर्ड की पासिंग और अंदर-बाहर (Inside/Outside) एनालिसिस")
+            st.write("यहाँ पिछले दिनों के रिज़ल्ट, हरूफ़ पासिंग (अंदर या बाहर), और पिछले दिन के मुकाबले आज की पासिंग की पूरी टेबल दी गई है:")
+
+            # गेम चुनने के लिए ड्रॉपडाउन
+            selected_game_for_history = st.selectbox("गेम चुनें:", available_cols)
+            
+            if selected_game_for_history:
+                raw_series = df[selected_game_for_history].dropna().tolist()
+                
+                # यदि CSV में कोई 'Date' या 'Unnamed: 0' नाम का कॉलम है, तो उसे डेट के रूप में उपयोग करें
+                date_col = None
+                for c in df.columns:
+                    if 'date' in c.lower() or 'din' in c.lower() or 'दिनांक' in c:
+                        date_col = c
+                        break
+                
+                dates_list = df[date_col].tolist() if date_col else [f"Day {i+1}" for i in range(len(df))]
+
+                history_data = []
+                for i in range(1, len(raw_series)):
+                    try:
+                        curr_val = int(raw_series[i])
+                        prev_val = int(raw_series[i-1])
+                        
+                        if 0 <= curr_val <= 99 and 0 <= prev_val <= 99:
+                            c_str = f"{curr_val:02d}"
+                            p_str = f"{prev_val:02d}"
+                            
+                            in_digit = c_str[0]
+                            out_digit = c_str[1]
+                            
+                            # यह चेक करने के लिए कि पिछले दिन के रिज़ल्ट का हरूफ़ आज अंदर या बाहर आया या नहीं
+                            prev_in = p_str[0]
+                            prev_out = p_str[1]
+                            
+                            matched_type = []
+                            if prev_in == in_digit or prev_out == in_digit:
+                                matched_type.append("अंदर (Inside)")
+                            if prev_in == out_digit or prev_out == out_digit:
+                                matched_type.append("बाहर (Outside)")
+                                
+                            status_str = ", ".join(matched_type) if matched_type else "Miss"
+                            
+                            history_data.append({
+                                "तारीख / दिन": dates_list[i] if i < len(dates_list) else f"Row {i}",
+                                "पिछला रिज़ल्ट (कल)": p_str,
+                                "नया रिज़ल्ट (आज)": c_str,
+                                "अंदर अंक": in_digit,
+                                "बाहर अंक": out_digit,
+                                "पासिंग स्टेटस (Inside/Outside)": status_str
+                            })
+                    except:
+                        continue
+                
+                if history_data:
+                    history_df = pd.DataFrame(history_data[::-1]) # नवीनतम रिकॉर्ड ऊपर दिखाने के लिए उलट दें
+                    st.dataframe(history_df, use_container_width=True, hide_index=True)
+                else:
+                    st.warning("इस गेम के लिए पर्याप्त पास्ट रिकॉर्ड डेटा उपलब्ध नहीं है।")
+
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-            
+                

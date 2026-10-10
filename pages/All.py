@@ -5,8 +5,8 @@ import urllib.parse
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & Per-Day Backtesting Engine")
-st.write("यहाँ पर-डे (Per-Day) के हिसाब से बिल्कुल सटीक पास/फेल रिकॉर्ड दिखाया गया है जो केवल उसी दिन तक के डेटा पर आधारित है।")
+st.title("🎯 All-in-One Game Analytics & 10-Day Per-Day Tracker")
+st.write("यहाँ ऊपर मुख्य टेबल है और इसके नीचे केवल **पिछले 10 दिनों का** बिल्कुल सटीक डे-बाय-डे पास/फेल रिकॉर्ड दिया गया है।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -28,15 +28,15 @@ if uploaded_file is not None:
     
     if available_cols:
         tab1, tab2 = st.tabs([
-            "🎯 1. Crossing Engine (Per-Day Backtest)", 
-            "🔥 2. Single Direct Number Engine (Per-Day Palat Tracker)"
+            "🎯 1. Crossing Engine (10-Day Tracker)", 
+            "🔥 2. Single Direct Number Engine (10-Day Palat Tracker)"
         ])
         
         # ==========================================
-        # TAB 1: CROSSING ENGINE PER-DAY BACKTEST
+        # TAB 1: CROSSING ENGINE (10-DAY TRACKER)
         # ==========================================
         with tab1:
-            st.subheader("📊 क्रॉसिंग इंजन - पर-डे (Per-Day) सटीक पास/फेल रिकॉर्ड")
+            st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
             
             def analyze_best_crossing_and_haruf(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
@@ -86,7 +86,7 @@ if uploaded_file is not None:
                     "top_6_list": top_6_harufs
                 }
 
-            # आज का ताज़ा एनालिसिस
+            # आज का मुख्य रिजल्ट बॉक्स
             analysis_results = []
             full_box_messages = []
             for col in available_cols:
@@ -126,58 +126,54 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- पर-डे बैक-टेस्टिंग टेबल ---
+            # --- केवल पिछले 10 दिनों का क्रॉसिंग पासिंग रिकॉर्ड (ऊपर वाले पैटर्न में) ---
             st.markdown("---")
-            st.subheader("📈 पर-डे (Per-Day) क्रॉसिंग पासिंग रिकॉर्ड")
-            sel_game_c = st.selectbox("गेम चुनें:", available_cols, key="perday_c")
+            st.subheader("📈 पिछले 10 दिनों का क्रॉसिंग पास/फेल रिकॉर्ड (पर-डे)")
             
-            if sel_game_c:
-                dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
-                perday_data_c = []
+            dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
+            crossing_10days_data = []
+            
+            start_idx = max(10, len(df) - 10) # केवल आखिरी 10 दिन
+            for i in range(len(df) - 1, start_idx - 1, -1):
+                if i < 1: continue
+                sub_df = df.iloc[:i]
+                row_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
+                row_dict = {"📅 दिनांक (Date)": row_date}
                 
-                for i in range(10, len(df)):
-                    sub_df = df.iloc[:i] # ठीक उस दिन से पहले का डेटा
-                    res_past = analyze_best_crossing_and_haruf(sub_df, sel_game_c)
-                    
-                    if res_past:
-                        try:
-                            actual_val = int(df.loc[i, sel_game_c])
-                            if 0 <= actual_val <= 99:
-                                act_str = f"{actual_val:02d}"
-                                act_in = int(act_str[0])
-                                act_out = int(act_str[1])
-                                
-                                top4 = res_past["top_4_list"]
-                                top6 = res_past["top_6_list"]
-                                single_h = int(res_past["single_haruf"])
-                                
-                                single_pass = "✅ PASS" if (single_h == act_in or single_h == act_out) else "❌ FAIL"
-                                h4_pass = "✅ PASS" if (act_in in top4 or act_out in top4) else "❌ FAIL"
-                                h6_pass = "✅ PASS" if (act_in in top6 or act_out in top6) else "❌ FAIL"
-                                row_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
-                                
-                                perday_data_c.append({
-                                    "📅 दिनांक (Date)": row_date,
-                                    "लोकेशन": sel_game_c,
-                                    "उस दिन का रिजल्ट": act_str,
-                                    "सिंगल हरूफ़": res_past["single_haruf"],
-                                    "सिंगल स्टेटस": single_pass,
-                                    "4 हरूफ़ पासिंग": h4_pass,
-                                    "6 हरूफ़ पासिंग": h6_pass
-                                })
-                        except:
-                            continue
+                has_data = False
+                for col in available_cols:
+                    res_past = analyze_best_crossing_and_haruf(sub_df, col)
+                    try:
+                        actual_val = int(df.loc[i, col])
+                        if res_past and 0 <= actual_val <= 99:
+                            act_str = f"{actual_val:02d}"
+                            act_in = int(act_str[0])
+                            act_out = int(act_str[1])
+                            top4 = res_past["top_4_list"]
+                            
+                            if act_in in top4 or act_out in top4:
+                                row_dict[col] = "✅ PASS"
+                            else:
+                                row_dict[col] = "❌ FAIL"
+                            has_data = True
+                        else:
+                            row_dict[col] = "-"
+                    except:
+                        row_dict[col] = "-"
                 
-                if perday_data_c:
-                    st.dataframe(pd.DataFrame(perday_data_c[::-1]), use_container_width=True, hide_index=True)
-                else:
-                    st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
+                if has_data:
+                    crossing_10days_data.append(row_dict)
+            
+            if crossing_10days_data:
+                st.dataframe(pd.DataFrame(crossing_10days_data), use_container_width=True, hide_index=True)
+            else:
+                st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE PER-DAY
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE (10-DAY TRACKER)
         # ==========================================
         with tab2:
-            st.subheader("🎯 सिंगल नंबर इंजन - पर-डे (Per-Day) पलट सहित पासिंग रिकॉर्ड")
+            st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
             
             def get_best_single_direct_number(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
@@ -257,32 +253,34 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- पर-डे पलट पासिंग रिकॉर्ड ---
+            # --- केवल पिछले 10 दिनों का सिंगल नंबर पलट सहित पासिंग रिकॉर्ड (ऊपर वाले पैटर्न में) ---
             st.markdown("---")
-            st.subheader("📈 पर-डे (Per-Day) सिंगल नंबर पलट सहित पासिंग रिकॉर्ड")
-            st.write("यहाँ हर दिन के अंत में यह चेक किया जा रहा है कि उस दिन के निकाले गए सिंगल नंबरों (पलट सहित) में से कौन सा नंबर किसी भी गेम में पास हुआ:")
+            st.subheader("📈 पिछले 10 दिनों का सिंगल नंबर (पलट सहित) पास/फेल रिकॉर्ड (पर-डे)")
             
             dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
-            perday_data_s = []
+            single_10days_data = []
             
-            for i in range(10, len(df)):
-                sub_df = df.iloc[:i] # ठीक उस दिन तक का डेटा
+            start_idx_s = max(10, len(df) - 10) # केवल आखिरी 10 दिन
+            for i in range(len(df) - 1, start_idx_s - 1, -1):
+                if i < 1: continue
+                sub_df = df.iloc[:i]
                 row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
+                row_dict = {"📅 दिनांक (Date)": row_date}
                 
-                # उस दिन के लिए सभी गेम्स के प्रेडिक्टेड सिंगल और उनकी पलट
-                predicted_singles = {}
-                palat_singles = {}
+                # इस दिन के लिए सभी गेम्स के प्रेडिक्टेड सिंगल और उनकी पलट निकालें
+                day_singles = {}
+                day_palats = {}
                 for col in available_cols:
                     res_s = get_best_single_direct_number(sub_df, col)
                     if res_s:
                         s_num = res_s["single_direct"]
-                        predicted_singles[col] = s_num
+                        day_singles[col] = s_num
                         try:
-                            palat_singles[col] = f"{int(s_num):02d}"[::-1]
+                            day_palats[col] = f"{int(s_num):02d}"[::-1]
                         except:
-                            palat_singles[col] = s_num
+                            day_palats[col] = s_num
                 
-                # उस दिन के वास्तविक रिजल्ट्स सभी गेम्स के
+                # इस दिन के वास्तविक रिजल्ट्स
                 actual_results = {}
                 for col in available_cols:
                     try:
@@ -292,27 +290,26 @@ if uploaded_file is not None:
                     except:
                         pass
                 
-                matched_details = []
-                hit_found = False
-                for game_name, p_num in predicted_singles.items():
-                    p_palat = palat_singles[game_name]
-                    for act_game, act_val in actual_results.items():
-                        if p_num == act_val or p_palat == act_val:
-                            hit_found = True
-                            matched_details.append(f"{game_name}➔{act_game}({act_val})")
-                
-                status_str = f"✅ PASS ({', '.join(set(matched_details))})" if hit_found else "❌ FAIL"
-                
-                row_data = {"📅 दिनांक (Date)": row_date}
+                has_data = False
                 for col in available_cols:
-                    pred_p = f"{predicted_singles.get(col, '-')}(प:{palat_singles.get(col, '-')})"
-                    act_r = actual_results.get(col, '-')
-                    row_data[col] = f"Pred:{pred_p} | Act:{act_r}"
-                row_data["पासिंग स्टेटस"] = status_str
-                perday_data_s.append(row_data)
+                    p_num = day_singles.get(col)
+                    p_palat = day_palats.get(col)
+                    act_val = actual_results.get(col)
+                    
+                    if p_num and act_val:
+                        if p_num == act_val or p_palat == act_val:
+                            row_dict[col] = "✅ PASS"
+                        else:
+                            row_dict[col] = "❌ FAIL"
+                        has_data = True
+                    else:
+                        row_dict[col] = "-"
+                
+                if has_data:
+                    single_10days_data.append(row_dict)
             
-            if perday_data_s:
-                st.dataframe(pd.DataFrame(perday_data_s[::-1]), use_container_width=True, hide_index=True)
+            if single_10days_data:
+                st.dataframe(pd.DataFrame(single_10days_data), use_container_width=True, hide_index=True)
             else:
                 st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
 
@@ -320,4 +317,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                
+                    

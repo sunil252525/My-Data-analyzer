@@ -6,7 +6,7 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Dashboard", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & Dashboard")
-st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए।")
+st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग और यूनिक हरूफ़ क्रॉसिंग** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -20,20 +20,19 @@ if uploaded_file is not None:
     
     if available_cols:
         tab1, tab2 = st.tabs([
-            "🎯 1. Complete Crossing & Haruf Engine", 
+            "🎯 1. Unique Haruf Crossing Engine", 
             "🔥 2. Single Direct Number Engine (No Palat)"
         ])
         
         # ==========================================
-        # TAB 1: COMPLETE CROSSING & HARUF ENGINE
+        # TAB 1: UNIQUE HARUF CROSSING ENGINE
         # ==========================================
         with tab1:
-            st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
+            st.subheader("📊 सिंगल हरूफ़ और उनकी संयुक्त (Unique) क्रॉसिंग")
             
-            def analyze_best_crossing_and_haruf(df, column_name):
+            def get_single_haruf(df, column_name):
                 vals = df[column_name].dropna().tolist()
                 valid_vals = []
-                
                 for x in vals:
                     try:
                         val = int(x)
@@ -41,80 +40,56 @@ if uploaded_file is not None:
                             valid_vals.append(val)
                     except:
                         continue
-                        
                 if len(valid_vals) < 5:
                     return None
 
                 last_num = valid_vals[-1]
                 haruf_scores = {d: 0 for d in range(10)}
                 
-                total_len = len(valid_vals)
                 for idx, num in enumerate(valid_vals):
-                    weight = 1 + (idx / total_len)
+                    weight = 1 + (idx / len(valid_vals))
                     haruf_scores[num // 10] += weight
                     haruf_scores[num % 10] += weight
 
-                follow_up_harufs = []
-                for i in range(len(valid_vals) - 2):
-                    if valid_vals[i] == last_num:
-                        f1 = valid_vals[i + 1]
-                        f2 = valid_vals[i + 2]
-                        follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
-
-                for h in follow_up_harufs:
-                    if 0 <= h <= 9:
-                        haruf_scores[h] += 3.5
-
                 ranked_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)
                 
-                single_haruf = ranked_harufs[0]
-                top_4_harufs = sorted(ranked_harufs[:4])
-                top_6_harufs = sorted(ranked_harufs[:6])
-
                 return {
                     "last_num": f"{last_num:02d}",
-                    "single_haruf": str(single_haruf),
-                    "haruf_4_str": ", ".join(map(str, top_4_harufs)),
-                    "haruf_6_str": ", ".join(map(str, top_6_harufs))
+                    "single_haruf": int(ranked_harufs[0])
                 }
 
-            analysis_results = []
-            full_box_messages = []
+            crossing_results = []
+            all_unique_harufs = set()
 
             for col in available_cols:
-                res = analyze_best_crossing_and_haruf(df, col)
+                res = get_single_haruf(df, col)
                 if res:
-                    analysis_results.append({
+                    crossing_results.append({
                         "लोकेशन / गेम": col,
                         "🎯 ताज़ा रिज़ल्ट": res["last_num"],
-                        "👑 सिंगल हरूफ़ (1 Haruf)": f"🔥 {res['single_haruf']} (अंदर/बाहर)",
-                        "⚡ 4 हरूफ़ क्रॉसिंग": res["haruf_4_str"],
-                        "💡 4-हरूफ़ जोड़ियाँ": "16 जोड़ियाँ (4x4)",
-                        "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"],
-                        "📊 6-हरूफ़ जोड़ियाँ": "36 जोड़ियाँ (6x6)"
+                        "👑 सिंगल हरूफ़": f"🔥 {res['single_haruf']}"
                     })
-                    
-                    game_msg = (
-                        f"🎯 *{col}* (Last: {res['last_num']})\n"
-                        f"👑 सिंगल हरूफ़: *{res['single_haruf']}* (अंदर/बाहर)\n"
-                        f"⚡ 4 हरूफ़ (16 जोड़ियाँ): [{res['haruf_4_str']}]\n"
-                        f"🔥 6 हरूफ़ (36 जोड़ियाँ): [{res['haruf_6_str']}]"
-                    )
-                    full_box_messages.append(game_msg)
+                    all_unique_harufs.add(res["single_haruf"])
 
-            if analysis_results:
-                st.dataframe(pd.DataFrame(analysis_results), use_container_width=True, hide_index=True)
+            if crossing_results:
+                st.dataframe(pd.DataFrame(crossing_results), use_container_width=True, hide_index=True)
                 
-                st.markdown("---")
-                full_whatsapp_text = "📊 *COMPLETE DAILY ANALYTICS REPORT* 📊\n\n" + "\n\n---\n\n".join(full_box_messages)
-                encoded_full_msg = urllib.parse.quote(full_whatsapp_text)
-                wa_full_url = f"https://api.whatsapp.com/send?text={encoded_full_msg}"
+                # सभी सिंगल हरूफ़ की यूनिक क्रॉसिंग (डबल हटाकर)
+                sorted_unique_harufs = sorted(list(all_unique_harufs))
+                haruf_crossing_str = ", ".join(map(str, sorted_unique_harufs))
+                
+                st.markdown("### 🔗 सभी गेम के सिंगल हरूफ़ की संयुक्त क्रॉसिंग (Unique Harufs)")
+                st.code(haruf_crossing_str, language="text")
+                
+                wa_crossing_text = f"🎯 *SINGLE HARUF COMBINED CROSSING* 🎯\n\nUnique Harufs: [{haruf_crossing_str}]"
+                encoded_c_msg = urllib.parse.quote(wa_crossing_text)
+                wa_c_url = f"https://api.whatsapp.com/send?text={encoded_c_msg}"
                 
                 st.markdown(
-                    f'<a href="{wa_full_url}" target="_blank">'
+                    f'<a href="{wa_c_url}" target="_blank">'
                     f'<button style="background-color:#25D366; color:white; border:none; padding:12px 20px; '
                     f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">'
-                    f'📲 क्रॉसिंग समरी बॉक्स WhatsApp पर भेजें (Share Crossing Box)'
+                    f'📲 क्रॉसिंग WhatsApp पर भेजें (Share Crossing)'
                     f'</button></a>',
                     unsafe_allow_html=True
                 )
@@ -128,7 +103,6 @@ if uploaded_file is not None:
             def get_best_single_direct_number(df, column_name):
                 vals = df[column_name].dropna().tolist()
                 valid_vals = []
-                
                 for x in vals:
                     try:
                         v = int(x)
@@ -136,7 +110,6 @@ if uploaded_file is not None:
                             valid_vals.append(v)
                     except:
                         continue
-                        
                 if len(valid_vals) < 10:
                     return None
 
@@ -215,4 +188,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                
+    

@@ -6,7 +6,7 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & Per-Day Tracker")
-st.write("यहाँ ऊपर मुख्य टेबल है और उसके नीचे पिछले दिनों का बिल्कुल सटीक डे-बाय-डे पास/फेल रिकॉर्ड दिया गया है।")
+st.write("यहाँ मुख्य टेबल और उसके नीचे पिछले 10 दिनों का बिल्कुल सटीक डे-बाय-डे पास/फेल रिकॉर्ड दिया गया है।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -48,7 +48,7 @@ if uploaded_file is not None:
                             valid_vals.append(val)
                     except:
                         continue
-                if len(valid_vals) < 3: # यहाँ सीमा कम कर दी गई है ताकि कम डेटा पर भी चले
+                if len(valid_vals) < 3:
                     return None
 
                 last_num = valid_vals[-1]
@@ -128,12 +128,11 @@ if uploaded_file is not None:
 
             # --- पास/फेल रिकॉर्ड (ऊपर वाले पैटर्न में) ---
             st.markdown("---")
-            st.subheader("📈 क्रॉसिंग पास/फेल रिकॉर्ड (पर-डे)")
+            st.subheader("📈 पिछले 10 दिनों का क्रॉसिंग पास/फेल रिकॉर्ड (पर-डे)")
             
             dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
             crossing_data = []
             
-            # पिछले कुछ दिनों का रिकॉर्ड (अधिकतम 10 या जितना उपलब्ध हो)
             start_idx = max(2, len(df) - 10)
             for i in range(len(df) - 1, start_idx - 1, -1):
                 if i < 1: continue
@@ -186,7 +185,7 @@ if uploaded_file is not None:
                             valid_vals.append(v)
                     except:
                         continue
-                if len(valid_vals) < 5: # सीमा कम की गई
+                if len(valid_vals) < 5:
                     return None
 
                 last_num = valid_vals[-1]
@@ -256,7 +255,7 @@ if uploaded_file is not None:
 
             # --- सिंगल नंबर पलट सहित पास/फेल रिकॉर्ड (ऊपर वाले पैटर्न में) ---
             st.markdown("---")
-            st.subheader("📈 सिंगल नंबर (पलट सहित) पास/फेल रिकॉर्ड (पर-डे)")
+            st.subheader("📈 पिछले 10 दिनों का सिंगल नंबर (पलट सहित) पास/फेल रिकॉर्ड (पर-डे)")
             
             dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
             single_data = []
@@ -316,4 +315,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                    
+                                

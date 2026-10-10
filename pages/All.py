@@ -5,8 +5,8 @@ import urllib.parse
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & Per-Day Color Coded Tracker")
-st.write("यहाँ ऊपर मुख्य टेबल है और उसके नीचे पिछले दिनों का डे-बाय-डे कलर-कोडेड पास/फेल रिकॉर्ड दिया गया है।")
+st.title("🎯 All-in-One Game Analytics & Per-Day Tracker")
+st.write("यहाँ मुख्य टेबल और उसके नीचे पिछले दिनों का बिल्कुल सटीक डे-बाय-डे पास/फेल रिकॉर्ड दिया गया है।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -48,7 +48,7 @@ if uploaded_file is not None:
                             valid_vals.append(val)
                     except:
                         continue
-                if len(valid_vals) < 3:
+                if len(valid_vals) < 2:
                     return None
 
                 last_num = valid_vals[-1]
@@ -117,7 +117,7 @@ if uploaded_file is not None:
                             valid_vals.append(v)
                     except:
                         continue
-                if len(valid_vals) < 5:
+                if len(valid_vals) < 2:
                     return None
 
                 last_num = valid_vals[-1]
@@ -164,7 +164,6 @@ if uploaded_file is not None:
                     wa_msg_lines.append(f"• *{col}* (Last: {res['last_num']}) ➔ Single: *{res['single_direct']}*")
 
             if single_results:
-                # एल्गोरिथम स्कोर हटाकर बिल्कुल वही पुराना साफ़ पैटर्न रखा गया है[span_3](start_span)[span_3](end_span)
                 st.dataframe(pd.DataFrame(single_results), use_container_width=True, hide_index=True)
                 
                 st.markdown("### 📋 सभी गेम का 1-1 सिंगल नंबर (Copy / Direct Line)")
@@ -184,20 +183,20 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- नीचे कलर-कोडेड पास/फेल रिकॉर्ड बॉक्स (जैसा आपने माँगा है) ---
+            # --- पिछले दिनों का पास/फेल रिकॉर्ड बॉक्स (ऑटो-कैलकुलेटेड) ---
             st.markdown("---")
             st.subheader("📈 पिछले दिनों का सिंगल नंबर पास/फेल रिकॉर्ड (कलर-कोडेड बॉक्स)")
             st.markdown("""
-            * **🟢 ग्रीन (Green):** उसी गेम में सेम नंबर पास हुआ[span_4](start_span)[span_4](end_span).
-            * **🟠 ऑरेंज (Orange):** नंबर (या उसकी पलट) किसी दूसरी गेम में पास हुआ[span_5](start_span)[span_5](end_span).
-            * **🔴 रेड (Red):** गेम पूरी तरह फेल रही[span_6](start_span)[span_6](end_span).
+            * **🟢 ग्रीन (Green):** उसी गेम में सेम नंबर पास हुआ।
+            * **🟠 ऑरेंज (Orange):** नंबर (या उसकी पलट) किसी दूसरी गेम में पास हुआ।
+            * **🔴 रेड (Red):** गेम पूरी तरह फेल रही।
             """)
             
             dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
             color_box_data = []
             
-            # पिछले 5 से 10 दिनों के लिए एक के नीचे एक बॉक्स/रो बनाने के लिए
-            start_idx_s = max(2, len(df) - 10)
+            # CSV के डेटा से पिछले 5 से 10 दिनों का रिकॉर्ड अपने आप तैयार करना
+            start_idx_s = max(1, len(df) - 10)
             for i in range(len(df) - 1, start_idx_s - 1, -1):
                 if i < 1: continue
                 sub_df = df.iloc[:i]
@@ -260,10 +259,10 @@ if uploaded_file is not None:
             if color_box_data:
                 st.dataframe(pd.DataFrame(color_box_data), use_container_width=True, hide_index=True)
             else:
-                st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
+                st.warning("डेटा प्रोसेस करने के लिए पर्याप्त रिकॉर्ड नहीं है।")
 
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                
+                            

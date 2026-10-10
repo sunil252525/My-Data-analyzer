@@ -75,11 +75,13 @@ if uploaded_file is not None:
                     "last_num": f"{last_num:02d}",
                     "single_haruf": str(single_haruf),
                     "haruf_4_str": ", ".join(map(str, top_4_harufs)),
-                    "haruf_6_str": ", ".join(map(str, top_6_harufs))
+                    "haruf_6_str": ", ".join(map(str, top_6_harufs)),
+                    "single_h_int": single_haruf
                 }
 
             analysis_results = []
             full_box_messages = []
+            all_unique_harufs = set()
 
             for col in available_cols:
                 res = analyze_best_crossing_and_haruf(df, col)
@@ -89,24 +91,31 @@ if uploaded_file is not None:
                         "🎯 ताज़ा रिज़ल्ट": res["last_num"],
                         "👑 सिंगल हरूफ़ (1 Haruf)": f"🔥 {res['single_haruf']} (अंदर/बाहर)",
                         "⚡ 4 हरूफ़ क्रॉसिंग": res["haruf_4_str"],
-                        "💡 4-हरूफ़ जोड़ियाँ": "16 जोड़ियाँ (4x4)",
-                        "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"],
-                        "📊 6-हरूफ़ जोड़ियाँ": "36 जोड़ियाँ (6x6)"
+                        "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"]
                     })
+                    
+                    all_unique_harufs.add(res["single_h_int"])
                     
                     game_msg = (
                         f"🎯 *{col}* (Last: {res['last_num']})\n"
                         f"👑 सिंगल हरूफ़: *{res['single_haruf']}* (अंदर/बाहर)\n"
-                        f"⚡ 4 हरूफ़ (16 जोड़ियाँ): [{res['haruf_4_str']}]\n"
-                        f"🔥 6 हरूफ़ (36 जोड़ियाँ): [{res['haruf_6_str']}]"
+                        f"⚡ 4 हरूफ़: [{res['haruf_4_str']}]\n"
+                        f"🔥 6 हरूफ़: [{res['haruf_6_str']}]"
                     )
                     full_box_messages.append(game_msg)
 
             if analysis_results:
                 st.dataframe(pd.DataFrame(analysis_results), use_container_width=True, hide_index=True)
                 
+                # सभी सिंगल हरूफ़ की संयुक्त (Unique) क्रॉसिंग
+                sorted_unique = sorted(list(all_unique_harufs))
+                unique_crossing_str = ", ".join(map(str, sorted_unique))
+                
+                st.markdown("### 🔗 सभी गेम के सिंगल हरूफ़ की संयुक्त क्रॉसिंग (Unique Harufs Crossing)")
+                st.code(unique_crossing_str, language="text")
+                
                 st.markdown("---")
-                full_whatsapp_text = "📊 *COMPLETE DAILY ANALYTICS REPORT* 📊\n\n" + "\n\n---\n\n".join(full_box_messages)
+                full_whatsapp_text = "📊 *COMPLETE DAILY ANALYTICS REPORT* 📊\n\n" + "\n\n---\n\n".join(full_box_messages) + f"\n\n🔗 *Unique Harufs Crossing:* [{unique_crossing_str}]"
                 encoded_full_msg = urllib.parse.quote(full_whatsapp_text)
                 wa_full_url = f"https://api.whatsapp.com/send?text={encoded_full_msg}"
                 
@@ -215,4 +224,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                
+    

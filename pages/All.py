@@ -5,8 +5,8 @@ import urllib.parse
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & 10-Day Per-Day Tracker")
-st.write("यहाँ ऊपर मुख्य टेबल है और इसके नीचे केवल **पिछले 10 दिनों का** बिल्कुल सटीक डे-बाय-डे पास/फेल रिकॉर्ड दिया गया है।")
+st.title("🎯 All-in-One Game Analytics & Per-Day Tracker")
+st.write("यहाँ ऊपर मुख्य टेबल है और उसके नीचे पिछले दिनों का बिल्कुल सटीक डे-बाय-डे पास/फेल रिकॉर्ड दिया गया है।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -28,12 +28,12 @@ if uploaded_file is not None:
     
     if available_cols:
         tab1, tab2 = st.tabs([
-            "🎯 1. Crossing Engine (10-Day Tracker)", 
-            "🔥 2. Single Direct Number Engine (10-Day Palat Tracker)"
+            "🎯 1. Crossing Engine (Per-Day Tracker)", 
+            "🔥 2. Single Direct Number Engine (Per-Day Palat Tracker)"
         ])
         
         # ==========================================
-        # TAB 1: CROSSING ENGINE (10-DAY TRACKER)
+        # TAB 1: CROSSING ENGINE
         # ==========================================
         with tab1:
             st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
@@ -48,7 +48,7 @@ if uploaded_file is not None:
                             valid_vals.append(val)
                     except:
                         continue
-                if len(valid_vals) < 5:
+                if len(valid_vals) < 3: # यहाँ सीमा कम कर दी गई है ताकि कम डेटा पर भी चले
                     return None
 
                 last_num = valid_vals[-1]
@@ -126,14 +126,15 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- केवल पिछले 10 दिनों का क्रॉसिंग पासिंग रिकॉर्ड (ऊपर वाले पैटर्न में) ---
+            # --- पास/फेल रिकॉर्ड (ऊपर वाले पैटर्न में) ---
             st.markdown("---")
-            st.subheader("📈 पिछले 10 दिनों का क्रॉसिंग पास/फेल रिकॉर्ड (पर-डे)")
+            st.subheader("📈 क्रॉसिंग पास/फेल रिकॉर्ड (पर-डे)")
             
             dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
-            crossing_10days_data = []
+            crossing_data = []
             
-            start_idx = max(10, len(df) - 10) # केवल आखिरी 10 दिन
+            # पिछले कुछ दिनों का रिकॉर्ड (अधिकतम 10 या जितना उपलब्ध हो)
+            start_idx = max(2, len(df) - 10)
             for i in range(len(df) - 1, start_idx - 1, -1):
                 if i < 1: continue
                 sub_df = df.iloc[:i]
@@ -162,15 +163,15 @@ if uploaded_file is not None:
                         row_dict[col] = "-"
                 
                 if has_data:
-                    crossing_10days_data.append(row_dict)
+                    crossing_data.append(row_dict)
             
-            if crossing_10days_data:
-                st.dataframe(pd.DataFrame(crossing_10days_data), use_container_width=True, hide_index=True)
+            if crossing_data:
+                st.dataframe(pd.DataFrame(crossing_data), use_container_width=True, hide_index=True)
             else:
-                st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
+                st.warning("रिकॉर्ड दिखाने के लिए और डेटा जोड़ें।")
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE (10-DAY TRACKER)
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE
         # ==========================================
         with tab2:
             st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
@@ -185,7 +186,7 @@ if uploaded_file is not None:
                             valid_vals.append(v)
                     except:
                         continue
-                if len(valid_vals) < 10:
+                if len(valid_vals) < 5: # सीमा कम की गई
                     return None
 
                 last_num = valid_vals[-1]
@@ -253,21 +254,20 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- केवल पिछले 10 दिनों का सिंगल नंबर पलट सहित पासिंग रिकॉर्ड (ऊपर वाले पैटर्न में) ---
+            # --- सिंगल नंबर पलट सहित पास/फेल रिकॉर्ड (ऊपर वाले पैटर्न में) ---
             st.markdown("---")
-            st.subheader("📈 पिछले 10 दिनों का सिंगल नंबर (पलट सहित) पास/फेल रिकॉर्ड (पर-डे)")
+            st.subheader("📈 सिंगल नंबर (पलट सहित) पास/फेल रिकॉर्ड (पर-डे)")
             
             dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
-            single_10days_data = []
+            single_data = []
             
-            start_idx_s = max(10, len(df) - 10) # केवल आखिरी 10 दिन
+            start_idx_s = max(2, len(df) - 10)
             for i in range(len(df) - 1, start_idx_s - 1, -1):
                 if i < 1: continue
                 sub_df = df.iloc[:i]
                 row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
                 row_dict = {"📅 दिनांक (Date)": row_date}
                 
-                # इस दिन के लिए सभी गेम्स के प्रेडिक्टेड सिंगल और उनकी पलट निकालें
                 day_singles = {}
                 day_palats = {}
                 for col in available_cols:
@@ -280,7 +280,6 @@ if uploaded_file is not None:
                         except:
                             day_palats[col] = s_num
                 
-                # इस दिन के वास्तविक रिजल्ट्स
                 actual_results = {}
                 for col in available_cols:
                     try:
@@ -306,12 +305,12 @@ if uploaded_file is not None:
                         row_dict[col] = "-"
                 
                 if has_data:
-                    single_10days_data.append(row_dict)
+                    single_data.append(row_dict)
             
-            if single_10days_data:
-                st.dataframe(pd.DataFrame(single_10days_data), use_container_width=True, hide_index=True)
+            if single_data:
+                st.dataframe(pd.DataFrame(single_data), use_container_width=True, hide_index=True)
             else:
-                st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
+                st.warning("रिकॉर्ड दिखाने के लिए और डेटा जोड़ें।")
 
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")

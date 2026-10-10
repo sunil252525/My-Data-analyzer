@@ -250,6 +250,7 @@ if uploaded_file is not None:
                     with sub_tabs[idx]:
                         valid_series = df[col].dropna().astype(int)
                         if valid_series.empty:
+                            st.warning(f"{col} में कोई वैध डेटा नहीं है।")
                             continue
                         
                         last_result = valid_series.iloc[-1]
@@ -262,7 +263,9 @@ if uploaded_file is not None:
                         d1_vals_list = df.loc[d1_idx, col].dropna().astype(int).tolist()
                         d2_vals_list = df.loc[d2_idx, col].dropna().astype(int).tolist()
 
-                        if total_hist_count > 0:
+                        if total_hist_count == 0:
+                            st.warning(f"इतिहास में {col} में नंबर {last_result:02d} दर्ज नहीं है।")
+                        else:
                             d1_vals = pd.Series(d1_vals_list)
                             d2_vals = pd.Series(d2_vals_list)
                             
@@ -334,17 +337,44 @@ if uploaded_file is not None:
                             top_2d_direct = [f"{num:02d}" for num in top_2d.index]
                             top_2d_plat = [get_plat(n) for n in top_2d_direct]
 
+                            # 1. Executive Summary
                             st.subheader(f"📌 {col} का ऐतिहासिक विश्लेषण (Last Result: {last_result:02d})")
-                            st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** कुल **{total_hist_count} बार** आया है।")
+                            st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** रिकॉर्ड में **{col}** में **{last_result:02d}** कुल **{total_hist_count} बार** आया है।")
+                            
+                            top_1d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_1d.to_dict().items()])
+                            top_2d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_2d.to_dict().items()])
+                            top_24h_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_24h_series.to_dict().items()])
+                            
+                            st.write(f"• **सबसे मजबूत 1-Day Follow-up:** {top_1d_str}")
+                            st.write(f"• **सबसे मजबूत 2-Day Follow-up:** {top_2d_str}")
+                            st.write(f"• **24-Hour All-Games Repeat:** {top_24h_str}")
                             st.write(f"• **फैमिली पासिंग दर:** Observed Rate = **{fam_obs_rate}%**")
                             
+                            st.markdown("---")
+                            
+                            # 2. Individual Boxes
+                            st.markdown("### 📋 अलग-अलग कैटेगरी बॉक्स")
                             c_box1, c_box2 = st.columns(2)
+
                             with c_box1:
                                 st.markdown("**🎯 हरूफ़ क्रॉसिंग 16 नंबर:**")
                                 st.code(f"{fmt_line(l1_clean, 100)}\n{fmt_line(l2_clean, 50)}\n{fmt_line(l3_clean, 50)}", language="text")
+
+                                st.markdown("**📋 1-Day Follow-up Numbers:**")
+                                st.code(f"{fmt_line(top_1d_direct, 50)}\n{fmt_line(top_1d_plat, 50)}", language="text")
+
+                                st.markdown("**⚡ 24-Hour All-Games Numbers:**")
+                                st.code(f"{fmt_line(top_24h_direct, 100)}\n{fmt_line(top_24h_plat, 50)}", language="text")
+
                             with c_box2:
-                                st.markdown("**👯 हरूफ के जोड़े:**")
+                                st.markdown("**👯 हरूफ के जोड़े (Pairs):**")
                                 st.code(fmt_line(pairs_list, 50), language="text")
+
+                                st.markdown("**📋 2-Day Follow-up Numbers:**")
+                                st.code(f"{fmt_line(top_2d_direct, 50)}\n{fmt_line(top_2d_plat, 50)}", language="text")
+
+                                st.markdown("**🎲 24-Hour Haruf Numbers & Pairs:**")
+                                st.code(f"{fmt_line(h_nums_clean, 50)}\n{fmt_line(h_plat_clean, 50)}", language="text")
 
                             game_24h_str = (
                                 f"🎮 *{col}*⚡\n"
@@ -375,4 +405,3 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-    

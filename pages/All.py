@@ -6,7 +6,7 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & 5-Day Direct Box Engine")
-st.write("यहाँ आज का मुख्य रिजल्ट बॉक्स है और उसके नीचे पिछले 5 दिनों का खुद जनरेट किया हुआ पास/फेल रिकॉर्ड बॉक्स दिया गया है।")
+st.write("यहाँ आज का मुख्य रिजल्ट बॉक्स है और उसके नीचे पिछले 5 दिनों का पूरा रिकॉर्ड सभी 6 गेम्स के साथ दिया गया है।")
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -98,7 +98,14 @@ if uploaded_file is not None:
             
             def get_best_single_direct_number(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
-                valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
+                valid_vals = []
+                for x in vals:
+                    try:
+                        v = int(float(str(x).strip()))
+                        if 0 <= v <= 99:
+                            valid_vals.append(v)
+                    except:
+                        continue
                 if len(valid_vals) < 2:
                     return None
 
@@ -166,35 +173,32 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # 2. पिछले 5 दिनों के ऑटो-जनरेटेड बॉक्स (5 Boxes One Below Another)
+            # 2. पिछले 5 दिनों के ऑटो-जनरेटेड बॉक्स (सभी 6 गेम्स के साथ)
             st.markdown("---")
             st.subheader("📜 पिछले 5 दिनों का पास्ट रिकॉर्ड बॉक्स (5 Days Record)")
             
             dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Day {i+1}" for i in range(len(df))]
             
             total_rows = len(df)
-            # पिछले 5 दिनों के लिए लूप (एक के नीचे एक बॉक्स)
             box_count = 0
             for i in range(total_rows - 1, 0, -1):
                 if box_count >= 5:
                     break
                 
-                sub_df = df.iloc[:i] # पिछले दिन तक का डेटा
+                sub_df = df.iloc[:i]
                 row_date = dates_list[i] if i < len(dates_list) else f"Day {i+1}"
                 
                 past_box_rows = []
                 
-                # इस दिन के वास्तविक रिजल्ट
                 actual_results = {}
                 for col in available_cols:
                     try:
-                        val = int(df.loc[i, col])
+                        val = int(float(str(df.loc[i, col]).strip()))
                         if 0 <= val <= 99:
                             actual_results[col] = f"{val:02d}"
                     except:
                         pass
                 
-                # इस दिन के प्रेडिक्टेड सिंगल नंबर
                 day_singles = {}
                 day_palats = {}
                 for col in available_cols:
@@ -219,7 +223,6 @@ if uploaded_file is not None:
                         elif p_palat == act_val:
                             status_text = f"🟠 पलट पास {act_val} (Same Game)"
                         else:
-                            # क्या किसी अन्य गेम में पास हुआ?
                             other_pass = None
                             for o_col, o_val in actual_results.items():
                                 if o_col != col and (p_num == o_val or p_palat == o_val):
@@ -245,4 +248,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                    
+                

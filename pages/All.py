@@ -5,8 +5,8 @@ import urllib.parse
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & Automatic Backtesting Engine")
-st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए। हर टैब में पीछे की तारीखों (जैसे 7 तारीख, 8 तारीख आदि) का ऑटोमैटिक पास/फेल रिकॉर्ड दिखाया गया है।")
+st.title("🎯 All-in-One Game Analytics & Per-Day Backtesting Engine")
+st.write("यहाँ पर-डे (Per-Day) के हिसाब से बिल्कुल सटीक पास/फेल रिकॉर्ड दिखाया गया है जो केवल उसी दिन तक के डेटा पर आधारित है।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -27,22 +27,20 @@ if uploaded_file is not None:
     available_cols = [c for c in series_cols if c in df.columns]
     
     if available_cols:
-        # दो ही टैब बनाए गए हैं
         tab1, tab2 = st.tabs([
-            "🎯 1. Complete Crossing Engine & Past Backtest", 
-            "🔥 2. Single Direct Number Engine & Past Backtest"
+            "🎯 1. Crossing Engine (Per-Day Backtest)", 
+            "🔥 2. Single Direct Number Engine (Per-Day Palat Tracker)"
         ])
         
         # ==========================================
-        # TAB 1: COMPLETE CROSSING & HARUF ENGINE
+        # TAB 1: CROSSING ENGINE PER-DAY BACKTEST
         # ==========================================
         with tab1:
-            st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
+            st.subheader("📊 क्रॉसिंग इंजन - पर-डे (Per-Day) सटीक पास/फेल रिकॉर्ड")
             
             def analyze_best_crossing_and_haruf(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
                 valid_vals = []
-                
                 for x in vals:
                     try:
                         val = int(x)
@@ -50,7 +48,6 @@ if uploaded_file is not None:
                             valid_vals.append(val)
                     except:
                         continue
-                        
                 if len(valid_vals) < 5:
                     return None
 
@@ -89,10 +86,9 @@ if uploaded_file is not None:
                     "top_6_list": top_6_harufs
                 }
 
-            # आज का ताज़ा विश्लेषण
+            # आज का ताज़ा एनालिसिस
             analysis_results = []
             full_box_messages = []
-
             for col in available_cols:
                 res = analyze_best_crossing_and_haruf(df, col)
                 if res:
@@ -105,7 +101,6 @@ if uploaded_file is not None:
                         "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"],
                         "📊 6-हरूफ़ जोड़ियाँ": "36 जोड़ियाँ (6x6)"
                     })
-                    
                     game_msg = (
                         f"🎯 *{col}* (Last: {res['last_num']})\n"
                         f"👑 सिंगल हरूफ़: *{res['single_haruf']}* (अंदर/बाहर)\n"
@@ -131,20 +126,17 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- ऑटोमैटिक पास्ट बैक-टेस्टिंग (पीछे के रिकॉर्ड की जाँच) ---
+            # --- पर-डे बैक-टेस्टिंग टेबल ---
             st.markdown("---")
-            st.subheader("📈 क्रॉसिंग इंजन ऑटोमैटिक पास्ट बैक-टेस्टिंग (Date-wise Pass/Fail)")
-            st.write("यहाँ ऐप खुद पीछे के दिनों (जैसे 7 तारीख, 8 तारीख आदि) में जाकर चेक कर रहा है कि उस दिन क्या प्रेडिक्शन था और रिजल्ट पास हुआ या फेल:")
-            
-            sel_game_c = st.selectbox("गेम चुनें (पासिंग रिकॉर्ड देखने के लिए):", available_cols, key="backtest_c")
+            st.subheader("📈 पर-डे (Per-Day) क्रॉसिंग पासिंग रिकॉर्ड")
+            sel_game_c = st.selectbox("गेम चुनें:", available_cols, key="perday_c")
             
             if sel_game_c:
                 dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
-                backtest_data_c = []
+                perday_data_c = []
                 
-                # कम से कम 10 दिनों का डेटा होने पर ही बैकटेस्ट शुरू करें
                 for i in range(10, len(df)):
-                    sub_df = df.iloc[:i] # i तारीख तक का डेटा
+                    sub_df = df.iloc[:i] # ठीक उस दिन से पहले का डेटा
                     res_past = analyze_best_crossing_and_haruf(sub_df, sel_game_c)
                     
                     if res_past:
@@ -159,17 +151,15 @@ if uploaded_file is not None:
                                 top6 = res_past["top_6_list"]
                                 single_h = int(res_past["single_haruf"])
                                 
-                                # पासिंग चेक
                                 single_pass = "✅ PASS" if (single_h == act_in or single_h == act_out) else "❌ FAIL"
                                 h4_pass = "✅ PASS" if (act_in in top4 or act_out in top4) else "❌ FAIL"
                                 h6_pass = "✅ PASS" if (act_in in top6 or act_out in top6) else "❌ FAIL"
-                                
                                 row_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
                                 
-                                backtest_data_c.append({
+                                perday_data_c.append({
                                     "📅 दिनांक (Date)": row_date,
                                     "लोकेशन": sel_game_c,
-                                    "वास्तविक रिज़ल्ट": act_str,
+                                    "उस दिन का रिजल्ट": act_str,
                                     "सिंगल हरूफ़": res_past["single_haruf"],
                                     "सिंगल स्टेटस": single_pass,
                                     "4 हरूफ़ पासिंग": h4_pass,
@@ -178,21 +168,20 @@ if uploaded_file is not None:
                         except:
                             continue
                 
-                if backtest_data_c:
-                    st.dataframe(pd.DataFrame(backtest_data_c[::-1]), use_container_width=True, hide_index=True)
+                if perday_data_c:
+                    st.dataframe(pd.DataFrame(perday_data_c[::-1]), use_container_width=True, hide_index=True)
                 else:
-                    st.warning("बैकटेस्ट के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
+                    st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE PER-DAY
         # ==========================================
         with tab2:
-            st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
+            st.subheader("🎯 सिंगल नंबर इंजन - पर-डे (Per-Day) पलट सहित पासिंग रिकॉर्ड")
             
             def get_best_single_direct_number(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
                 valid_vals = []
-                
                 for x in vals:
                     try:
                         v = int(x)
@@ -200,12 +189,10 @@ if uploaded_file is not None:
                             valid_vals.append(v)
                     except:
                         continue
-                        
                 if len(valid_vals) < 10:
                     return None
 
                 last_num = valid_vals[-1]
-                
                 in_haruf_counts = {d: 0 for d in range(10)}
                 out_haruf_counts = {d: 0 for d in range(10)}
                 for num in valid_vals[-50:]:
@@ -216,12 +203,10 @@ if uploaded_file is not None:
                 top_out_haruf = max(out_haruf_counts.keys(), key=lambda x: out_haruf_counts[x])
                 
                 num_scores = {n: 0.0 for n in range(100)}
-                
                 for i in range(len(valid_vals) - 1):
                     if valid_vals[i] == last_num:
                         nxt = valid_vals[i + 1]
                         num_scores[nxt] += 5.0
-                        
                 for i in range(len(valid_vals) - 2):
                     if valid_vals[i] == last_num:
                         nxt2 = valid_vals[i + 2]
@@ -229,22 +214,18 @@ if uploaded_file is not None:
                         
                 crossing_best = top_in_haruf * 10 + top_out_haruf
                 num_scores[crossing_best] += 4.0
-                
                 for n in valid_vals[-30:]:
                     num_scores[n] += 0.5
                     
                 best_single_num = max(num_scores.keys(), key=lambda x: num_scores[x])
-                
                 return {
                     "last_num": f"{last_num:02d}",
                     "single_direct": f"{best_single_num:02d}",
-                    "score": round(num_scores[best_single_num], 1),
-                    "num_int": best_single_num
+                    "score": round(num_scores[best_single_num], 1)
                 }
 
             single_results = []
             wa_msg_lines = []
-
             for col in available_cols:
                 res = get_best_single_direct_number(df, col)
                 if res:
@@ -276,48 +257,67 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- सिंगल नंबर का ऑटोमैटिक पास्ट बैक-टेस्टिंग ---
+            # --- पर-डे पलट पासिंग रिकॉर्ड ---
             st.markdown("---")
-            st.subheader("📈 सिंगल नंबर इंजन ऑटोमैटिक पास्ट बैक-टेस्टिंग (Date-wise Pass/Fail)")
-            st.write("यहाँ ऐप खुद पीछे के दिनों के लिए सिंगल नंबर का प्रेडिक्शन निकालकर चेक कर रहा है कि वह पास हुआ या फेल:")
+            st.subheader("📈 पर-डे (Per-Day) सिंगल नंबर पलट सहित पासिंग रिकॉर्ड")
+            st.write("यहाँ हर दिन के अंत में यह चेक किया जा रहा है कि उस दिन के निकाले गए सिंगल नंबरों (पलट सहित) में से कौन सा नंबर किसी भी गेम में पास हुआ:")
             
-            sel_game_s = st.selectbox("गेम चुनें (सिंगल पासिंग देखने के लिए):", available_cols, key="backtest_s")
+            dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
+            perday_data_s = []
             
-            if sel_game_s:
-                dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
-                backtest_data_s = []
+            for i in range(10, len(df)):
+                sub_df = df.iloc[:i] # ठीक उस दिन तक का डेटा
+                row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
                 
-                for i in range(10, len(df)):
-                    sub_df = df.iloc[:i]
-                    res_past_s = get_best_single_direct_number(sub_df, sel_game_s)
-                    
-                    if res_past_s:
+                # उस दिन के लिए सभी गेम्स के प्रेडिक्टेड सिंगल और उनकी पलट
+                predicted_singles = {}
+                palat_singles = {}
+                for col in available_cols:
+                    res_s = get_best_single_direct_number(sub_df, col)
+                    if res_s:
+                        s_num = res_s["single_direct"]
+                        predicted_singles[col] = s_num
                         try:
-                            actual_val = int(df.loc[i, sel_game_s])
-                            if 0 <= actual_val <= 99:
-                                act_str = f"{actual_val:02d}"
-                                pred_str = res_past_s["single_direct"]
-                                
-                                single_pass = "✅ PASS" if pred_str == act_str else "❌ FAIL"
-                                row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
-                                
-                                backtest_data_s.append({
-                                    "📅 दिनांक (Date)": row_date,
-                                    "लोकेशन": sel_game_s,
-                                    "प्रेडिक्टेड सिंगल नंबर": pred_str,
-                                    "वास्तविक रिज़ल्ट": act_str,
-                                    "पासिंग स्टेटस": single_pass
-                                })
+                            palat_singles[col] = f"{int(s_num):02d}"[::-1]
                         except:
-                            continue
+                            palat_singles[col] = s_num
                 
-                if backtest_data_s:
-                    st.dataframe(pd.DataFrame(backtest_data_s[::-1]), use_container_width=True, hide_index=True)
-                else:
-                    st.warning("बैकटेस्ट के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
+                # उस दिन के वास्तविक रिजल्ट्स सभी गेम्स के
+                actual_results = {}
+                for col in available_cols:
+                    try:
+                        val = int(df.loc[i, col])
+                        if 0 <= val <= 99:
+                            actual_results[col] = f"{val:02d}"
+                    except:
+                        pass
+                
+                matched_details = []
+                hit_found = False
+                for game_name, p_num in predicted_singles.items():
+                    p_palat = palat_singles[game_name]
+                    for act_game, act_val in actual_results.items():
+                        if p_num == act_val or p_palat == act_val:
+                            hit_found = True
+                            matched_details.append(f"{game_name}➔{act_game}({act_val})")
+                
+                status_str = f"✅ PASS ({', '.join(set(matched_details))})" if hit_found else "❌ FAIL"
+                
+                row_data = {"📅 दिनांक (Date)": row_date}
+                for col in available_cols:
+                    pred_p = f"{predicted_singles.get(col, '-')}(प:{palat_singles.get(col, '-')})"
+                    act_r = actual_results.get(col, '-')
+                    row_data[col] = f"Pred:{pred_p} | Act:{act_r}"
+                row_data["पासिंग स्टेटस"] = status_str
+                perday_data_s.append(row_data)
+            
+            if perday_data_s:
+                st.dataframe(pd.DataFrame(perday_data_s[::-1]), use_container_width=True, hide_index=True)
+            else:
+                st.warning("पर्याप्त डेटा उपलब्ध नहीं है।")
 
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                            
+                

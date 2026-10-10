@@ -7,7 +7,7 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Dashboard", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & Multi-Game Dashboard")
-st.write("यहाँ सभी एडवांस इंजन और मल्टी-गेम एनालिटिक्स एक ही डैशबोर्ड में उपलब्ध हैं।")
+st.write("यहाँ सभी एडवांस इंजन, क्रॉसिंग, सिंगल नंबर और डीप हिस्टोरिकल पैटर्न एक ही डैशबोर्ड में उपलब्ध हैं।")
 
 # --- RASHI & FAMILY GENERATOR ENGINE ---
 RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
@@ -68,18 +68,18 @@ if uploaded_file is not None:
     
     if available_cols:
         tab1, tab2, tab3 = st.tabs([
-            "🎯 1. Crossing & Unique Haruf Engine", 
+            "🎯 1. Complete Crossing & Haruf Engine", 
             "🔥 2. Single Direct Number Engine (No Palat)",
             "🔬 3. Deep Historical Pattern & Analytics"
         ])
         
         # ==========================================
-        # TAB 1: UNIQUE HARUF CROSSING ENGINE
+        # TAB 1: COMPLETE CROSSING & HARUF ENGINE
         # ==========================================
         with tab1:
-            st.subheader("📊 सिंगल हरूफ़ और उनकी संयुक्त (Unique) क्रॉसिंग")
+            st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
             
-            def get_single_haruf(df_sub, column_name):
+            def analyze_best_crossing_and_haruf(df_sub, column_name):
                 vals = df_sub[column_name].dropna().tolist()
                 valid_vals = []
                 for x in vals:
@@ -95,38 +95,66 @@ if uploaded_file is not None:
                 last_num = valid_vals[-1]
                 haruf_scores = {d: 0 for d in range(10)}
                 
+                total_len = len(valid_vals)
                 for idx, num in enumerate(valid_vals):
-                    weight = 1 + (idx / len(valid_vals))
+                    weight = 1 + (idx / total_len)
                     haruf_scores[num // 10] += weight
                     haruf_scores[num % 10] += weight
 
+                follow_up_harufs = []
+                for i in range(len(valid_vals) - 2):
+                    if valid_vals[i] == last_num:
+                        f1 = valid_vals[i + 1]
+                        f2 = valid_vals[i + 2]
+                        follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
+
+                for h in follow_up_harufs:
+                    if 0 <= h <= 9:
+                        haruf_scores[h] += 3.5
+
                 ranked_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)
                 
+                single_haruf = ranked_harufs[0]
+                top_4_harufs = sorted(ranked_harufs[:4])
+                top_6_harufs = sorted(ranked_harufs[:6])
+
                 return {
                     "last_num": f"{last_num:02d}",
-                    "single_haruf": int(ranked_harufs[0])
+                    "single_haruf": str(single_haruf),
+                    "haruf_4_str": ", ".join(map(str, top_4_harufs)),
+                    "haruf_6_str": ", ".join(map(str, top_6_harufs)),
+                    "single_h_int": single_haruf
                 }
 
-            crossing_results = []
-            all_unique_harufs = set()
+            analysis_results = []
             full_box_messages = []
+            all_unique_harufs = set()
 
             for col in available_cols:
-                res = get_single_haruf(df, col)
+                res = analyze_best_crossing_and_haruf(df, col)
                 if res:
-                    crossing_results.append({
+                    analysis_results.append({
                         "लोकेशन / गेम": col,
                         "🎯 ताज़ा रिज़ल्ट": res["last_num"],
-                        "👑 सिंगल हरूफ़": f"🔥 {res['single_haruf']}"
+                        "👑 सिंगल हरूफ़ (1 Haruf)": f"🔥 {res['single_haruf']} (अंदर/बाहर)",
+                        "⚡ 4 हरूफ़ क्रॉसिंग": res["haruf_4_str"],
+                        "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"]
                     })
-                    all_unique_harufs.add(res["single_haruf"])
                     
-                    game_msg = f"🎯 *{col}* (Last: {res['last_num']}) ➔ Single Haruf: *{res['single_haruf']}*"
+                    all_unique_harufs.add(res["single_h_int"])
+                    
+                    game_msg = (
+                        f"🎯 *{col}* (Last: {res['last_num']})\n"
+                        f"👑 सिंगल हरूफ़: *{res['single_haruf']}* (अंदर/बाहर)\n"
+                        f"⚡ 4 हरूफ़: [{res['haruf_4_str']}]\n"
+                        f"🔥 6 हरूफ़: [{res['haruf_6_str']}]"
+                    )
                     full_box_messages.append(game_msg)
 
-            if crossing_results:
-                st.dataframe(pd.DataFrame(crossing_results), use_container_width=True, hide_index=True)
+            if analysis_results:
+                st.dataframe(pd.DataFrame(analysis_results), use_container_width=True, hide_index=True)
                 
+                # सभी सिंगल हरूफ़ की संयुक्त (Unique) क्रॉसिंग
                 sorted_unique = sorted(list(all_unique_harufs))
                 unique_crossing_str = ", ".join(map(str, sorted_unique))
                 
@@ -134,7 +162,7 @@ if uploaded_file is not None:
                 st.code(unique_crossing_str, language="text")
                 
                 st.markdown("---")
-                full_whatsapp_text = "📊 *UNIQUE HARUF CROSSING REPORT* 📊\n\n" + "\n\n".join(full_box_messages) + f"\n\n🔗 *Unique Harufs Crossing:* [{unique_crossing_str}]"
+                full_whatsapp_text = "📊 *COMPLETE DAILY ANALYTICS REPORT* 📊\n\n" + "\n\n---\n\n".join(full_box_messages) + f"\n\n🔗 *Unique Harufs Crossing:* [{unique_crossing_str}]"
                 encoded_full_msg = urllib.parse.quote(full_whatsapp_text)
                 wa_full_url = f"https://api.whatsapp.com/send?text={encoded_full_msg}"
                 
@@ -240,7 +268,7 @@ if uploaded_file is not None:
         with tab3:
             st.subheader("🔬 Deep Historical Pattern & Analytics Engine")
             
-            run_scan = st.button("🔥 Run Multi-Game Auto Scan", use_container_width=True)
+            run_scan = st.button("🔥 Run Multi-Game Auto Scan (एक साथ सभी गेम देखें)", use_container_width=True)
             
             if run_scan:
                 sub_tabs = st.tabs([f"🎯 {col}" for col in available_cols])
@@ -339,7 +367,7 @@ if uploaded_file is not None:
 
                             # 1. Executive Summary
                             st.subheader(f"📌 {col} का ऐतिहासिक विश्लेषण (Last Result: {last_result:02d})")
-                            st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** रिकॉर्ड में **{col}** में **{last_result:02d}** कुल **{total_hist_count} बार** आया है।")
+                            st.write(f"• **मुख्य ऐतिहासिक निष्कर्ष:** 13 साल के रिकॉर्ड में **{col}** में **{last_result:02d}** कुल **{total_hist_count} बार** आया है।")
                             
                             top_1d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_1d.to_dict().items()])
                             top_2d_str = ", ".join([f"{k:02d}: {v} बार" for k, v in top_2d.to_dict().items()])
@@ -357,23 +385,23 @@ if uploaded_file is not None:
                             c_box1, c_box2 = st.columns(2)
 
                             with c_box1:
-                                st.markdown("**🎯 हरूफ़ क्रॉसिंग 16 नंबर:**")
+                                st.markdown("**🎯 हरूफ़ क्रॉसिंग 16 नंबर (Line 1: 100, Line 2 & 3: 50):**")
                                 st.code(f"{fmt_line(l1_clean, 100)}\n{fmt_line(l2_clean, 50)}\n{fmt_line(l3_clean, 50)}", language="text")
 
-                                st.markdown("**📋 1-Day Follow-up Numbers:**")
+                                st.markdown("**📋 1-Day Follow-up Numbers (सीधी + पलट):**")
                                 st.code(f"{fmt_line(top_1d_direct, 50)}\n{fmt_line(top_1d_plat, 50)}", language="text")
 
-                                st.markdown("**⚡ 24-Hour All-Games Numbers:**")
+                                st.markdown("**⚡ 24-Hour All-Games Numbers (24 घंटे सभी गेम रिपीट):**")
                                 st.code(f"{fmt_line(top_24h_direct, 100)}\n{fmt_line(top_24h_plat, 50)}", language="text")
 
                             with c_box2:
-                                st.markdown("**👯 हरूफ के जोड़े (Pairs):**")
+                                st.markdown("**👯 हरूफ के जोड़े (Pairs / Jode):**")
                                 st.code(fmt_line(pairs_list, 50), language="text")
 
-                                st.markdown("**📋 2-Day Follow-up Numbers:**")
+                                st.markdown("**📋 2-Day Follow-up Numbers (सीधी + पलट):**")
                                 st.code(f"{fmt_line(top_2d_direct, 50)}\n{fmt_line(top_2d_plat, 50)}", language="text")
 
-                                st.markdown("**🎲 24-Hour Haruf Numbers & Pairs:**")
+                                st.markdown("**🎲 24-Hour Haruf Numbers & Pairs (सीधी + पलट):**")
                                 st.code(f"{fmt_line(h_nums_clean, 50)}\n{fmt_line(h_plat_clean, 50)}", language="text")
 
                             game_24h_str = (
@@ -405,3 +433,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
+                                

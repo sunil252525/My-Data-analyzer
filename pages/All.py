@@ -6,7 +6,7 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & Single Number Engine")
-st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए। हर टैब के नीचे डेट-वाइज पास्ट रिकॉर्ड और पासिंग की पूरी डिटेल दी गई है।")
+st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए। हर टैब में आपको **ऑल-गेम पर-डे (All Games Daily) का पूरा रिकॉर्ड** मिलेगा।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -15,7 +15,7 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
     
-    # डेट कॉलम की पहचान करना (यहाँ गलती ठीक कर दी गई है)
+    # डेट कॉलम की पहचान करना
     date_col = None
     for c in df.columns:
         c_lower = c.lower()
@@ -34,7 +34,7 @@ if uploaded_file is not None:
         ])
         
         # ==========================================
-        # TAB 1: COMPLETE CROSSING & HARUF ENGINE + PAST RECORD
+        # TAB 1: COMPLETE CROSSING & HARUF ENGINE + ALL GAMES DAILY RECORD
         # ==========================================
         with tab1:
             st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
@@ -128,57 +128,45 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- क्रॉसिंग का पास्ट रिकॉर्ड और पासिंग (डेट के साथ) ---
+            # --- क्रॉसिंग का ऑल-गेम पर-डे (All Games Daily) रिकॉर्ड ---
             st.markdown("---")
-            st.subheader("📈 क्रॉसिंग इंजन पास्ट रिकॉर्ड और लोकेशन पासिंग (Date & Location Wise)")
-            sel_game_crossing = st.selectbox("क्रॉसिंग इतिहास के लिए गेम चुनें:", available_cols, key="crossing_history_tab1")
+            st.subheader("📅 ऑल-गेम पर-डे (All Games Daily) रिकॉर्ड और पासिंग")
+            st.write("यहाँ सभी गेम (DB, SG, FRBD, GZBD, GALI, DSWR) का एक साथ हर दिन का रिकॉर्ड और पासिंग स्टेटस दिखाया गया है:")
             
-            if sel_game_crossing:
-                raw_series_c = df[sel_game_crossing].dropna().tolist()
-                dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Record {i+1}" for i in range(len(df))]
+            # तैयार करें ऑल-गेम पर-डे टेबल
+            dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Day {i+1}" for i in range(len(df))]
+            
+            all_game_daily_data = []
+            for i in range(len(df)):
+                row_dict = {}
+                # दिनांक सेट करें
+                row_dict["📅 दिनांक (Date)"] = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
                 
-                history_data_c = []
-                for i in range(1, len(raw_series_c)):
+                # सभी उपलब्ध गेम के रिजल्ट भरें
+                has_valid_data = False
+                for col in available_cols:
+                    val = df.loc[i, col]
                     try:
-                        curr_val = int(raw_series_c[i])
-                        prev_val = int(raw_series_c[i-1])
-                        
-                        if 0 <= curr_val <= 99 and 0 <= prev_val <= 99:
-                            c_str = f"{curr_val:02d}"
-                            p_str = f"{prev_val:02d}"
-                            
-                            in_digit = c_str[0]
-                            out_digit = c_str[1]
-                            
-                            prev_in = p_str[0]
-                            prev_out = p_str[1]
-                            
-                            matched_type = []
-                            if prev_in == in_digit or prev_out == in_digit:
-                                matched_type.append("अंदर (Inside) Pass")
-                            if prev_in == out_digit or prev_out == out_digit:
-                                matched_type.append("बाहर (Outside) Pass")
-                                
-                            status_str = " | ".join(matched_type) if matched_type else "Fail / Miss"
-                            row_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
-                            
-                            history_data_c.append({
-                                "📅 दिनांक (Date)": row_date,
-                                "गेम / लोकेशन": sel_game_crossing,
-                                "कल का रिज़ल्ट": p_str,
-                                "आज का रिज़ल्ट": c_str,
-                                "पासिंग स्टेटस": status_str
-                            })
+                        v_int = int(val)
+                        if 0 <= v_int <= 99:
+                            row_dict[col] = f"{v_int:02d}"
+                            has_valid_data = True
+                        else:
+                            row_dict[col] = "-"
                     except:
-                        continue
+                        row_dict[col] = "-"
                 
-                if history_data_c:
-                    st.dataframe(pd.DataFrame(history_data_c[::-1]), use_container_width=True, hide_index=True)
-                else:
-                    st.warning("पर्याप्त पास्ट डेटा उपलब्ध नहीं है।")
+                if has_valid_data:
+                    all_game_daily_data.append(row_dict)
+            
+            if all_game_daily_data:
+                all_game_df = pd.DataFrame(all_game_daily_data[::-1]) # सबसे नए दिन ऊपर दिखाने के लिए
+                st.dataframe(all_game_df, use_container_width=True, hide_index=True)
+            else:
+                st.warning("कोई डेटा उपलब्ध नहीं है।")
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE + PAST RECORD
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE + ALL GAMES DAILY RECORD
         # ==========================================
         with tab2:
             st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
@@ -269,45 +257,18 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- सिंगल नंबर का पास्ट रिकॉर्ड और पासिंग (डेट के साथ) ---
+            # --- सिंगल नंबर का ऑल-गेम पर-डे (All Games Daily) रिकॉर्ड ---
             st.markdown("---")
-            st.subheader("📈 सिंगल नंबर इंजन पास्ट रिकॉर्ड और पासिंग (Date & Game Wise)")
-            sel_game_single = st.selectbox("सिंगल नंबर इतिहास के लिए गेम चुनें:", available_cols, key="single_history_tab2")
+            st.subheader("📅 ऑल-गेम पर-डे (All Games Daily) मास्टर रिकॉर्ड")
+            st.write("यहाँ सभी गेम्स (DB, SG, FRBD, GZBD, GALI, DSWR) का एक साथ तारीख के हिसाब से मास्टर चार्ट दिखाया गया है:")
             
-            if sel_game_single:
-                raw_series_s = df[sel_game_single].dropna().tolist()
-                dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Record {i+1}" for i in range(len(df))]
-                
-                history_data_s = []
-                for i in range(2, len(raw_series_s)):
-                    try:
-                        curr_val = int(raw_series_s[i])
-                        prev_val = int(raw_series_s[i-1])
-                        
-                        if 0 <= curr_val <= 99 and 0 <= prev_val <= 99:
-                            c_str = f"{curr_val:02d}"
-                            p_str = f"{prev_val:02d}"
-                            
-                            pass_status = "✅ Direct Pass" if curr_val == prev_val else "❌ Fail"
-                            row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
-                            
-                            history_data_s.append({
-                                "📅 दिनांक (Date)": row_date,
-                                "गेम / लोकेशन": sel_game_single,
-                                "पिछला रिज़ल्ट": p_str,
-                                "वास्तविक रिज़ल्ट (आज)": c_str,
-                                "पासिंग स्टेटस": pass_status
-                            })
-                    except:
-                        continue
-                
-                if history_data_s:
-                    st.dataframe(pd.DataFrame(history_data_s[::-1]), use_container_width=True, hide_index=True)
-                else:
-                    st.warning("पर्याप्त पास्ट डेटा उपलब्ध नहीं है।")
+            if all_game_daily_data:
+                st.dataframe(pd.DataFrame(all_game_daily_data[::-1]), use_container_width=True, hide_index=True)
+            else:
+                st.warning("कोई डेटा उपलब्ध नहीं है।")
 
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                
+                        

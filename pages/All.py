@@ -6,7 +6,7 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & Next-Day Backtesting Engine")
-st.write("यहाँ मुख्य बॉक्स आज/ताज़ा तारीख के लिए है, और नीचे के पास्ट बॉक्स हर दिन के प्रेडिक्शन को उसकी **अगली तारीख के रिजल्ट** में चेक करके पास/फेल दिखाते हैं।")
+st.write("यहाँ मुख्य बॉक्स ताज़ा तारीख के प्रेडिक्शन के लिए है, और नीचे के पास्ट बॉक्स हर दिन के प्रेडिक्शन को उसकी **अगली तारीख के रिजल्ट** में चेक करके पास/फेल दिखाते हैं।")
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -173,7 +173,7 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # 2. पिछले 5 दिनों का ट्रैक रिकॉर्ड (प्रेडिक्शन बनाम अगले दिन का वास्तविक रिज़ल्ट)
+            # 2. पिछले 5 दिनों का पास्ट रिकॉर्ड बॉक्स (अगले दिन का रिजल्ट चेकिंग)
             st.markdown("---")
             st.subheader("📜 पिछले 5 दिनों का पास्ट रिकॉर्ड बॉक्स (अगले दिन का रिज़ल्ट चेकिंग)")
             
@@ -255,4 +255,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                                            
+                                    

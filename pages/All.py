@@ -5,8 +5,8 @@ import urllib.parse
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics, Single Number & Win/Loss Tracker")
-st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए। हर टैब के नीचे आपको **पास/फेल (Win/Loss) का सटीक पास्ट रिकॉर्ड** मिलेगा।")
+st.title("🎯 All-in-One Game Analytics & Automatic Backtesting Engine")
+st.write("यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल डायरेक्ट नंबर इंजन** के लिए। हर टैब में पीछे की तारीखों (जैसे 7 तारीख, 8 तारीख आदि) का ऑटोमैटिक पास/फेल रिकॉर्ड दिखाया गया है।")
 
 # --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -29,8 +29,8 @@ if uploaded_file is not None:
     if available_cols:
         # दो ही टैब बनाए गए हैं
         tab1, tab2 = st.tabs([
-            "🎯 1. Complete Crossing & Haruf Engine + Pass/Fail Tracker", 
-            "🔥 2. Single Direct Number Engine (No Palat) + Pass/Fail Tracker"
+            "🎯 1. Complete Crossing Engine & Past Backtest", 
+            "🔥 2. Single Direct Number Engine & Past Backtest"
         ])
         
         # ==========================================
@@ -39,8 +39,8 @@ if uploaded_file is not None:
         with tab1:
             st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
             
-            def analyze_best_crossing_and_haruf(df, column_name):
-                vals = df[column_name].dropna().tolist()
+            def analyze_best_crossing_and_haruf(sub_df, column_name):
+                vals = sub_df[column_name].dropna().tolist()
                 valid_vals = []
                 
                 for x in vals:
@@ -84,9 +84,12 @@ if uploaded_file is not None:
                     "last_num": f"{last_num:02d}",
                     "single_haruf": str(single_haruf),
                     "haruf_4_str": ", ".join(map(str, top_4_harufs)),
-                    "haruf_6_str": ", ".join(map(str, top_6_harufs))
+                    "haruf_6_str": ", ".join(map(str, top_6_harufs)),
+                    "top_4_list": top_4_harufs,
+                    "top_6_list": top_6_harufs
                 }
 
+            # आज का ताज़ा विश्लेषण
             analysis_results = []
             full_box_messages = []
 
@@ -128,56 +131,57 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- क्रॉसिंग का पास्ट रिकॉर्ड और पास/फेल चेकर ---
+            # --- ऑटोमैटिक पास्ट बैक-टेस्टिंग (पीछे के रिकॉर्ड की जाँच) ---
             st.markdown("---")
-            st.subheader("📈 क्रॉसिंग इंजन पास/फेल (Win/Loss) पास्ट रिकॉर्ड")
-            st.write("यहाँ आप देख सकते हैं कि किस दिन कौन सी गेम में पिछला हरूफ़ अंदर या बाहर पास हुआ (Win) या फेल (Miss) हुआ:")
+            st.subheader("📈 क्रॉसिंग इंजन ऑटोमैटिक पास्ट बैक-टेस्टिंग (Date-wise Pass/Fail)")
+            st.write("यहाँ ऐप खुद पीछे के दिनों (जैसे 7 तारीख, 8 तारीख आदि) में जाकर चेक कर रहा है कि उस दिन क्या प्रेडिक्शन था और रिजल्ट पास हुआ या फेल:")
             
-            sel_game_crossing = st.selectbox("गेम चुनें (पासिंग देखने के लिए):", available_cols, key="crossing_history_tab1")
+            sel_game_c = st.selectbox("गेम चुनें (पासिंग रिकॉर्ड देखने के लिए):", available_cols, key="backtest_c")
             
-            if sel_game_crossing:
-                raw_series_c = df[sel_game_crossing].dropna().tolist()
-                dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Day {i+1}" for i in range(len(df))]
+            if sel_game_c:
+                dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
+                backtest_data_c = []
                 
-                history_data_c = []
-                for i in range(1, len(raw_series_c)):
-                    try:
-                        curr_val = int(raw_series_c[i])
-                        prev_val = int(raw_series_c[i-1])
-                        
-                        if 0 <= curr_val <= 99 and 0 <= prev_val <= 99:
-                            c_str = f"{curr_val:02d}"
-                            p_str = f"{prev_val:02d}"
-                            
-                            in_digit = c_str[0]
-                            out_digit = c_str[1]
-                            
-                            prev_in = p_str[0]
-                            prev_out = p_str[1]
-                            
-                            matched_type = []
-                            if prev_in == in_digit or prev_out == in_digit:
-                                matched_type.append("अंदर (Inside) ✅ WIN")
-                            if prev_in == out_digit or prev_out == out_digit:
-                                matched_type.append("बाहर (Outside) ✅ WIN")
+                # कम से कम 10 दिनों का डेटा होने पर ही बैकटेस्ट शुरू करें
+                for i in range(10, len(df)):
+                    sub_df = df.iloc[:i] # i तारीख तक का डेटा
+                    res_past = analyze_best_crossing_and_haruf(sub_df, sel_game_c)
+                    
+                    if res_past:
+                        try:
+                            actual_val = int(df.loc[i, sel_game_c])
+                            if 0 <= actual_val <= 99:
+                                act_str = f"{actual_val:02d}"
+                                act_in = int(act_str[0])
+                                act_out = int(act_str[1])
                                 
-                            status_str = " | ".join(matched_type) if matched_type else "❌ FAIL / MISS"
-                            row_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
-                            
-                            history_data_c.append({
-                                "📅 दिनांक (Date)": row_date,
-                                "लोकेशन / गेम": sel_game_crossing,
-                                "कल का रिज़ल्ट (Base)": p_str,
-                                "आज का रिज़ल्ट (Actual)": c_str,
-                                "पास/फेल स्टेटस (Win/Loss)": status_str
-                            })
-                    except:
-                        continue
+                                top4 = res_past["top_4_list"]
+                                top6 = res_past["top_6_list"]
+                                single_h = int(res_past["single_haruf"])
+                                
+                                # पासिंग चेक
+                                single_pass = "✅ PASS" if (single_h == act_in or single_h == act_out) else "❌ FAIL"
+                                h4_pass = "✅ PASS" if (act_in in top4 or act_out in top4) else "❌ FAIL"
+                                h6_pass = "✅ PASS" if (act_in in top6 or act_out in top6) else "❌ FAIL"
+                                
+                                row_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
+                                
+                                backtest_data_c.append({
+                                    "📅 दिनांक (Date)": row_date,
+                                    "लोकेशन": sel_game_c,
+                                    "वास्तविक रिज़ल्ट": act_str,
+                                    "सिंगल हरूफ़": res_past["single_haruf"],
+                                    "सिंगल स्टेटस": single_pass,
+                                    "4 हरूफ़ पासिंग": h4_pass,
+                                    "6 हरूफ़ पासिंग": h6_pass
+                                })
+                        except:
+                            continue
                 
-                if history_data_c:
-                    st.dataframe(pd.DataFrame(history_data_c[::-1]), use_container_width=True, hide_index=True)
+                if backtest_data_c:
+                    st.dataframe(pd.DataFrame(backtest_data_c[::-1]), use_container_width=True, hide_index=True)
                 else:
-                    st.warning("पर्याप्त पास्ट डेटा उपलब्ध नहीं है।")
+                    st.warning("बैकटेस्ट के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
 
         # ==========================================
         # TAB 2: SINGLE DIRECT NUMBER ENGINE
@@ -185,8 +189,8 @@ if uploaded_file is not None:
         with tab2:
             st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
             
-            def get_best_single_direct_number(df, column_name):
-                vals = df[column_name].dropna().tolist()
+            def get_best_single_direct_number(sub_df, column_name):
+                vals = sub_df[column_name].dropna().tolist()
                 valid_vals = []
                 
                 for x in vals:
@@ -234,7 +238,8 @@ if uploaded_file is not None:
                 return {
                     "last_num": f"{last_num:02d}",
                     "single_direct": f"{best_single_num:02d}",
-                    "score": round(num_scores[best_single_num], 1)
+                    "score": round(num_scores[best_single_num], 1),
+                    "num_int": best_single_num
                 }
 
             single_results = []
@@ -271,49 +276,48 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # --- सिंगल नंबर का पास्ट रिकॉर्ड और पास/फेल चेकर ---
+            # --- सिंगल नंबर का ऑटोमैटिक पास्ट बैक-टेस्टिंग ---
             st.markdown("---")
-            st.subheader("📈 सिंगल नंबर इंजन पास/फेल (Win/Loss) पास्ट रिकॉर्ड")
-            st.write("यहाँ देखें कि पिछले दिनों में सिंगल नंबर का पैटर्न कौन सी गेम में पास (Win) हुआ या फेल (Miss) हुआ:")
+            st.subheader("📈 सिंगल नंबर इंजन ऑटोमैटिक पास्ट बैक-टेस्टिंग (Date-wise Pass/Fail)")
+            st.write("यहाँ ऐप खुद पीछे के दिनों के लिए सिंगल नंबर का प्रेडिक्शन निकालकर चेक कर रहा है कि वह पास हुआ या फेल:")
             
-            sel_game_single = st.selectbox("गेम चुनें (सिंगल पासिंग देखने के लिए):", available_cols, key="single_history_tab2")
+            sel_game_s = st.selectbox("गेम चुनें (सिंगल पासिंग देखने के लिए):", available_cols, key="backtest_s")
             
-            if sel_game_single:
-                raw_series_s = df[sel_game_single].dropna().tolist()
-                dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Day {i+1}" for i in range(len(df))]
+            if sel_game_s:
+                dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
+                backtest_data_s = []
                 
-                history_data_s = []
-                for i in range(2, len(raw_series_s)):
-                    try:
-                        curr_val = int(raw_series_s[i])
-                        prev_val = int(raw_series_s[i-1])
-                        
-                        if 0 <= curr_val <= 99 and 0 <= prev_val <= 99:
-                            c_str = f"{curr_val:02d}"
-                            p_str = f"{prev_val:02d}"
-                            
-                            # यदि पिछला नंबर आज रिपीट हुआ या पैटर्न मैच हुआ तो WIN, अन्यथा FAIL
-                            is_win = (curr_val == prev_val)
-                            pass_status = "✅ PASS / WIN" if is_win else "❌ FAIL / MISS"
-                            row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
-                            
-                            history_data_s.append({
-                                "📅 दिनांक (Date)": row_date,
-                                "लोकेशन / गेम": sel_game_single,
-                                "पिछला रिज़ल्ट": p_str,
-                                "आज का रिज़ल्ट": c_str,
-                                "पास/फेल स्टेटस (Win/Loss)": pass_status
-                            })
-                    except:
-                        continue
+                for i in range(10, len(df)):
+                    sub_df = df.iloc[:i]
+                    res_past_s = get_best_single_direct_number(sub_df, sel_game_s)
+                    
+                    if res_past_s:
+                        try:
+                            actual_val = int(df.loc[i, sel_game_s])
+                            if 0 <= actual_val <= 99:
+                                act_str = f"{actual_val:02d}"
+                                pred_str = res_past_s["single_direct"]
+                                
+                                single_pass = "✅ PASS" if pred_str == act_str else "❌ FAIL"
+                                row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
+                                
+                                backtest_data_s.append({
+                                    "📅 दिनांक (Date)": row_date,
+                                    "लोकेशन": sel_game_s,
+                                    "प्रेडिक्टेड सिंगल नंबर": pred_str,
+                                    "वास्तविक रिज़ल्ट": act_str,
+                                    "पासिंग स्टेटस": single_pass
+                                })
+                        except:
+                            continue
                 
-                if history_data_s:
-                    st.dataframe(pd.DataFrame(history_data_s[::-1]), use_container_width=True, hide_index=True)
+                if backtest_data_s:
+                    st.dataframe(pd.DataFrame(backtest_data_s[::-1]), use_container_width=True, hide_index=True)
                 else:
-                    st.warning("पर्याप्त पास्ट डेटा उपलब्ध नहीं है।")
+                    st.warning("बैकटेस्ट के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
 
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                
+                            

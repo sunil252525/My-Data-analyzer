@@ -3,12 +3,12 @@ import pandas as pd
 import urllib.parse
 
 # --- Streamlit Page Config ---
-st.set_page_config(page_title="Advanced All-in-One Analytics & 10-Day Backtest Dashboard", layout="wide")
+st.set_page_config(page_title="Advanced All-in-One Analytics & Dashboard", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & 10-Day Backtest Dashboard")
-st.write("यहाँ ऊपर आज का मुख्य बॉक्स है और उसके नीचे पिछले 10 दिनों का बिल्कुल वैसा ही पैटर्न वाला पास/फेल रिकॉर्ड दिया गया है।")
+st.title("🎯 All-in-One Game Analytics & 10-Day Datewise Dashboard")
+st.write("यहाँ आज का मुख्य बॉक्स और नीचे पिछले 10 दिनों का स्पष्ट तारीखों (`DD/MM/YYYY`) के साथ बैक-टेस्टिंग रिकॉर्ड दिया गया है।")
 
-# --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
+# --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
 
 if uploaded_file is not None:
@@ -29,7 +29,7 @@ if uploaded_file is not None:
     if available_cols:
         tab1, tab2 = st.tabs([
             "🎯 1. Crossing Engine", 
-            "🔥 2. Single Direct Number Engine (10-Day Backtest Boxes)"
+            "🔥 2. Single Direct Number Engine (10-Day Datewise Tracker)"
         ])
         
         # ==========================================
@@ -84,7 +84,7 @@ if uploaded_file is not None:
                 st.dataframe(pd.DataFrame(analysis_results), use_container_width=True, hide_index=True)
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE (10-DAY BACKTEST)
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE (10-DAY TRACKER)
         # ==========================================
         with tab2:
             st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
@@ -134,7 +134,7 @@ if uploaded_file is not None:
                     "score": round(num_scores[best_single_num], 1)
                 }
 
-            # 1. आज का मुख्य टेबल (Present Box) - जैसा स्क्रीनशॉट में है[span_1](start_span)[span_1](end_span)
+            # 1. आज का ताज़ा रिज़ल्ट प्रेडिक्शन (Main Box)
             single_results = []
             wa_msg_lines = []
             for col in available_cols:
@@ -149,13 +149,14 @@ if uploaded_file is not None:
                     wa_msg_lines.append(f"• *{col}* (Last: {res['last_num']}) ➔ Single: *{res['single_direct']}* (100)")
 
             if single_results:
+                latest_date_str = str(df[date_col].iloc[-1]) if date_col and date_col in df.columns else "ताज़ा डेटा"
+                st.markdown(f"### 📌 लेटेस्ट रिज़ल्ट/प्रेडिक्शन (ताज़ा तारीख: {latest_date_str})")
                 st.dataframe(pd.DataFrame(single_results), use_container_width=True, hide_index=True)
                 
-                st.markdown("### 📋 सभी गेम का 1-1 सिंगल नंबर (Copy / Direct Line)")
                 direct_line_text = ", ".join([f"{r['👑 1 सिंगल नंबर (No Palat)'].split()[1]}" for r in single_results])
                 st.code(direct_line_text, language="text")
 
-                wa_text = "🎯 *TODAY SINGLE DIRECT NUMBERS (NO PALAT)* 🎯\n\n" + "\n".join(wa_msg_lines)
+                wa_text = f"🎯 *SINGLE DIRECT NUMBERS ({latest_date_str})* 🎯\n\n" + "\n".join(wa_msg_lines)
                 encoded_msg = urllib.parse.quote(wa_text)
                 wa_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
                 
@@ -163,31 +164,29 @@ if uploaded_file is not None:
                     f'<a href="{wa_url}" target="_blank">'
                     f'<button style="background-color:#25D366; color:white; border:none; padding:12px 20px; '
                     f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">'
-                    f'📲 केवल सिंगल नंबर WhatsApp पर भेजें (Share Single Numbers)'
+                    f'📲 केवल सिंगल नंबर WhatsApp पर भेजें'
                     f'</button></a>',
                     unsafe_allow_html=True
                 )
 
-            # 2. पिछले 10 दिनों के बैक-टेस्टिंग बॉक्सेस (ठीक उसी पैटर्न में)
+            # 2. पिछले 10 दिनों का पास्ट रिकॉर्ड (तारीख वार)
             st.markdown("---")
-            st.subheader("📜 पिछले 10 दिनों का पास्ट रिकॉर्ड (Backtest Boxes)")
+            st.subheader("📜 पिछले 10 दिनों का पास्ट रिकॉर्ड बॉक्स (स्पष्ट तारीखों के साथ)")
             
-            dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Day {i+1}" for i in range(len(df))]
+            dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
             total_rows = len(df)
             box_count = 0
             
-            # i = प्रेडिक्शन का दिन, i+1 = अगले दिन का वास्तविक रिजल्ट
             for i in range(total_rows - 2, 0, -1):
                 if box_count >= 10:
                     break
                 
                 sub_df_pred = df.iloc[:i+1]
-                pred_date = dates_list[i] if i < len(dates_list) else f"Day {i+1}"
-                next_date = dates_list[i+1] if (i+1) < len(dates_list) else f"Day {i+2}"
+                pred_date = dates_list[i] if i < len(dates_list) else f"Row {i+1}"
+                next_date = dates_list[i+1] if (i+1) < len(dates_list) else f"Row {i+2}"
                 
                 past_box_rows = []
                 
-                # अगले दिन (i+1) के वास्तविक रिजल्ट्स
                 next_day_results = {}
                 for col in available_cols:
                     try:
@@ -197,7 +196,6 @@ if uploaded_file is not None:
                     except:
                         pass
                 
-                # उस दिन (i) के प्रेडिक्टेड सिंगल नंबर
                 day_singles = {}
                 day_palats = {}
                 for col in available_cols:
@@ -215,7 +213,6 @@ if uploaded_file is not None:
                     p_palat = day_palats.get(col)
                     act_next_val = next_day_results.get(col, "-")
                     
-                    # स्कोर या स्टेटस निकालना
                     status_text = "🔴 फेल"
                     if p_num and act_next_val != "-":
                         if p_num == act_next_val:
@@ -233,14 +230,14 @@ if uploaded_file is not None:
 
                     past_box_rows.append({
                         "लोकेशन / गेम": col,
-                        "🎯 ताज़ा रिज़ल्ट": act_next_val,
+                        "🎯 उस दिन का रिज़ल्ट": act_next_val,
                         "👑 1 सिंगल नंबर (No Palat)": f"🔥 {p_num} (100)" if p_num else "-",
-                        "📊 एल्गोरिथम स्कोर": status_text
+                        "📊 एल्गोरिथम स्कोर / स्टेटस": status_text
                     })
 
                 if past_box_rows:
                     box_count += 1
-                    st.markdown(f"#### 📅 बॉक्स {box_count}: प्रेडिक्शन दिनांक ({pred_date}) ➔ रिज़ल्ट दिनांक ({next_date})")
+                    st.markdown(f"#### 📅 बॉक्स {box_count}: प्रेडिक्शन तारीख: **{pred_date}** ➔ असली रिज़ल्ट तारीख: **{next_date}**")
                     st.dataframe(pd.DataFrame(past_box_rows), use_container_width=True, hide_index=True)
                     st.write("")
 
@@ -248,4 +245,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-            
+                                

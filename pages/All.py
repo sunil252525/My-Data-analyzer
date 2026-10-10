@@ -5,8 +5,8 @@ import urllib.parse
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & 5-Day Direct Box Engine")
-st.write("यहाँ आज का मुख्य रिजल्ट बॉक्स है और उसके नीचे पिछले 5 दिनों का पूरा रिकॉर्ड सभी 6 गेम्स के साथ दिया गया है।")
+st.title("🎯 All-in-One Game Analytics & Next-Day Backtesting Engine")
+st.write("यहाँ मुख्य बॉक्स आज/ताज़ा तारीख के लिए है, और नीचे के पास्ट बॉक्स हर दिन के प्रेडिक्शन को उसकी **अगली तारीख के रिजल्ट** में चेक करके पास/फेल दिखाते हैं।")
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -29,7 +29,7 @@ if uploaded_file is not None:
     if available_cols:
         tab1, tab2 = st.tabs([
             "🎯 1. Crossing Engine", 
-            "🔥 2. Single Direct Number Engine (5-Day Direct Boxes)"
+            "🔥 2. Single Direct Number Engine (Next-Day Tracker)"
         ])
         
         # ==========================================
@@ -40,7 +40,7 @@ if uploaded_file is not None:
             
             def analyze_best_crossing_and_haruf(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
-                valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
+                valid_vals = [int(float(str(x).strip())) for x in vals if str(x).strip().replace('.','',1).isdigit() and 0 <= int(float(str(x).strip())) <= 99]
                 if len(valid_vals) < 2:
                     return None
 
@@ -91,7 +91,7 @@ if uploaded_file is not None:
                 st.dataframe(pd.DataFrame(analysis_results), use_container_width=True, hide_index=True)
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE (5-DAY DIRECT BOXES)
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE (NEXT-DAY TRACKER)
         # ==========================================
         with tab2:
             st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
@@ -140,7 +140,7 @@ if uploaded_file is not None:
                     "single_direct": f"{best_single_num:02d}"
                 }
 
-            # 1. आज का मुख्य टेबल (Present Box)
+            # 1. आज का/ताज़ा प्रेडिक्शन (Main Box)
             single_results = []
             wa_msg_lines = []
             for col in available_cols:
@@ -154,7 +154,7 @@ if uploaded_file is not None:
                     wa_msg_lines.append(f"• *{col}* (Last: {res['last_num']}) ➔ Single: *{res['single_direct']}*")
 
             if single_results:
-                st.markdown("### 📌 आज का ताज़ा रिज़ल्ट और प्रेडिक्शन (Main Box)")
+                st.markdown("### 📌 लेटेस्ट / ताज़ा रिज़ल्ट का प्रेडिक्शन (Main Box)")
                 st.dataframe(pd.DataFrame(single_results), use_container_width=True, hide_index=True)
                 
                 direct_line_text = ", ".join([f"{r['👑 1 सिंगल नंबर (No Palat)'].split()[1]}" for r in single_results])
@@ -173,36 +173,42 @@ if uploaded_file is not None:
                     unsafe_allow_html=True
                 )
 
-            # 2. पिछले 5 दिनों के ऑटो-जनरेटेड बॉक्स (सभी 6 गेम्स के साथ)
+            # 2. पिछले 5 दिनों का ट्रैक रिकॉर्ड (प्रेडिक्शन बनाम अगले दिन का वास्तविक रिज़ल्ट)
             st.markdown("---")
-            st.subheader("📜 पिछले 5 दिनों का पास्ट रिकॉर्ड बॉक्स (5 Days Record)")
+            st.subheader("📜 पिछले 5 दिनों का पास्ट रिकॉर्ड बॉक्स (अगले दिन का रिज़ल्ट चेकिंग)")
             
             dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Day {i+1}" for i in range(len(df))]
             
             total_rows = len(df)
             box_count = 0
-            for i in range(total_rows - 1, 0, -1):
+            
+            # i = प्रेडिक्शन का दिन, i+1 = अगले दिन का वास्तविक रिजल्ट
+            for i in range(total_rows - 2, 0, -1):
                 if box_count >= 5:
                     break
                 
-                sub_df = df.iloc[:i]
-                row_date = dates_list[i] if i < len(dates_list) else f"Day {i+1}"
+                # i तारीख तक का डेटा (प्रेडिक्शन निकालने के लिए)
+                sub_df_pred = df.iloc[:i+1]
+                pred_date = dates_list[i] if i < len(dates_list) else f"Day {i+1}"
+                next_date = dates_list[i+1] if (i+1) < len(dates_list) else f"Day {i+2}"
                 
                 past_box_rows = []
                 
-                actual_results = {}
+                # अगले दिन (i+1) के वास्तविक रिजल्ट्स
+                next_day_results = {}
                 for col in available_cols:
                     try:
-                        val = int(float(str(df.loc[i, col]).strip()))
+                        val = int(float(str(df.loc[i+1, col]).strip()))
                         if 0 <= val <= 99:
-                            actual_results[col] = f"{val:02d}"
+                            next_day_results[col] = f"{val:02d}"
                     except:
                         pass
                 
+                # उस दिन (i) निकाले गए प्रेडिक्टेड सिंगल नंबर
                 day_singles = {}
                 day_palats = {}
                 for col in available_cols:
-                    res_s = get_best_single_direct_number(sub_df, col)
+                    res_s = get_best_single_direct_number(sub_df_pred, col)
                     if res_s:
                         s_num = res_s["single_direct"]
                         day_singles[col] = s_num
@@ -214,17 +220,18 @@ if uploaded_file is not None:
                 for col in available_cols:
                     p_num = day_singles.get(col)
                     p_palat = day_palats.get(col)
-                    act_val = actual_results.get(col, "-")
+                    act_next_val = next_day_results.get(col, "-")
                     
                     status_text = "🔴 फेल"
-                    if p_num and act_val != "-":
-                        if p_num == act_val:
-                            status_text = f"🟢 पास {act_val} (Same Game)"
-                        elif p_palat == act_val:
-                            status_text = f"🟠 पलट पास {act_val} (Same Game)"
+                    if p_num and act_next_val != "-":
+                        if p_num == act_next_val:
+                            status_text = f"🟢 पास {act_next_val} (Same Game)"
+                        elif p_palat == act_next_val:
+                            status_text = f"🟠 पलट पास {act_next_val} (Same Game)"
                         else:
+                            # क्या किसी अन्य गेम में अगले दिन पास हुआ?
                             other_pass = None
-                            for o_col, o_val in actual_results.items():
+                            for o_col, o_val in next_day_results.items():
                                 if o_col != col and (p_num == o_val or p_palat == o_val):
                                     other_pass = o_col
                                     break
@@ -233,14 +240,14 @@ if uploaded_file is not None:
 
                     past_box_rows.append({
                         "लोकेशन / गेम": col,
-                        "🎯 उस दिन का रिज़ल्ट": act_val,
-                        "👑 प्रेडिक्टेड सिंगल": f"🔥 {p_num}" if p_num else "-",
-                        "📊 स्टेटस": status_text
+                        "👑 प्रेडिक्टेड सिंगल (दिनांक: " + str(pred_date) + ")": f"🔥 {p_num}" if p_num else "-",
+                        "🎯 अगले दिन का रिज़ल्ट (दिनांक: " + str(next_date) + ")": act_next_val,
+                        "📊 पास/फेल स्टेटस": status_text
                     })
 
                 if past_box_rows:
                     box_count += 1
-                    st.markdown(f"#### 📅 बॉक्स {box_count}: दिनांक/दिन - {row_date}")
+                    st.markdown(f"#### 📅 बॉक्स {box_count}: प्रेडिक्शन दिनांक - {pred_date} ➔ रिज़ल्ट दिनांक - {next_date}")
                     st.dataframe(pd.DataFrame(past_box_rows), use_container_width=True, hide_index=True)
                     st.write("")
 
@@ -248,4 +255,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                
+                                            

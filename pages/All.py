@@ -15,10 +15,11 @@ if uploaded_file is not None:
     df = pd.read_csv(uploaded_file)
     df.columns = df.columns.str.strip()
     
-    # डेट कॉलम की पहचान करना
+    # डेट कॉलम की पहचान करना (यहाँ गलती ठीक कर दी गई है)
     date_col = None
     for c in df.columns:
-        if 'date' in c.lower() - set() or 'din' in c.lower() or 'दिनांक' in c or 'tarikh' in c.lower():
+        c_lower = c.lower()
+        if 'date' in c_lower or 'din' in c_lower or 'दिनांक' in c or 'tarikh' in c_lower:
             date_col = c
             break
 
@@ -134,7 +135,7 @@ if uploaded_file is not None:
             
             if sel_game_crossing:
                 raw_series_c = df[sel_game_crossing].dropna().tolist()
-                dates_list = df[date_col].tolist() if date_col else [f"Record {i+1}" for i in range(len(df))]
+                dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Record {i+1}" for i in range(len(df))]
                 
                 history_data_c = []
                 for i in range(1, len(raw_series_c)):
@@ -275,7 +276,7 @@ if uploaded_file is not None:
             
             if sel_game_single:
                 raw_series_s = df[sel_game_single].dropna().tolist()
-                dates_list_s = df[date_col].tolist() if date_col else [f"Record {i+1}" for i in range(len(df))]
+                dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Record {i+1}" for i in range(len(df))]
                 
                 history_data_s = []
                 for i in range(2, len(raw_series_s)):
@@ -287,7 +288,6 @@ if uploaded_file is not None:
                             c_str = f"{curr_val:02d}"
                             p_str = f"{prev_val:02d}"
                             
-                            # बैक-टेस्टिंग लॉजिक: यदि पिछला रिज़ल्ट मैच हुआ या डायरेक्ट पास हुआ
                             pass_status = "✅ Direct Pass" if curr_val == prev_val else "❌ Fail"
                             row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
                             

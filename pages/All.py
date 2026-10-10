@@ -5,10 +5,10 @@ import urllib.parse
 # --- Streamlit Page Config ---
 st.set_page_config(page_title="Advanced All-in-One Analytics & Backtesting Engine", layout="wide")
 
-st.title("🎯 All-in-One Game Analytics & Per-Day Tracker")
-st.write("यहाँ मुख्य टेबल और उसके नीचे पिछले दिनों का बिल्कुल सटीक डे-बाय-डे पास/फेल रिकॉर्ड दिया गया है।")
+st.title("🎯 All-in-One Game Analytics & 5-Day Direct Box Engine")
+st.write("यहाँ आज का मुख्य रिजल्ट बॉक्स है और उसके नीचे पिछले 5 दिनों का खुद जनरेट किया हुआ पास/फेल रिकॉर्ड बॉक्स दिया गया है।")
 
-# --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
+# --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
 
 if uploaded_file is not None:
@@ -29,7 +29,7 @@ if uploaded_file is not None:
     if available_cols:
         tab1, tab2 = st.tabs([
             "🎯 1. Crossing Engine", 
-            "🔥 2. Single Direct Number Engine (Color Tracker)"
+            "🔥 2. Single Direct Number Engine (5-Day Direct Boxes)"
         ])
         
         # ==========================================
@@ -40,14 +40,7 @@ if uploaded_file is not None:
             
             def analyze_best_crossing_and_haruf(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
-                valid_vals = []
-                for x in vals:
-                    try:
-                        val = int(x)
-                        if 0 <= val <= 99:
-                            valid_vals.append(val)
-                    except:
-                        continue
+                valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
                 if len(valid_vals) < 2:
                     return None
 
@@ -73,15 +66,11 @@ if uploaded_file is not None:
 
                 ranked_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)
                 
-                single_haruf = ranked_harufs[0]
-                top_4_harufs = sorted(ranked_harufs[:4])
-                top_6_harufs = sorted(ranked_harufs[:6])
-
                 return {
                     "last_num": f"{last_num:02d}",
-                    "single_haruf": str(single_haruf),
-                    "haruf_4_str": ", ".join(map(str, top_4_harufs)),
-                    "haruf_6_str": ", ".join(map(str, top_6_harufs))
+                    "single_haruf": str(ranked_harufs[0]),
+                    "haruf_4_str": ", ".join(map(str, sorted(ranked_harufs[:4]))),
+                    "haruf_6_str": ", ".join(map(str, sorted(ranked_harufs[:6])))
                 }
 
             analysis_results = []
@@ -102,21 +91,14 @@ if uploaded_file is not None:
                 st.dataframe(pd.DataFrame(analysis_results), use_container_width=True, hide_index=True)
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE (COLOR TRACKER)
+        # TAB 2: SINGLE DIRECT NUMBER ENGINE (5-DAY DIRECT BOXES)
         # ==========================================
         with tab2:
             st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
             
             def get_best_single_direct_number(sub_df, column_name):
                 vals = sub_df[column_name].dropna().tolist()
-                valid_vals = []
-                for x in vals:
-                    try:
-                        v = int(x)
-                        if 0 <= v <= 99:
-                            valid_vals.append(v)
-                    except:
-                        continue
+                valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
                 if len(valid_vals) < 2:
                     return None
 
@@ -151,6 +133,7 @@ if uploaded_file is not None:
                     "single_direct": f"{best_single_num:02d}"
                 }
 
+            # 1. आज का मुख्य टेबल (Present Box)
             single_results = []
             wa_msg_lines = []
             for col in available_cols:
@@ -164,9 +147,9 @@ if uploaded_file is not None:
                     wa_msg_lines.append(f"• *{col}* (Last: {res['last_num']}) ➔ Single: *{res['single_direct']}*")
 
             if single_results:
+                st.markdown("### 📌 आज का ताज़ा रिज़ल्ट और प्रेडिक्शन (Main Box)")
                 st.dataframe(pd.DataFrame(single_results), use_container_width=True, hide_index=True)
                 
-                st.markdown("### 📋 सभी गेम का 1-1 सिंगल नंबर (Copy / Direct Line)")
                 direct_line_text = ", ".join([f"{r['👑 1 सिंगल नंबर (No Palat)'].split()[1]}" for r in single_results])
                 st.code(direct_line_text, language="text")
 
@@ -178,32 +161,40 @@ if uploaded_file is not None:
                     f'<a href="{wa_url}" target="_blank">'
                     f'<button style="background-color:#25D366; color:white; border:none; padding:12px 20px; '
                     f'font-size:16px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">'
-                    f'📲 केवल सिंगल नंबर WhatsApp पर भेजें (Share Single Numbers)'
+                    f'📲 केवल सिंगल नंबर WhatsApp पर भेजें'
                     f'</button></a>',
                     unsafe_allow_html=True
                 )
 
-            # --- पिछले दिनों का पास/फेल रिकॉर्ड बॉक्स (ऑटो-कैलकुलेटेड) ---
+            # 2. पिछले 5 दिनों के ऑटो-जनरेटेड बॉक्स (5 Boxes One Below Another)
             st.markdown("---")
-            st.subheader("📈 पिछले दिनों का सिंगल नंबर पास/फेल रिकॉर्ड (कलर-कोडेड बॉक्स)")
-            st.markdown("""
-            * **🟢 ग्रीन (Green):** उसी गेम में सेम नंबर पास हुआ।
-            * **🟠 ऑरेंज (Orange):** नंबर (या उसकी पलट) किसी दूसरी गेम में पास हुआ।
-            * **🔴 रेड (Red):** गेम पूरी तरह फेल रही।
-            """)
+            st.subheader("📜 पिछले 5 दिनों का पास्ट रिकॉर्ड बॉक्स (5 Days Record)")
             
-            dates_list_s = df[date_col].tolist() if date_col and date_col in df.columns else [f"Row {i+1}" for i in range(len(df))]
-            color_box_data = []
+            dates_list = df[date_col].tolist() if date_col and date_col in df.columns else [f"Day {i+1}" for i in range(len(df))]
             
-            # CSV के डेटा से पिछले 5 से 10 दिनों का रिकॉर्ड अपने आप तैयार करना
-            start_idx_s = max(1, len(df) - 10)
-            for i in range(len(df) - 1, start_idx_s - 1, -1):
-                if i < 1: continue
-                sub_df = df.iloc[:i]
-                row_date = dates_list_s[i] if i < len(dates_list_s) else f"Row {i+1}"
+            total_rows = len(df)
+            # पिछले 5 दिनों के लिए लूप (एक के नीचे एक बॉक्स)
+            box_count = 0
+            for i in range(total_rows - 1, 0, -1):
+                if box_count >= 5:
+                    break
                 
-                row_dict = {"📅 दिनांक (Date)": row_date}
+                sub_df = df.iloc[:i] # पिछले दिन तक का डेटा
+                row_date = dates_list[i] if i < len(dates_list) else f"Day {i+1}"
                 
+                past_box_rows = []
+                
+                # इस दिन के वास्तविक रिजल्ट
+                actual_results = {}
+                for col in available_cols:
+                    try:
+                        val = int(df.loc[i, col])
+                        if 0 <= val <= 99:
+                            actual_results[col] = f"{val:02d}"
+                    except:
+                        pass
+                
+                # इस दिन के प्रेडिक्टेड सिंगल नंबर
                 day_singles = {}
                 day_palats = {}
                 for col in available_cols:
@@ -215,54 +206,43 @@ if uploaded_file is not None:
                             day_palats[col] = f"{int(s_num):02d}"[::-1]
                         except:
                             day_palats[col] = s_num
-                
-                actual_results = {}
-                for col in available_cols:
-                    try:
-                        val = int(df.loc[i, col])
-                        if 0 <= val <= 99:
-                            actual_results[col] = f"{val:02d}"
-                    except:
-                        pass
-                
-                has_data = False
+
                 for col in available_cols:
                     p_num = day_singles.get(col)
                     p_palat = day_palats.get(col)
-                    act_val = actual_results.get(col)
+                    act_val = actual_results.get(col, "-")
                     
-                    if p_num and act_val:
+                    status_text = "🔴 फेल"
+                    if p_num and act_val != "-":
                         if p_num == act_val:
-                            row_dict[col] = f"🟢 पास [{p_num}]"
-                            has_data = True
+                            status_text = f"🟢 पास {act_val} (Same Game)"
                         elif p_palat == act_val:
-                            row_dict[col] = f"🟠 पलट पास [{p_palat}]"
-                            has_data = True
+                            status_text = f"🟠 पलट पास {act_val} (Same Game)"
                         else:
-                            other_hit = None
-                            for other_c, other_a in actual_results.items():
-                                if other_c != col and (p_num == other_a or p_palat == other_a):
-                                    other_hit = other_c
+                            # क्या किसी अन्य गेम में पास हुआ?
+                            other_pass = None
+                            for o_col, o_val in actual_results.items():
+                                if o_col != col and (p_num == o_val or p_palat == o_val):
+                                    other_pass = o_col
                                     break
-                            if other_hit:
-                                row_dict[col] = f"🟠 अन्य में ({other_hit})"
-                                has_data = True
-                            else:
-                                row_dict[col] = "🔴 फेल"
-                                has_data = True
-                    else:
-                        row_dict[col] = "-"
-                
-                if has_data:
-                    color_box_data.append(row_dict)
-            
-            if color_box_data:
-                st.dataframe(pd.DataFrame(color_box_data), use_container_width=True, hide_index=True)
-            else:
-                st.warning("डेटा प्रोसेस करने के लिए पर्याप्त रिकॉर्ड नहीं है।")
+                            if other_pass:
+                                status_text = f"🟠 अन्य में पास ({other_pass})"
+
+                    past_box_rows.append({
+                        "लोकेशन / गेम": col,
+                        "🎯 उस दिन का रिज़ल्ट": act_val,
+                        "👑 प्रेडिक्टेड सिंगल": f"🔥 {p_num}" if p_num else "-",
+                        "📊 स्टेटस": status_text
+                    })
+
+                if past_box_rows:
+                    box_count += 1
+                    st.markdown(f"#### 📅 बॉक्स {box_count}: दिनांक/दिन - {row_date}")
+                    st.dataframe(pd.DataFrame(past_box_rows), use_container_width=True, hide_index=True)
+                    st.write("")
 
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-                            
+                    

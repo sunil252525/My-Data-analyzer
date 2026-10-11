@@ -10,11 +10,11 @@ st.set_page_config(
 
 st.title("🎯 All-in-One Game Analytics & Dashboard")
 st.write(
-    "आपके बताए गए डिज़ाइन और फॉर्मेट के अनुसार कंबाइंड रिपोर्ट तैयार कर दी गई"
-    " है।"
+    "यहाँ दो टैब दिए गए हैं: पहला **क्रॉसिंग इंजन** के लिए और दूसरा **सिंगल"
+    " डायरेक्ट नंबर इंजन** के लिए।"
 )
 
-# --- FILE UPLOADER ---
+# --- FILE UPLOADER (SHARED FOR BOTH TABS) ---
 uploaded_file = st.file_uploader(
     "📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"]
 )
@@ -23,7 +23,7 @@ if uploaded_file is not None:
   df = pd.read_csv(uploaded_file)
   df.columns = df.columns.str.strip()
 
-  # तारीख (Date) खोजने का प्रयास
+  # तारीख (Date) निकालने का प्रयास
   date_col = next(
       (
           c
@@ -36,7 +36,7 @@ if uploaded_file is not None:
       None,
   )
   if date_col:
-    current_date = str(df[date_col].iloc[-1]).strip()
+    current_date = str(df[date_col].dropna().iloc[-1]).strip()
   else:
     current_date = datetime.datetime.now().strftime("%d/%m/%Y")
 
@@ -44,178 +44,289 @@ if uploaded_file is not None:
   available_cols = [c for c in series_cols if c in df.columns]
 
   if available_cols:
-    st.subheader("📊 फाइनल अपडेटेड फॉर्मेट रिपोर्ट")
+    tab1, tab2 = st.tabs([
+        "🎯 1. Complete Crossing & Haruf Engine",
+        "🔥 2. Single Direct Number Engine (No Palat)",
+    ])
+
+    # ==========================================
+    # TAB 1: COMPLETE CROSSING & HARUF ENGINE
+    # ==========================================
+    with tab1:
+      st.subheader("📊 ऐतिहासिक डेटा और फॉलो-अप पैटर्न के आधार पर क्रॉसिंग")
 
 
-    # Tab 1 Function: Crossing & Haruf
-    def analyze_best_crossing_and_haruf(df, column_name):
-      vals = df[column_name].dropna().tolist()
-      valid_vals = []
-      for x in vals:
-        try:
-          val = int(x)
-          if 0 <= val <= 99:
-            valid_vals.append(val)
-        except:
-          continue
-      if len(valid_vals) < 5:
-        return None
+      def analyze_best_crossing_and_haruf(df, column_name):
+        vals = df[column_name].dropna().tolist()
+        valid_vals = []
 
-      last_num = valid_vals[-1]
-      haruf_scores = {d: 0 for d in range(10)}
-      total_len = len(valid_vals)
-      for idx, num in enumerate(valid_vals):
-        weight = 1 + (idx / total_len)
-        haruf_scores[num // 10] += weight
-        haruf_scores[num % 10] += weight
+        for x in vals:
+          try:
+            val = int(x)
+            if 0 <= val <= 99:
+              valid_vals.append(val)
+          except:
+            continue
 
-      follow_up_harufs = []
-      for i in range(len(valid_vals) - 2):
-        if valid_vals[i] == last_num:
-          f1 = valid_vals[i + 1]
-          f2 = valid_vals[i + 2]
-          follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
+        if len(valid_vals) < 5:
+          return None
 
-      for h in follow_up_harufs:
-        if 0 <= h <= 9:
-          haruf_scores[h] += 3.5
+        last_num = valid_vals[-1]
+        haruf_scores = {d: 0 for d in range(10)}
 
-      ranked_harufs = sorted(
-          haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True
-      )
-      single_haruf = ranked_harufs[0]
-      top_6_harufs = sorted(ranked_harufs[:6])
+        total_len = len(valid_vals)
+        for idx, num in enumerate(valid_vals):
+          weight = 1 + (idx / total_len)
+          haruf_scores[num // 10] += weight
+          haruf_scores[num % 10] += weight
 
-      return {
-          "single_haruf": str(single_haruf),
-          "haruf_6_str": ", ".join(map(str, top_6_harufs)),
-          "single_h_int": single_haruf,
-      }
+        follow_up_harufs = []
+        for i in range(len(valid_vals) - 2):
+          if valid_vals[i] == last_num:
+            f1 = valid_vals[i + 1]
+            f2 = valid_vals[i + 2]
+            follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
 
+        for h in follow_up_harufs:
+          if 0 <= h <= 9:
+            haruf_scores[h] += 3.5
 
-    # Tab 2 Function: Single Direct Number
-    def get_best_single_direct_number(df, column_name):
-      vals = df[column_name].dropna().tolist()
-      valid_vals = []
-      for x in vals:
-        try:
-          v = int(x)
-          if 0 <= v <= 99:
-            valid_vals.append(v)
-        except:
-          continue
-      if len(valid_vals) < 10:
-        return None
+        ranked_harufs = sorted(
+            haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True
+        )
 
-      last_num = valid_vals[-1]
-      in_haruf_counts = {d: 0 for d in range(10)}
-      out_haruf_counts = {d: 0 for d in range(10)}
-      for num in valid_vals[-50:]:
-        in_haruf_counts[num // 10] += 1
-        out_haruf_counts[num % 10] += 1
+        single_haruf = ranked_harufs[0]
+        top_4_harufs = sorted(ranked_harufs[:4])
+        top_6_harufs = sorted(ranked_harufs[:6])
 
-      top_in_haruf = max(
-          in_haruf_counts.keys(), key=lambda x: in_haruf_counts[x]
-      )
-      top_out_haruf = max(
-          out_haruf_counts.keys(), key=lambda x: out_haruf_counts[x]
-      )
-
-      num_scores = {n: 0.0 for n in range(100)}
-      for i in range(len(valid_vals) - 1):
-        if valid_vals[i] == last_num:
-          nxt = valid_vals[i + 1]
-          num_scores[nxt] += 5.0
-
-      for i in range(len(valid_vals) - 2):
-        if valid_vals[i] == last_num:
-          nxt2 = valid_vals[i + 2]
-          num_scores[nxt2] += 3.0
-
-      crossing_best = top_in_haruf * 10 + top_out_haruf
-      num_scores[crossing_best] += 4.0
-
-      for n in valid_vals[-30:]:
-        num_scores[n] += 0.5
-
-      best_single_num = max(num_scores.keys(), key=lambda x: num_scores[x])
-      return {"single_direct": f"{best_single_num:02d}"}
+        return {
+            "last_num": f"{last_num:02d}",
+            "single_haruf": str(single_haruf),
+            "haruf_4_str": ", ".join(map(str, top_4_harufs)),
+            "haruf_6_str": ", ".join(map(str, top_6_harufs)),
+            "single_h_int": single_haruf,
+        }
 
 
-    all_unique_harufs = set()
-    all_single_numbers = []
-    game_data = []
+      analysis_results = []
+      for col in available_cols:
+        res = analyze_best_crossing_and_haruf(df, col)
+        if res:
+          analysis_results.append({
+              "लोकेशन / गेम": col,
+              "🎯 ताज़ा रिज़ल्ट": res["last_num"],
+              "👑 सिंगल हरूफ़ (1 Haruf)": (
+                  f"🔥 {res['single_haruf']} (अंदर/बाहर)"
+              ),
+              "⚡ 4 हरूफ़ क्रॉसिंग": res["haruf_4_str"],
+              "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"],
+          })
 
-    for col in available_cols:
-      res_t1 = analyze_best_crossing_and_haruf(df, col)
-      res_t2 = get_best_single_direct_number(df, col)
-      if res_t1 and res_t2:
-        all_unique_harufs.add(res_t1["single_h_int"])
-        all_single_numbers.append(res_t2["single_direct"])
-        game_data.append((col, res_t1, res_t2))
+      if analysis_results:
+        st.dataframe(
+            pd.DataFrame(analysis_results),
+            use_container_width=True,
+            hide_index=True,
+        )
 
-    # यूनिक क्रॉसिंग बिना कॉमा के (जैसे 01468)
-    sorted_unique = sorted(list(all_unique_harufs))
-    unique_crossing_str = "".join(map(str, sorted_unique))
+    # ==========================================
+    # TAB 2: SINGLE DIRECT NUMBER ENGINE
+    # ==========================================
+    with tab2:
+      st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
 
-    # सभी सिंगल नंबर और उनकी पलट एक लाइन में बनाने के लिए
-    singles_joined = ", ".join(all_single_numbers)
-    palat_joined = ", ".join([num[::-1] for num in all_single_numbers])
+
+      def get_best_single_direct_number(df, column_name):
+        vals = df[column_name].dropna().tolist()
+        valid_vals = []
+
+        for x in vals:
+          try:
+            v = int(x)
+            if 0 <= v <= 99:
+              valid_vals.append(v)
+          except:
+            continue
+
+        if len(valid_vals) < 10:
+          return None
+
+        last_num = valid_vals[-1]
+
+        in_haruf_counts = {d: 0 for d in range(10)}
+        out_haruf_counts = {d: 0 for d in range(10)}
+        for num in valid_vals[-50:]:
+          in_haruf_counts[num // 10] += 1
+          out_haruf_counts[num % 10] += 1
+
+        top_in_haruf = max(
+            in_haruf_counts.keys(), key=lambda x: in_haruf_counts[x]
+        )
+        top_out_haruf = max(
+            out_haruf_counts.keys(), key=lambda x: out_haruf_counts[x]
+        )
+
+        num_scores = {n: 0.0 for n in range(100)}
+
+        for i in range(len(valid_vals) - 1):
+          if valid_vals[i] == last_num:
+            nxt = valid_vals[i + 1]
+            num_scores[nxt] += 5.0
+
+        for i in range(len(valid_vals) - 2):
+          if valid_vals[i] == last_num:
+            nxt2 = valid_vals[i + 2]
+            num_scores[nxt2] += 3.0
+
+        crossing_best = top_in_haruf * 10 + top_out_haruf
+        num_scores[crossing_best] += 4.0
+
+        for n in valid_vals[-30:]:
+          num_scores[n] += 0.5
+
+        best_single_num = max(num_scores.keys(), key=lambda x: num_scores[x])
+
+        return {
+            "last_num": f"{last_num:02d}",
+            "single_direct": f"{best_single_num:02d}",
+            "score": round(num_scores[best_single_num], 1),
+        }
+
+
+      single_results = []
+      for col in available_cols:
+        res = get_best_single_direct_number(df, col)
+        if res:
+          single_results.append({
+              "लोकेशन / गेम": col,
+              "🎯 ताज़ा रिज़ल्ट": res["last_num"],
+              "👑 1 सिंगल नंबर (No Palat)": f"🔥 {res['single_direct']} (100)",
+              "📊 एल्गोरिथम स्कोर": f"{res['score']} pts",
+          })
+
+      if single_results:
+        st.dataframe(
+            pd.DataFrame(single_results),
+            use_container_width=True,
+            hide_index=True,
+        )
+
+    # ==========================================
+    # WHATSAPP SHARE SECTION (मजबूत क्रॉसिंग और सही फॉर्मेट के साथ)
+    # ==========================================
+    st.markdown("---")
+    st.subheader("📲 WhatsApp शेयरिंग बटन")
 
     whatsapp_blocks = []
-    combined_results = []
+    all_single_numbers = []
 
-    for col, res_t1, res_t2 in game_data:
-      single_num = res_t2["single_direct"]
-      haruf_num = res_t1["single_haruf"]
 
-      combined_results.append({
-          "लोकेशन / गेम": col,
-          "सिंगल नंबर": f"{single_num} (100)",
-          "हरूफ (AB)": f"AB {haruf_num} (250)",
-          "क्रॉसिंग": f"{unique_crossing_str} (50)",
-      })
+    def analyze_for_wa(df, column_name):
+      vals = df[column_name].dropna().tolist()
+      valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
+      if len(valid_vals) < 5:
+        return None
+      haruf_scores = {d: 0 for d in range(10)}
+      for idx, num in enumerate(valid_vals):
+        weight = 1 + (idx / len(valid_vals))
+        haruf_scores[num // 10] += weight
+        haruf_scores[num % 10] += weight
+      ranked = sorted(
+          haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True
+      )
+      return {"single_haruf": str(ranked[0])}
 
-      # आपके बताए गए फॉर्मेट के अनुसार हर गेम का ब्लॉक
+
+    def single_for_wa(df, column_name):
+      vals = df[column_name].dropna().tolist()
+      valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
+      if len(valid_vals) < 10:
+        return None
+      last_num = valid_vals[-1]
+      in_h = {d: 0 for d in range(10)}
+      out_h = {d: 0 for d in range(10)}
+      for num in valid_vals[-50:]:
+        in_h[num // 10] += 1
+        out_h[num % 10] += 1
+      top_in = max(in_h, key=in_h.get)
+      top_out = max(out_h, key=out_h.get)
+      scores = {n: 0.0 for n in range(100)}
+      for i in range(len(valid_vals) - 1):
+        if valid_vals[i] == last_num:
+          scores[valid_vals[i + 1]] += 5.0
+      scores[top_in * 10 + top_out] += 4.0
+      best_num = max(scores, key=scores.get)
+      return f"{best_num:02d}"
+
+
+    # मजबूत क्रॉसिंग बनाने के लिए सभी गेम्स के हरूफ़ स्कोर को कंबाइंड करना
+    global_haruf_scores = {d: 0.0 for d in range(10)}
+    for col in available_cols:
+      vals = df[col].dropna().tolist()
+      valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
+      if valid_vals:
+        total_len = len(valid_vals)
+        for idx, num in enumerate(valid_vals):
+          weight = 1 + (idx / total_len)
+          global_haruf_scores[num // 10] += weight
+          global_haruf_scores[num % 10] += weight
+
+    ranked_global = sorted(
+        global_haruf_scores.keys(),
+        key=lambda x: global_haruf_scores[x],
+        reverse=True,
+    )
+    # टॉप 5 या 6 अंकों की मजबूत क्रॉसिंग
+    top_crossing_digits = sorted(ranked_global[:5])
+    unique_crossing_str_wa = "".join(map(str, top_crossing_digits))
+
+    for col in available_cols:
+      res_cross = analyze_for_wa(df, col)
+      single_num = single_for_wa(df, col)
+      if res_cross and single_num:
+        all_single_numbers.append(single_num)
+        haruf_num = res_cross["single_haruf"]
+        whatsapp_blocks.append((col, single_num, haruf_num))
+
+    formatted_blocks = []
+    for col, s_num, h_num in whatsapp_blocks:
       block = (
           f"*{col}*\n"
-          f"*{single_num}*(100)\n"
-          f"*{haruf_num}* AB (250)\n"
-          f"*Crossing* {unique_crossing_str}(50)\n\n"
-          f"{singles_joined}(100)\n"
-          f"{palat_joined}(50)"
+          f"*{s_num}*(100)\n"
+          f"*{h_num}* AB (250)\n"
+          f"*Crossing* {unique_crossing_str_wa}(50)"
       )
-      whatsapp_blocks.append(block)
+      formatted_blocks.append(block)
 
-    if combined_results:
-      st.dataframe(
-          pd.DataFrame(combined_results),
-          use_container_width=True,
-          hide_index=True,
-      )
+    singles_joined = ", ".join(all_single_numbers)
+    palat_joined = ", ".join([num[::-1] for num in all_single_numbers])
+    bottom_summary = f"{singles_joined}(100)\n{palat_joined}(50)"
 
-      st.markdown("---")
+    final_whatsapp_text = (
+        f"📅 *Date: {current_date}*\n\n"
+        + "\n\n".join(formatted_blocks)
+        + f"\n\n{bottom_summary}"
+    )
 
-      # व्हाट्सएप पर भेजने के लिए संपूर्ण टेक्स्ट
-      final_whatsapp_text = (
-          f"📅 *Date: {current_date}*\n\n" + "\n\n".join(whatsapp_blocks)
-      )
-      encoded_msg = urllib.parse.quote(final_whatsapp_text)
-      wa_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
+    encoded_msg = urllib.parse.quote(final_whatsapp_text)
+    wa_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
 
-      st.markdown(
-          f'<a href="{wa_url}" target="_blank">'
-          '<button style="background-color:#25D366; color:white;'
-          " border:none; padding:12px 20px; "
-          "font-size:16px; border-radius:8px; cursor:pointer;"
-          ' font-weight:bold; width:100%;">'
-          "📲 व्हाट्सएप पर भेजें (Share Report)"
-          "</button></a>",
-          unsafe_allow_html=True,
-      )
+    st.markdown(
+        f'<a href="{wa_url}" target="_blank">'
+        '<button style="background-color:#25D366; color:white;'
+        " border:none; padding:12px 20px; "
+        "font-size:16px; border-radius:8px; cursor:pointer;"
+        ' font-weight:bold; width:100%;">'
+        "📲 कंबाइंड रिपोर्ट WhatsApp पर भेजें (Share Report)"
+        "</button></a>",
+        unsafe_allow_html=True,
+    )
 
   else:
-    st.error("CSV फ़ाइल में आवश्यक कॉलम नहीं मिले!")
+    st.error(
+        "CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं"
+        " मिला!"
+    )
 else:
-  st.info("कृपया आगे बढ़ने के लिए अपनी CSV फ़ाइल अपलोड करें।")
-    
+  st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
+      

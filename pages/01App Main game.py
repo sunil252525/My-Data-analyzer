@@ -212,10 +212,10 @@ if uploaded_file is not None:
         )
 
     # ==========================================
-    # WHATSAPP SHARE SECTION (मजबूत क्रॉसिंग और सही फॉर्मेट के साथ)
+    # WHATSAPP SHARE & COPY SECTION
     # ==========================================
     st.markdown("---")
-    st.subheader("📲 WhatsApp शेयरिंग बटन")
+    st.subheader("📲 WhatsApp शेयरिंग और कॉपी विकल्प")
 
     whatsapp_blocks = []
     all_single_numbers = []
@@ -259,7 +259,7 @@ if uploaded_file is not None:
       return f"{best_num:02d}"
 
 
-    # मजबूत क्रॉसिंग बनाने के लिए सभी गेम्स के हरूफ़ स्कोर को कंबाइंड करना
+    # ग्लोबल हरूफ़ स्कोरिंग से मजबूत क्रॉसिंग (कम से कम 5 अंकों की)
     global_haruf_scores = {d: 0.0 for d in range(10)}
     for col in available_cols:
       vals = df[col].dropna().tolist()
@@ -276,7 +276,6 @@ if uploaded_file is not None:
         key=lambda x: global_haruf_scores[x],
         reverse=True,
     )
-    # टॉप 5 या 6 अंकों की मजबूत क्रॉसिंग
     top_crossing_digits = sorted(ranked_global[:5])
     unique_crossing_str_wa = "".join(map(str, top_crossing_digits))
 
@@ -308,6 +307,14 @@ if uploaded_file is not None:
         + f"\n\n{bottom_summary}"
     )
 
+    # 1. टेक्स्ट बॉक्स (जहाँ से सीधे कॉपी किया जा सकता है)
+    st.text_area(
+        "📋 यहाँ से पूरा मैसेज एक क्लिक में कॉपी करें:",
+        final_whatsapp_text,
+        height=250,
+    )
+
+    # 2. WhatsApp शेयर बटन
     encoded_msg = urllib.parse.quote(final_whatsapp_text)
     wa_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
 
@@ -317,7 +324,7 @@ if uploaded_file is not None:
         " border:none; padding:12px 20px; "
         "font-size:16px; border-radius:8px; cursor:pointer;"
         ' font-weight:bold; width:100%;">'
-        "📲 कंबाइंड रिपोर्ट WhatsApp पर भेजें (Share Report)"
+        "📲 WhatsApp पर भेजें (Share Report)"
         "</button></a>",
         unsafe_allow_html=True,
     )
@@ -329,4 +336,4 @@ if uploaded_file is not None:
     )
 else:
   st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-      
+          

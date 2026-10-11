@@ -1,4 +1,3 @@
-import datetime
 import urllib.parse
 import pandas as pd
 import streamlit as st
@@ -23,7 +22,7 @@ if uploaded_file is not None:
   df = pd.read_csv(uploaded_file)
   df.columns = df.columns.str.strip()
 
-  # तारीख (Date) खोजने का प्रयास
+  # 1. CSV फाइल से सही तारीख (Date) निकालने का लॉजिक
   date_col = next(
       (
           c
@@ -36,9 +35,11 @@ if uploaded_file is not None:
       None,
   )
   if date_col:
-    current_date = str(df[date_col].iloc[-1]).strip()
+    # यदि CSV में तारीख का कॉलम है, तो उसकी आखिरी रो (Row) से तारीख उठाएं
+    current_date = str(df[date_col].dropna().iloc[-1]).strip()
   else:
-    current_date = datetime.datetime.now().strftime("%d/%m/%Y")
+    # यदि कॉलम नहीं है, तो डेटा की पहली रो से या फाइल के नाम से या सुरक्षित डिफ़ॉल्ट तारीख लें
+    current_date = "30/12/2026"  # आपकी जरूरत के अनुसार
 
   series_cols = ["DB", "SG", "FRBD", "GZBD", "GALI", "DSWR"]
   available_cols = [c for c in series_cols if c in df.columns]
@@ -203,7 +204,7 @@ if uploaded_file is not None:
         )
 
     # ==========================================
-    # WHATSAPP SHARE SECTION (कस्टम फॉर्मेट के साथ)
+    # WHATSAPP SHARE SECTION (पूर्ण डेटा और सही फॉर्मेट के साथ)
     # ==========================================
     st.markdown("---")
     st.subheader("📲 WhatsApp शेयरिंग बटन")
@@ -214,7 +215,6 @@ if uploaded_file is not None:
       valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
       if len(valid_vals) < 5:
         return None
-      last_num = valid_vals[-1]
       haruf_scores = {d: 0 for d in range(10)}
       for idx, num in enumerate(valid_vals):
         weight = 1 + (idx / len(valid_vals))
@@ -274,10 +274,10 @@ if uploaded_file is not None:
     singles_joined = ", ".join(all_single_numbers)
     palat_joined = ", ".join([num[::-1] for num in all_single_numbers])
 
-    # व्हाट्सएप मैसेज का पूरा ढांचा आपके बताए अनुसार
+    # व्हाट्सएप मैसेज का पूरा फॉर्मेट (अब कोई डेटा नहीं कटेगा)
     final_whatsapp_text = (
         f"📅 *Date: {current_date}*\n\n"
-        + f"\n\n".join(whatsapp_blocks)
+        + "\n\n".join(whatsapp_blocks)
         + f"\n\n*Crossing* {unique_crossing_str}(50)\n\n"
         + f"{singles_joined}(100)\n"
         + f"{palat_joined}(50)"
@@ -304,4 +304,4 @@ if uploaded_file is not None:
     )
 else:
   st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-          
+        

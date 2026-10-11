@@ -1,5 +1,4 @@
 import datetime
-import urllib.parse
 import pandas as pd
 import streamlit as st
 
@@ -176,7 +175,7 @@ if uploaded_file is not None:
         )
 
     # ==========================================
-    # COPY SECTION (केवल कॉपी-पेस्ट बॉक्स)
+    # COPY SECTION (सभी गेम्स और सही सिंगल हरूफ़ क्रॉसिंग के साथ)
     # ==========================================
     st.markdown("---")
     st.subheader("📋 WhatsApp रिपोर्ट (कॉपी करने के लिए)")
@@ -216,7 +215,7 @@ if uploaded_file is not None:
       return f"{best_num:02d}"
 
 
-    # 1. सभी गेम्स के सिंगल हरूफ़ और सिंगल नंबर निकालना
+    # 1. सभी उपलब्ध गेम्स के लिए डेटा निकालना
     temp_game_data = []
     for col in available_cols:
       res_cross = analyze_for_wa(df, col)
@@ -226,7 +225,7 @@ if uploaded_file is not None:
         all_single_numbers.append(single_num)
         temp_game_data.append((col, single_num, res_cross["single_haruf"]))
 
-    # 2. केवल सिंगल हरूफ़ों की क्रॉसिंग बनाना
+    # 2. सभी सिंगल हरूफ़ों को मिलाकर यूनिक क्रॉसिंग बनाना (जैसे 016789)
     sorted_unique_wa = sorted(list(all_unique_harufs_wa))
     unique_crossing_str_wa = "".join(map(str, sorted_unique_wa))
 
@@ -251,11 +250,11 @@ if uploaded_file is not None:
         + f"\n\n{bottom_summary}"
     )
 
-    # 4. केवल टेक्स्ट एरिया (कॉपी करने के लिए)
+    # 4. टेक्स्ट एरिया (बड़ी हाइट के साथ ताकि पूरा मैसेज दिखे)
     st.text_area(
         "यहाँ से पूरा मैसेज कॉपी करके WhatsApp में पेस्ट करें:",
         final_whatsapp_text,
-        height=300,
+        height=400,
     )
 
   else:
@@ -265,4 +264,4 @@ if uploaded_file is not None:
     )
 else:
   st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-      
+          

@@ -59,7 +59,6 @@ if uploaded_file is not None:
       def analyze_best_crossing_and_haruf(df, column_name):
         vals = df[column_name].dropna().tolist()
         valid_vals = []
-
         for x in vals:
           try:
             val = int(x)
@@ -68,7 +67,7 @@ if uploaded_file is not None:
           except:
             continue
 
-        if len(valid_vals) < 5:
+        if not valid_vals:
           return None
 
         last_num = valid_vals[-1]
@@ -80,21 +79,9 @@ if uploaded_file is not None:
           haruf_scores[num // 10] += weight
           haruf_scores[num % 10] += weight
 
-        follow_up_harufs = []
-        for i in range(len(valid_vals) - 2):
-          if valid_vals[i] == last_num:
-            f1 = valid_vals[i + 1]
-            f2 = valid_vals[i + 2]
-            follow_up_harufs.extend([f1 // 10, f1 % 10, f2 // 10, f2 % 10])
-
-        for h in follow_up_harufs:
-          if 0 <= h <= 9:
-            haruf_scores[h] += 3.5
-
         ranked_harufs = sorted(
             haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True
         )
-
         single_haruf = ranked_harufs[0]
         top_4_harufs = sorted(ranked_harufs[:4])
         top_6_harufs = sorted(ranked_harufs[:6])
@@ -139,7 +126,6 @@ if uploaded_file is not None:
       def get_best_single_direct_number(df, column_name):
         vals = df[column_name].dropna().tolist()
         valid_vals = []
-
         for x in vals:
           try:
             v = int(x)
@@ -148,38 +134,16 @@ if uploaded_file is not None:
           except:
             continue
 
-        if len(valid_vals) < 10:
+        if not valid_vals:
           return None
 
         last_num = valid_vals[-1]
-
-        in_haruf_counts = {d: 0 for d in range(10)}
-        out_haruf_counts = {d: 0 for d in range(10)}
-        for num in valid_vals[-50:]:
-          in_haruf_counts[num // 10] += 1
-          out_haruf_counts[num % 10] += 1
-
-        top_in_haruf = max(
-            in_haruf_counts.keys(), key=lambda x: in_haruf_counts[x]
-        )
-        top_out_haruf = max(
-            out_haruf_counts.keys(), key=lambda x: out_haruf_counts[x]
-        )
-
         num_scores = {n: 0.0 for n in range(100)}
 
         for i in range(len(valid_vals) - 1):
           if valid_vals[i] == last_num:
             nxt = valid_vals[i + 1]
             num_scores[nxt] += 5.0
-
-        for i in range(len(valid_vals) - 2):
-          if valid_vals[i] == last_num:
-            nxt2 = valid_vals[i + 2]
-            num_scores[nxt2] += 3.0
-
-        crossing_best = top_in_haruf * 10 + top_out_haruf
-        num_scores[crossing_best] += 4.0
 
         for n in valid_vals[-30:]:
           num_scores[n] += 0.5
@@ -212,19 +176,20 @@ if uploaded_file is not None:
         )
 
     # ==========================================
-    # WHATSAPP SHARE & COPY SECTION
+    # COPY SECTION (केवल कॉपी-पेस्ट बॉक्स)
     # ==========================================
     st.markdown("---")
-    st.subheader("📲 WhatsApp शेयरिंग और कॉपी विकल्प")
+    st.subheader("📋 WhatsApp रिपोर्ट (कॉपी करने के लिए)")
 
     whatsapp_blocks = []
     all_single_numbers = []
+    all_unique_harufs_wa = set()
 
 
     def analyze_for_wa(df, column_name):
       vals = df[column_name].dropna().tolist()
       valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
-      if len(valid_vals) < 5:
+      if not valid_vals:
         return None
       haruf_scores = {d: 0 for d in range(10)}
       for idx, num in enumerate(valid_vals):
@@ -234,61 +199,40 @@ if uploaded_file is not None:
       ranked = sorted(
           haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True
       )
-      return {"single_haruf": str(ranked[0])}
+      return {"single_haruf": str(ranked[0]), "single_h_int": ranked[0]}
 
 
     def single_for_wa(df, column_name):
       vals = df[column_name].dropna().tolist()
       valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
-      if len(valid_vals) < 10:
+      if not valid_vals:
         return None
       last_num = valid_vals[-1]
-      in_h = {d: 0 for d in range(10)}
-      out_h = {d: 0 for d in range(10)}
-      for num in valid_vals[-50:]:
-        in_h[num // 10] += 1
-        out_h[num % 10] += 1
-      top_in = max(in_h, key=in_h.get)
-      top_out = max(out_h, key=out_h.get)
       scores = {n: 0.0 for n in range(100)}
       for i in range(len(valid_vals) - 1):
         if valid_vals[i] == last_num:
           scores[valid_vals[i + 1]] += 5.0
-      scores[top_in * 10 + top_out] += 4.0
-      best_num = max(scores, key=scores.get)
+      best_num = max(scores, key=scores.get) if scores else valid_vals[-1]
       return f"{best_num:02d}"
 
 
-    # ग्लोबल हरूफ़ स्कोरिंग से मजबूत क्रॉसिंग (कम से कम 5 अंकों की)
-    global_haruf_scores = {d: 0.0 for d in range(10)}
-    for col in available_cols:
-      vals = df[col].dropna().tolist()
-      valid_vals = [int(x) for x in vals if str(x).isdigit() and 0 <= int(x) <= 99]
-      if valid_vals:
-        total_len = len(valid_vals)
-        for idx, num in enumerate(valid_vals):
-          weight = 1 + (idx / total_len)
-          global_haruf_scores[num // 10] += weight
-          global_haruf_scores[num % 10] += weight
-
-    ranked_global = sorted(
-        global_haruf_scores.keys(),
-        key=lambda x: global_haruf_scores[x],
-        reverse=True,
-    )
-    top_crossing_digits = sorted(ranked_global[:5])
-    unique_crossing_str_wa = "".join(map(str, top_crossing_digits))
-
+    # 1. सभी गेम्स के सिंगल हरूफ़ और सिंगल नंबर निकालना
+    temp_game_data = []
     for col in available_cols:
       res_cross = analyze_for_wa(df, col)
       single_num = single_for_wa(df, col)
       if res_cross and single_num:
+        all_unique_harufs_wa.add(res_cross["single_h_int"])
         all_single_numbers.append(single_num)
-        haruf_num = res_cross["single_haruf"]
-        whatsapp_blocks.append((col, single_num, haruf_num))
+        temp_game_data.append((col, single_num, res_cross["single_haruf"]))
 
+    # 2. केवल सिंगल हरूफ़ों की क्रॉसिंग बनाना
+    sorted_unique_wa = sorted(list(all_unique_harufs_wa))
+    unique_crossing_str_wa = "".join(map(str, sorted_unique_wa))
+
+    # 3. हर गेम का ब्लॉक तैयार करना
     formatted_blocks = []
-    for col, s_num, h_num in whatsapp_blocks:
+    for col, s_num, h_num in temp_game_data:
       block = (
           f"*{col}*\n"
           f"*{s_num}*(100)\n"
@@ -307,26 +251,11 @@ if uploaded_file is not None:
         + f"\n\n{bottom_summary}"
     )
 
-    # 1. टेक्स्ट बॉक्स (जहाँ से सीधे कॉपी किया जा सकता है)
+    # 4. केवल टेक्स्ट एरिया (कॉपी करने के लिए)
     st.text_area(
-        "📋 यहाँ से पूरा मैसेज एक क्लिक में कॉपी करें:",
+        "यहाँ से पूरा मैसेज कॉपी करके WhatsApp में पेस्ट करें:",
         final_whatsapp_text,
-        height=250,
-    )
-
-    # 2. WhatsApp शेयर बटन
-    encoded_msg = urllib.parse.quote(final_whatsapp_text)
-    wa_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
-
-    st.markdown(
-        f'<a href="{wa_url}" target="_blank">'
-        '<button style="background-color:#25D366; color:white;'
-        " border:none; padding:12px 20px; "
-        "font-size:16px; border-radius:8px; cursor:pointer;"
-        ' font-weight:bold; width:100%;">'
-        "📲 WhatsApp पर भेजें (Share Report)"
-        "</button></a>",
-        unsafe_allow_html=True,
+        height=300,
     )
 
   else:
@@ -336,4 +265,4 @@ if uploaded_file is not None:
     )
 else:
   st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-          
+      

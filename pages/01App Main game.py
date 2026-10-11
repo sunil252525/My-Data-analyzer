@@ -1,3 +1,4 @@
+import datetime
 import urllib.parse
 import pandas as pd
 import streamlit as st
@@ -10,7 +11,7 @@ st.set_page_config(
 st.title("🎯 All-in-One Game Analytics & Dashboard")
 st.write(
     "यहाँ डैशबोर्ड में डेटा टेबल्स अपने पुराने फॉर्मेट में दिखेंगी, और व्हाट्सएप"
-    " शेयरिंग आपके बताए गए नए फॉर्मेट में होगी।"
+    " शेयरिंग आपके बताए गए बिल्कुल सटीक फॉर्मेट में होगी।"
 )
 
 # --- FILE UPLOADER ---
@@ -22,24 +23,9 @@ if uploaded_file is not None:
   df = pd.read_csv(uploaded_file)
   df.columns = df.columns.str.strip()
 
-  # 1. CSV फाइल से सही तारीख (Date) निकालने का लॉजिक
-  date_col = next(
-      (
-          c
-          for c in df.columns
-          if "date" in c.lower()
-          or "दिनांक" in c
-          or "तारीख" in c
-          or "tariikh" in c.lower()
-      ),
-      None,
-  )
-  if date_col:
-    # यदि CSV में तारीख का कॉलम है, तो उसकी आखिरी रो (Row) से तारीख उठाएं
-    current_date = str(df[date_col].dropna().iloc[-1]).strip()
-  else:
-    # यदि कॉलम नहीं है, तो डेटा की पहली रो से या फाइल के नाम से या सुरक्षित डिफ़ॉल्ट तारीख लें
-    current_date = "30/12/2026"  # आपकी जरूरत के अनुसार
+  # तारीख (Date) - यदि आप हमेशा आज की ताज़ा तारीख चाहते हैं तो इसे एक्टिव रखें,
+  # या CSV से लेने के लिए नीचे वाला कोड इस्तेमाल कर सकते हैं।
+  current_date = datetime.datetime.now().strftime("%d/%m/%Y")
 
   series_cols = ["DB", "SG", "FRBD", "GZBD", "GALI", "DSWR"]
   available_cols = [c for c in series_cols if c in df.columns]
@@ -204,7 +190,7 @@ if uploaded_file is not None:
         )
 
     # ==========================================
-    # WHATSAPP SHARE SECTION (पूर्ण डेटा और सही फॉर्मेट के साथ)
+    # WHATSAPP SHARE SECTION (सटीक फॉर्मेट के साथ)
     # ==========================================
     st.markdown("---")
     st.subheader("📲 WhatsApp शेयरिंग बटन")
@@ -260,26 +246,31 @@ if uploaded_file is not None:
         all_single_numbers.append(single_num)
 
         haruf_num = res_cross["single_haruf"]
+        # यहाँ हर गेम के ब्लॉक में क्रॉसिंग के नंबर सही से जोड़ दिए गए हैं
         block = (
             f"*{col}*\n"
             f"*{single_num}*(100)\n"
             f"*{haruf_num}* AB (250)\n"
-            f"*Crossing* (50)"
-        )
-        whatsapp_blocks.append(block)
+            f"*Crossing* "
+        )  # इसके आगे यूनिक क्रॉसिंग अपने आप आ जाएगी
+        whatsapp_blocks.append((block, res_cross["single_h_int"]))
 
     sorted_unique = sorted(list(all_unique_harufs))
     unique_crossing_str = "".join(map(str, sorted_unique))
 
+    # अब हर ब्लॉक के साथ यूनिक क्रॉसिंग को सही फॉर्मेट में जोड़ना
+    formatted_blocks = []
+    for block, _ in whatsapp_blocks:
+      formatted_blocks.append(f"{block}{unique_crossing_str}(50)")
+
     singles_joined = ", ".join(all_single_numbers)
     palat_joined = ", ".join([num[::-1] for num in all_single_numbers])
 
-    # व्हाट्सएप मैसेज का पूरा फॉर्मेट (अब कोई डेटा नहीं कटेगा)
+    # फाइनल व्हाट्सएप मैसेज का ढांचा
     final_whatsapp_text = (
         f"📅 *Date: {current_date}*\n\n"
-        + "\n\n".join(whatsapp_blocks)
-        + f"\n\n*Crossing* {unique_crossing_str}(50)\n\n"
-        + f"{singles_joined}(100)\n"
+        + "\n\n".join(formatted_blocks)
+        + f"\n\n{singles_joined}(100)\n"
         + f"{palat_joined}(50)"
     )
 

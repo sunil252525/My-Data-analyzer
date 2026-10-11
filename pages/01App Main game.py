@@ -180,10 +180,6 @@ if uploaded_file is not None:
     st.markdown("---")
     st.subheader("📋 WhatsApp रिपोर्ट (कॉपी करने के लिए)")
 
-    whatsapp_blocks = []
-    all_single_numbers = []
-    all_unique_harufs_wa = set()
-
 
     def analyze_for_wa(df, column_name):
       vals = df[column_name].dropna().tolist()
@@ -215,8 +211,11 @@ if uploaded_file is not None:
       return f"{best_num:02d}"
 
 
-    # 1. सभी उपलब्ध गेम्स के लिए डेटा निकालना
+    # 1. पहले लूप में सभी उपलब्ध गेम्स के सिंगल हरूफ़ और सिंगल नंबर निकालकर कलेक्ट करना
+    all_unique_harufs_wa = set()
     temp_game_data = []
+    all_single_numbers = []
+
     for col in available_cols:
       res_cross = analyze_for_wa(df, col)
       single_num = single_for_wa(df, col)
@@ -225,11 +224,11 @@ if uploaded_file is not None:
         all_single_numbers.append(single_num)
         temp_game_data.append((col, single_num, res_cross["single_haruf"]))
 
-    # 2. सभी सिंगल हरूफ़ों को मिलाकर यूनिक क्रॉसिंग बनाना (जैसे 016789)
+    # 2. सभी सिंगल हरूफ़ों को मिलाकर यूनिक और सॉर्टेड क्रॉसिंग स्ट्रिंग बनाना
     sorted_unique_wa = sorted(list(all_unique_harufs_wa))
     unique_crossing_str_wa = "".join(map(str, sorted_unique_wa))
 
-    # 3. हर गेम का ब्लॉक तैयार करना
+    # 3. प्रत्येक गेम का ब्लॉक तैयार करना
     formatted_blocks = []
     for col, s_num, h_num in temp_game_data:
       block = (
@@ -240,21 +239,23 @@ if uploaded_file is not None:
       )
       formatted_blocks.append(block)
 
+    # 4. बॉटम समरी (सिंगल नंबर और उनकी पलट)
     singles_joined = ", ".join(all_single_numbers)
     palat_joined = ", ".join([num[::-1] for num in all_single_numbers])
     bottom_summary = f"{singles_joined}(100)\n{palat_joined}(50)"
 
+    # 5. फाइनल टेक्स्ट असेंबली
     final_whatsapp_text = (
         f"📅 *Date: {current_date}*\n\n"
         + "\n\n".join(formatted_blocks)
         + f"\n\n{bottom_summary}"
     )
 
-    # 4. टेक्स्ट एरिया (बड़ी हाइट के साथ ताकि पूरा मैसेज दिखे)
+    # 6. टेक्स्ट एरिया (बड़ी हाइट के साथ ताकि कोई गेम या लाइन न कटे)
     st.text_area(
         "यहाँ से पूरा मैसेज कॉपी करके WhatsApp में पेस्ट करें:",
         final_whatsapp_text,
-        height=400,
+        height=450,
     )
 
   else:
@@ -264,4 +265,4 @@ if uploaded_file is not None:
     )
 else:
   st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-          
+      

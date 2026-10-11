@@ -9,10 +9,7 @@ st.set_page_config(
 )
 
 st.title("🎯 All-in-One Game Analytics & Dashboard")
-st.write(
-    "यहाँ डैशबोर्ड में डेटा टेबल्स अपने पुराने फॉर्मेट में दिखेंगी, और व्हाट्सएप"
-    " शेयरिंग आपके बताए गए बिल्कुल सटीक फॉर्मेट में होगी।"
-)
+st.write("डेटा डैशबोर्ड और व्हाट्सएप शेयरिंग टूल")
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader(
@@ -23,9 +20,22 @@ if uploaded_file is not None:
   df = pd.read_csv(uploaded_file)
   df.columns = df.columns.str.strip()
 
-  # तारीख (Date) - यदि आप हमेशा आज की ताज़ा तारीख चाहते हैं तो इसे एक्टिव रखें,
-  # या CSV से लेने के लिए नीचे वाला कोड इस्तेमाल कर सकते हैं।
-  current_date = datetime.datetime.now().strftime("%d/%m/%Y")
+  # तारीख (Date) निकालने का लॉजिक
+  date_col = next(
+      (
+          c
+          for c in df.columns
+          if "date" in c.lower()
+          or "दिनांक" in c
+          or "तारीख" in c
+          or "tariikh" in c.lower()
+      ),
+      None,
+  )
+  if date_col:
+    current_date = str(df[date_col].dropna().iloc[-1]).strip()
+  else:
+    current_date = datetime.datetime.now().strftime("%d/%m/%Y")
 
   series_cols = ["DB", "SG", "FRBD", "GZBD", "GALI", "DSWR"]
   available_cols = [c for c in series_cols if c in df.columns]
@@ -98,11 +108,8 @@ if uploaded_file is not None:
           analysis_results.append({
               "लोकेशन / गेम": col,
               "🎯 ताज़ा रिज़ल्ट": res["last_num"],
-              "👑 सिंगल हरूफ़ (1 Haruf)": (
-                  f"🔥 {res['single_haruf']} (अंदर/बाहर)"
-              ),
-              "⚡ 4 हरूफ़ क्रॉसिंग": res["haruf_4_str"],
-              "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"],
+              "👑 सिंगल हरूफ़": f"🔥 {res['single_haruf']}",
+              "⚡ क्रॉसिंग": res["haruf_6_str"],
           })
 
       if analysis_results:
@@ -178,8 +185,8 @@ if uploaded_file is not None:
           single_results.append({
               "लोकेशन / गेम": col,
               "🎯 ताज़ा रिज़ल्ट": res["last_num"],
-              "👑 1 सिंगल नंबर (No Palat)": f"🔥 {res['single_direct']} (100)",
-              "📊 एल्गोरिथम स्कोर": f"{res['score']} pts",
+              "👑 1 सिंगल नंबर": f"🔥 {res['single_direct']} (100)",
+              "📊 स्कोर": f"{res['score']} pts",
           })
 
       if single_results:
@@ -190,7 +197,7 @@ if uploaded_file is not None:
         )
 
     # ==========================================
-    # WHATSAPP SHARE SECTION (सटीक फॉर्मेट के साथ)
+    # WHATSAPP SHARE SECTION (सटीक फॉर्मेट)
     # ==========================================
     st.markdown("---")
     st.subheader("📲 WhatsApp शेयरिंग बटन")
@@ -207,7 +214,7 @@ if uploaded_file is not None:
         haruf_scores[num // 10] += weight
         haruf_scores[num % 10] += weight
       ranked = sorted(
-          haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True
+          haruss := haruf_scores, key=lambda x: haruf_scores[x], reverse=True
       )
       return {"single_haruf": str(ranked[0]), "single_h_int": ranked[0]}
 
@@ -246,32 +253,34 @@ if uploaded_file is not None:
         all_single_numbers.append(single_num)
 
         haruf_num = res_cross["single_haruf"]
-        # यहाँ हर गेम के ब्लॉक में क्रॉसिंग के नंबर सही से जोड़ दिए गए हैं
-        block = (
-            f"*{col}*\n"
-            f"*{single_num}*(100)\n"
-            f"*{haruf_num}* AB (250)\n"
-            f"*Crossing* "
-        )  # इसके आगे यूनिक क्रॉसिंग अपने आप आ जाएगी
-        whatsapp_blocks.append((block, res_cross["single_h_int"]))
+        whatsapp_blocks.append((col, single_num, haruf_num))
 
+    # यूनिक क्रॉसिंग बिना स्पेस/कॉमा के (जैसे 01468)
     sorted_unique = sorted(list(all_unique_harufs))
     unique_crossing_str = "".join(map(str, sorted_unique))
 
-    # अब हर ब्लॉक के साथ यूनिक क्रॉसिंग को सही फॉर्मेट में जोड़ना
+    # हर गेम का ब्लॉक तैयार करना
     formatted_blocks = []
-    for block, _ in whatsapp_blocks:
-      formatted_blocks.append(f"{block}{unique_crossing_str}(50)")
+    for col, s_num, h_num in whatsapp_blocks:
+      block = (
+          f"*{col}*\n"
+          f"*{s_num}*(100)\n"
+          f"*{h_num}* AB (250)\n"
+          f"*Crossing* {unique_crossing_str}(50)"
+      )
+      formatted_blocks.append(block)
 
+    # सबसे नीचे सभी सिंगल नंबर और उनकी पलट अमाउंट के साथ
     singles_joined = ", ".join(all_single_numbers)
     palat_joined = ", ".join([num[::-1] for num in all_single_numbers])
 
-    # फाइनल व्हाट्सएप मैसेज का ढांचा
+    bottom_summary = f"{singles_joined}(100)\n{palat_joined}(50)"
+
+    # फाइनल व्हाट्सएप मैसेज
     final_whatsapp_text = (
         f"📅 *Date: {current_date}*\n\n"
         + "\n\n".join(formatted_blocks)
-        + f"\n\n{singles_joined}(100)\n"
-        + f"{palat_joined}(50)"
+        + f"\n\n{bottom_summary}"
     )
 
     encoded_msg = urllib.parse.quote(final_whatsapp_text)
@@ -285,14 +294,11 @@ if uploaded_file is not None:
         ' font-weight:bold; width:100%;">'
         "📲 कंबाइंड रिपोर्ट WhatsApp पर भेजें (Share Report)"
         "</button></a>",
-        unsafe_allow_html=True,
+        unsafe_app := True,
     )
 
   else:
-    st.error(
-        "CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं"
-        " मिला!"
-    )
+    st.error("CSV फ़ाइल में आवश्यक कॉलम नहीं मिले!")
 else:
-  st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-        
+  st.info("कृपया आगे बढ़ने के लिए अपनी CSV फ़ाइल अपलोड करें।")
+          

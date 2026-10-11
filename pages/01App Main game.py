@@ -10,8 +10,8 @@ st.set_page_config(
 
 st.title("🎯 All-in-One Game Analytics & Dashboard")
 st.write(
-    "यहाँ दोनों इंजनों (क्रॉसिंग और सिंगल नंबर) को मिलाकर कंबाइंड रिपोर्ट तैयार"
-    " की गई है।"
+    "आपके बताए गए डिज़ाइन और फॉर्मेट के अनुसार कंबाइंड रिपोर्ट तैयार कर दी गई"
+    " है।"
 )
 
 # --- FILE UPLOADER ---
@@ -44,10 +44,7 @@ if uploaded_file is not None:
   available_cols = [c for c in series_cols if c in df.columns]
 
   if available_cols:
-    st.subheader(
-        "📊 कंबाइंड गेम एनालिसिस (सिंगल नंबर, हरूफ़, दोनों क्रॉसिंग और नीचे"
-        " पलट)"
-    )
+    st.subheader("📊 फाइनल अपडेटेड फॉर्मेट रिपोर्ट")
 
 
     # Tab 1 Function: Crossing & Haruf
@@ -145,12 +142,10 @@ if uploaded_file is not None:
       return {"single_direct": f"{best_single_num:02d}"}
 
 
-    combined_results = []
     all_unique_harufs = set()
     all_single_numbers = []
-    whatsapp_blocks = []
-
     game_data = []
+
     for col in available_cols:
       res_t1 = analyze_best_crossing_and_haruf(df, col)
       res_t2 = get_best_single_direct_number(df, col)
@@ -159,23 +154,36 @@ if uploaded_file is not None:
         all_single_numbers.append(res_t2["single_direct"])
         game_data.append((col, res_t1, res_t2))
 
+    # यूनिक क्रॉसिंग बिना कॉमा के (जैसे 01468)
     sorted_unique = sorted(list(all_unique_harufs))
-    unique_crossing_str = ", ".join(map(str, sorted_unique))
+    unique_crossing_str = "".join(map(str, sorted_unique))
+
+    # सभी सिंगल नंबर और उनकी पलट एक लाइन में बनाने के लिए
+    singles_joined = ", ".join(all_single_numbers)
+    palat_joined = ", ".join([num[::-1] for num in all_single_numbers])
+
+    whatsapp_blocks = []
+    combined_results = []
 
     for col, res_t1, res_t2 in game_data:
       single_num = res_t2["single_direct"]
+      haruf_num = res_t1["single_haruf"]
 
       combined_results.append({
           "लोकेशन / गेम": col,
-          "सिंगल नंबर": single_num,
-          "सिंगल हरूफ़": res_t1["single_haruf"],
-          "6-नंबर क्रॉसिंग": res_t1["haruf_6_str"],
+          "सिंगल नंबर": f"{single_num} (100)",
+          "हरूफ (AB)": f"AB {haruf_num} (250)",
+          "क्रॉसिंग": f"{unique_crossing_str} (50)",
       })
 
-      # हर गेम के ब्लॉक में सिर्फ सिंगल नंबर (बिना पलट के), हरूफ़ और दोनों क्रॉसिंग
+      # आपके बताए गए फॉर्मेट के अनुसार हर गेम का ब्लॉक
       block = (
-          f"*{col}*\n*{single_num}*\n*{res_t1['single_haruf']}*\n["
-          f"{res_t1['haruf_6_str']}]\n[{unique_crossing_str}]"
+          f"*{col}*\n"
+          f"*{single_num}*(100)\n"
+          f"*{haruf_num}* AB (250)\n"
+          f"*Crossing* {unique_crossing_str}(50)\n\n"
+          f"{singles_joined}(100)\n"
+          f"{palat_joined}(50)"
       )
       whatsapp_blocks.append(block)
 
@@ -188,23 +196,9 @@ if uploaded_file is not None:
 
       st.markdown("---")
 
-      # सभी सिंगल नंबर और उनके नीचे उनकी पलट (Reverse) एक साथ एक लाइन में
-      all_singles_joined = ", ".join(all_single_numbers)
-      palat_list = [
-          num[::-1] for num in all_single_numbers
-      ]  # सभी की पलट निकालना
-      all_palat_joined = ", ".join(palat_list)
-
-      bottom_summary = (
-          f"🎯 *Single Numbers:* {all_singles_joined}\n🎯 *Palat:*"
-          f" {all_palat_joined}"
-      )
-
-      # संपूर्ण व्हाट्सएप मैसेज
+      # व्हाट्सएप पर भेजने के लिए संपूर्ण टेक्स्ट
       final_whatsapp_text = (
-          f"📅 *Date: {current_date}*\n\n"
-          + "\n\n".join(whatsapp_blocks)
-          + f"\n\n{bottom_summary}"
+          f"📅 *Date: {current_date}*\n\n" + "\n\n".join(whatsapp_blocks)
       )
       encoded_msg = urllib.parse.quote(final_whatsapp_text)
       wa_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
@@ -215,16 +209,13 @@ if uploaded_file is not None:
           " border:none; padding:12px 20px; "
           "font-size:16px; border-radius:8px; cursor:pointer;"
           ' font-weight:bold; width:100%;">'
-          "📲 कंबाइंड रिपोर्ट WhatsApp पर भेजें (Share Combined Report)"
+          "📲 व्हाट्सएप पर भेजें (Share Report)"
           "</button></a>",
           unsafe_allow_html=True,
       )
 
   else:
-    st.error(
-        "CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं"
-        " मिला!"
-    )
+    st.error("CSV फ़ाइल में आवश्यक कॉलम नहीं मिले!")
 else:
-  st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-        
+  st.info("कृपया आगे बढ़ने के लिए अपनी CSV फ़ाइल अपलोड करें।")
+                     

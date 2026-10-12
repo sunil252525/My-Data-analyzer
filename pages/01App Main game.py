@@ -105,8 +105,14 @@ if uploaded_file is not None:
                     full_box_messages.append(game_msg)
 
             if analysis_results:
-                st.dataframe(pd.DataFrame(analysis_results), use_container_width=True, hide_index=True)
+                res_df_1 = pd.DataFrame(analysis_results)
+                st.dataframe(res_df_1, use_container_width=True, hide_index=True)
                 
+                # --- Excel Copy Box for Tab 1 ---
+                st.markdown("📋 **एक्सेल के लिए डेटा (यहाँ से कॉपी करें):**")
+                tsv_data_1 = res_df_1.to_csv(sep='\t', index=False)
+                st.text_area("Tab 1 Excel Data", value=tsv_data_1, height=150, key="excel_tab1")
+
                 # सभी सिंगल हरूफ़ की संयुक्त (Unique) क्रॉसिंग
                 sorted_unique = sorted(list(all_unique_harufs))
                 unique_crossing_str = ", ".join(map(str, sorted_unique))
@@ -201,8 +207,14 @@ if uploaded_file is not None:
                     wa_msg_lines.append(f"• *{col}* (Last: {res['last_num']}) ➔ Single: *{res['single_direct']}* (100)")
 
             if single_results:
-                st.dataframe(pd.DataFrame(single_results), use_container_width=True, hide_index=True)
+                res_df_2 = pd.DataFrame(single_results)
+                st.dataframe(res_df_2, use_container_width=True, hide_index=True)
                 
+                # --- Excel Copy Box for Tab 2 ---
+                st.markdown("📋 **एक्सेल के लिए डेटा (यहाँ से कॉपी करें):**")
+                tsv_data_2 = res_df_2.to_csv(sep='\t', index=False)
+                st.text_area("Tab 2 Excel Data", value=tsv_data_2, height=150, key="excel_tab2")
+
                 st.markdown("### 📋 सभी गेम का 1-1 सिंगल नंबर (Copy / Direct Line)")
                 direct_line_text = ", ".join([f"{r['👑 1 सिंगल नंबर (No Palat)'].split()[1]}" for r in single_results])
                 st.code(direct_line_text, language="text")
@@ -225,4 +237,3 @@ if uploaded_file is not None:
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
     
- 

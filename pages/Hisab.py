@@ -1,16 +1,15 @@
-import pandas as pd
 import re
+import pandas as pd
 import streamlit as st
 
-# Page configuration
 st.set_page_config(
-    page_title="Hisab & Calculation Dashboard", page_icon="💰", layout="wide"
+    page_title="Advance Hisab Calculator", page_icon="💰", layout="wide"
 )
 
-st.title("💰 Daily Hisab & Calculation Sheet")
+st.title("💰 Advance Hisab & Daily Ledger Calculator")
 st.markdown("---")
 
-# Categories matching your sheet layout
+# Categories
 CATEGORIES = [
     "Delhi Bazar",
     "Shri Ganesh",
@@ -20,171 +19,174 @@ CATEGORIES = [
     "Ds",
 ]
 
-# Initialize Session State
 if "entry_data" not in st.session_state:
     st.session_state.entry_data = {cat: [] for cat in CATEGORIES}
 
 
-def parse_input_string(text):
-    """Parse text formatted like '0, 1, 6, 7, 8, 9(100)' or '23, 27, 12(50)'
+def parse_line(line):
+    """सही से नंबर्स, क्रॉसिंग, हरुफ़ और रेट निकालने का फंक्शन"""
+    line = line.strip()
+    if not line:
+        return 0, 0.0, 0.0
 
-    Extracts numbers, counts them, extracts rate from parentheses, and calculates amount.
-    """
-    text = str(text).strip()
-    if not text:
-        return 0, 0, 0.0
-
-    match = re.search(r"\((.*?)\)", text)
+    # 1. ब्रैकेट () से रेट निकालें
+    rate_match = re.search(r"\((.*?)\)", line)
     rate = 0.0
-    if match:
+    if rate_match:
         try:
-            rate = float(match.group(1))
+            rate = float(rate_match.group(1))
         except ValueError:
             rate = 0.0
-        # Remove parenthesized rate to get numbers list
-        numbers_part = text[: match.start()].strip()
+        content = line[: rate_match.start()].strip()
     else:
-        numbers_part = text
+        # अगर ब्रैकेट नहीं है तो आख़िरी संख्या को रेट मान सकते हैं या 0
+        content = line
 
-    # Split numbers by comma or space
-    raw_nums = [
-        n.strip() for n in re.split(r"[,,\s]+", numbers_part) if n.strip()
-    ]
-    total_nums = len(raw_nums)
+    # 2. अगर "cross" शब्द लिखा है (जैसे 1234 cross)
+    if "cross" in content.lower():
+        digits = re.findall(r"\d", content)
+        # N digits crossing = N * N numbers
+        total_nums = len(digits) * len(digits)
+    else:
+        # साधारण नंबर्स की गिनती (Comma, space या dash से अलग किए गए)
+        raw_nums = [
+            n.strip() for n in re.split(r"[,,\s/-]+", content) if n.strip()
+        ]
+        total_nums = len(raw_nums)
+
     total_amount = total_nums * rate
-
     return total_nums, rate, total_amount
 
 
-# Sidebar Controls
-st.sidebar.header("⚙️ Settings & Controls")
-passing_multiplier = st.sidebar.number_input(
-    "Passing Multiplier (पासिंग गुना)", min_value=1.0, value=90.0, step=1.0
+# Sidebar Settings
+st.sidebar.header("⚙️ पासिंग सेटिंग्स")
+pass_rate = st.sidebar.number_input(
+    "पासिंग रेट (Passing Multiplier)", min_value=1.0, value=90.0, step=1.0
 )
 
-# Tabs for inputs and summary
-tab_input, tab_summary = st.tabs(
-    ["📝 Entry & Calculation", "📊 Summary & Export"]
+tab_entry, tab_report = st.tabs(
+    ["📝 एंट्री और कैलकुलेशन", "📊 रिपोर्ट और समरी"]
 )
 
-with tab_input:
-    st.subheader("Enter Records by Category")
+with tab_entry:
     cols = st.columns(len(CATEGORIES))
 
-    all_totals = {}
-
-    for idx, category in enumerate(CATEGORIES):
+    for idx, cat in enumerate(CATEGORIES):
         with cols[idx]:
-            st.markdown(f"### {category}")
+            st.markdown(f"### {cat}")
 
-            # Text input area for quick paste or entry
-            raw_input = st.text_area(
-                f"Enter Raw Lines for {category}",
-                placeholder="e.g.\n0, 1, 6, 7(100)\n23, 27, 12(50)",
-                key=f"raw_{category}",
-                height=120,
+            # Multiline Textbox
+            input_text = st.text_area(
+                f"एंट्री डालें ({cat})",
+                placeholder="उदा:\n0, 1, 6, 7, 8, 9(100)\n23, 27, 12(50)",
+                key=f"text_{cat}",
+                height=150,
             )
 
-            # Button to parse lines automatically
-            if st.button(f"Add Lines", key=f"btn_{category}"):
-                lines = raw_input.strip().split("\n")
-                for line in lines:
-                    if line.strip():
-                        n_count, r_val, amt = parse_input_string(line)
-                        st.session_state.entry_data[category].append(
+            if st.button(f"जोड़ें ({cat})", key=f"add_{cat}"):
+                lines = input_text.strip().split("\n")
+                for l in lines:
+                    if l.strip():
+                        n_count, r_val, amt = parse_line(l)
+                        st.session_state.entry_data[cat].append(
                             {
-                                "Input (A)": line.strip(),
+                                "Input Line": l.strip(),
                                 "Total Numbers": n_count,
                                 "Rate": r_val,
                                 "Total Amount": amt,
                                 "Passing Into": 0.0,
-                                "Total Return": 0.0,
                             }
                         )
                 st.rerun()
 
-            # Display table with editable details
-            if st.session_state.entry_data[category]:
-                df_cat = pd.DataFrame(st.session_state.entry_data[category])
+            # Display Data Table for Category
+            if st.session_state.entry_data[cat]:
+                df = pd.DataFrame(st.session_state.entry_data[cat])
 
-                # Recalculate Totals & Returns
-                df_cat["Total Amount"] = (
-                    df_cat["Total Numbers"] * df_cat["Rate"]
+                # Interactive table for Passing Into
+                edited_df = st.data_editor(
+                    df,
+                    column_config={
+                        "Input Line": st.column_config.TextColumn("एंट्री"),
+                        "Total Numbers": st.column_config.NumberColumn(
+                            "कुल नंबर", disabled=True
+                        ),
+                        "Rate": st.column_config.NumberColumn(
+                            "रेट", disabled=True
+                        ),
+                        "Total Amount": st.column_config.NumberColumn(
+                            "कुल रकम (₹)", disabled=True
+                        ),
+                        "Passing Into": st.column_config.NumberColumn(
+                            "पासिंग इनटू", min_value=0.0, step=10.0
+                        ),
+                    },
+                    hide_index=True,
+                    key=f"editor_{cat}",
                 )
-                df_cat["Total Return"] = (
-                    df_cat["Passing Into"] * df_cat["Rate"] * passing_multiplier
+
+                # Update session state with edited passing
+                st.session_state.entry_data[cat] = edited_df.to_dict("records")
+
+                tot_amt = edited_df["Total Amount"].sum()
+                tot_pass_into = edited_df["Passing Into"].sum()
+                tot_return = tot_pass_into * pass_rate
+                net = tot_return - tot_amt
+
+                st.markdown(f"**कुल लगा पैसा:** ₹{tot_amt:,.0f}")
+                st.markdown(f"**कुल वापसी (Pass):** ₹{tot_return:,.0f}")
+                st.markdown(
+                    f"**नेट (मुनाफा/घाटा):** {'+₹' if net>=0 else '-₹'}{abs(net):,.0f}"
                 )
 
-                st.session_state.entry_data[category] = df_cat.to_dict(
-                    "records"
-                )
-
-                cat_total_amt = df_cat["Total Amount"].sum()
-                cat_total_return = df_cat["Total Return"].sum()
-                net_balance = cat_total_amt - cat_total_return
-
-                st.markdown(f"**Total Amount:** ₹{cat_total_amt:,.2f}")
-                st.markdown(f"**Total Return:** ₹{cat_total_return:,.2f}")
-                st.markdown(f"**Net:** ₹{net_balance:,.2f}")
-
-                if st.button(f"Clear {category}", key=f"clear_{category}"):
-                    st.session_state.entry_data[category] = []
+                if st.button("क्लियर करें", key=f"clear_{cat}"):
+                    st.session_state.entry_data[cat] = []
                     st.rerun()
-            else:
-                st.info("No entries yet.")
 
-with tab_summary:
-    st.subheader(" Overall Summary")
+with tab_report:
+    st.subheader("📋 ओवरऑल समरी (सभी गेम)")
 
-    summary_rows = []
-    grand_amount = 0.0
-    grand_return = 0.0
+    summary_data = []
+    g_amt = 0.0
+    g_pass_into = 0.0
 
     for cat in CATEGORIES:
-        entries = st.session_state.entry_data[cat]
-        if entries:
-            df_temp = pd.DataFrame(entries)
-            tot_amt = df_temp["Total Amount"].sum()
-            tot_ret = df_temp["Total Return"].sum()
-            summary_rows.append(
+        data = st.session_state.entry_data[cat]
+        if data:
+            df_c = pd.DataFrame(data)
+            amt = df_c["Total Amount"].sum()
+            p_into = df_c["Passing Into"].sum()
+            ret = p_into * pass_rate
+
+            g_amt += amt
+            g_pass_into += p_into
+
+            summary_data.append(
                 {
-                    "Category": cat,
-                    "Total Entries": len(entries),
-                    "Total Amount (₹)": tot_amt,
-                    "Total Return (₹)": tot_ret,
-                    "Net Amount (₹)": tot_amt - tot_ret,
+                    "गेम (Category)": cat,
+                    "कुल एंट्री": len(data),
+                    "कुल लगा पैसा (₹)": amt,
+                    "पासिंग इनटू": p_into,
+                    "कुल वापसी (₹)": ret,
+                    "नेट बैलेंस (₹)": ret - amt,
                 }
             )
-            grand_amount += tot_amt
-            grand_return += tot_ret
 
-    if summary_rows:
-        df_summary = pd.DataFrame(summary_rows)
-        st.dataframe(df_summary, use_container_width=True)
+    if summary_data:
+        sum_df = pd.DataFrame(summary_data)
+        st.dataframe(sum_df, use_container_width=True)
 
-        col_m1, col_m2, col_m3 = st.columns(3)
-        col_m1.metric("Grand Total Amount", f"₹{grand_amount:,.2f}")
-        col_m2.metric("Grand Total Return", f"₹{grand_return:,.2f}")
-        col_m3.metric(
-            "Final Net Balance",
-            f"₹{grand_amount - grand_return:,.2f}",
-            delta_color="normal",
+        g_return = g_pass_into * pass_rate
+        g_net = g_return - g_amt
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("कुल लगा पैसा", f"₹{g_amt:,.0f}")
+        c2.metric("कुल वापसी (Payout)", f"₹{g_return:,.0f}")
+        c3.metric(
+            "फाइनल नेट हिसाब",
+            f"₹{g_net:,.0f}",
+            delta=f"{'मुनाफा' if g_net >= 0 else 'घाटा'}",
         )
-
-        # Export CSV Button
-        csv_data = pd.DataFrame()
-        for cat in CATEGORIES:
-            if st.session_state.entry_data[cat]:
-                df_temp = pd.DataFrame(st.session_state.entry_data[cat])
-                df_temp["Category"] = cat
-                csv_data = pd.concat([csv_data, df_temp], ignore_index=True)
-
-        if not csv_data.empty:
-            st.download_button(
-                label="📥 Download Hisab CSV Report",
-                data=csv_data.to_csv(index=False),
-                file_name="Daily_Hisab_Report.csv",
-                mime="text/csv",
-            )
     else:
-        st.info("No data available to build summary.")
+        st.info("अभी कोई एंट्री नहीं की गई है।")
+                

@@ -332,30 +332,34 @@ if uploaded_file is not None:
                     st.code(all_in_one_text, language="text")
 
                     # ----------------------------------------------------
-                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX
+                    # 4. PATTERN-PRESERVING UNIQUE COMBINED BOX (Grouped by Rate)
                     # ----------------------------------------------------
-                    st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Pattern Preserved - Duplicate Removed)")
+                    st.markdown("### 🎯 ऑल-इन-वन पैटर्न यूनिक बॉक्स (Grouped by Rate)")
 
                     seen_base = set()
-                    unique_pattern_lines = []
-                    count_100 = 0
-                    count_50 = 0
+                    nums_100 = []
+                    nums_50 = []
 
+                    # सभी सेक्शन्स से यूनिक नंबर छाँटकर रेट (100 और 50) के हिसाब से अलग करें
                     for n_list, rate in raw_sections:
-                        filtered_nums = []
                         for num in n_list:
                             if num not in seen_base:
                                 seen_base.add(num)
-                                filtered_nums.append(num)
                                 if rate == 100:
-                                    count_100 += 1
+                                    nums_100.append(num)
                                 elif rate == 50:
-                                    count_50 += 1
-                        
-                        if filtered_nums:
-                            unique_pattern_lines.append(fmt_line(filtered_nums, rate))
+                                    nums_50.append(num)
 
+                    count_100 = len(nums_100)
+                    count_50 = len(nums_50)
                     final_unique_count = len(seen_base)
+
+                    # सिर्फ दो लाइनें बनाएँगी: एक 100 वालों की और एक 50 वालों की
+                    unique_pattern_lines = []
+                    if nums_100:
+                        unique_pattern_lines.append(fmt_line(nums_100, 100))
+                    if nums_50:
+                        unique_pattern_lines.append(fmt_line(nums_50, 50))
 
                     # --- PAYMENT CALCULATION ENGINE ---
                     total_100_amt = count_100 * 100
@@ -372,36 +376,3 @@ if uploaded_file is not None:
 
                     unique_pattern_box_text = "\n".join(unique_pattern_lines)
                     st.code(unique_pattern_box_text, language="text")
-
-                    # --- EXACT WHATSAPP FORMAT AS REQUESTED BY USER ---
-                    game_24h_str = (
-                        f"🎮 *{col}*⚡\n"
-                        f"{fmt_line(top_24h_direct, 100)}\n"
-                        f"{fmt_line(top_24h_plat, 50)}\n\n"
-                        f"🎲\n"
-                        f"{fmt_line(h_nums_clean, 50)}\n"
-                        f"{fmt_line(h_plat_clean, 50)}"
-                    )
-                    all_games_24h_summary.append(game_24h_str)
-
-        # ----------------------------------------------------
-        # ALL GAMES SUMMARY & SINGLE WHATSAPP SHARE BUTTON
-        # ----------------------------------------------------
-        st.markdown("---")
-        st.subheader("📲 सभी गेम्स का 24-घंटे वाला बॉक्स एक साथ भेजें (All-Game WhatsApp Sender)")
-        
-        full_whatsapp_msg = "\n\n".join(all_games_24h_summary)
-        
-        encoded_all_msg = urllib.parse.quote(full_whatsapp_msg)
-        all_whatsapp_url = f"https://api.whatsapp.com/send?text={encoded_all_msg}"
-
-        st.markdown(
-            f'<a href="{all_whatsapp_url}" target="_blank">'
-            f'<button style="background-color:#25D366; color:white; border:none; padding:15px 30px; '
-            f'font-size:18px; border-radius:8px; cursor:pointer; font-weight:bold; width:100%;">'
-            f'📲 सभी गेम्स (ALL GAMES 24H BOXES) को एक साथ WhatsApp पर शेयर करें'
-            f'</button></a>',
-            unsafe_allow_html=True
-                )
-                    
-

@@ -6,7 +6,26 @@ import urllib.parse
 st.set_page_config(page_title="Advanced All-in-One Analytics & Diagnostic Engine", layout="wide")
 
 st.title("🎯 All-in-One Game Analytics & Deep Diagnostic Dashboard")
-st.write("संतुलित पैटर्न एल्गोरिथम और पिछले महीनों के डेटा की गहराई से जांच (Audit) के साथ।")
+st.write("संतुलित पैटर्न एल्गोरिथम, ऑडिटेड सिंगल इंजन और पिछले 10 दिनों के डेट-वाइज सिंगल नंबर रिकॉर्ड के साथ।")
+
+# --- RASHI & FAMILY HELPER ---
+RASHI_MAP = {0: 5, 1: 6, 2: 7, 3: 8, 4: 9, 5: 0, 6: 1, 7: 2, 8: 3, 9: 4}
+
+def get_rashi_digit(d):
+    return RASHI_MAP.get(int(d), int(d))
+
+def get_family_numbers(num):
+    try:
+        num = int(num)
+        d1, d2 = num // 10, num % 10
+        r1, r2 = get_rashi_digit(d1), get_rashi_digit(d2)
+        fam = set()
+        for a, b in [(d1, d2), (d1, r2), (r1, d2), (r1, r2)]:
+            fam.add(a * 10 + b)
+            fam.add(b * 10 + a)
+        return list(fam)
+    except:
+        return []
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -19,17 +38,16 @@ if uploaded_file is not None:
     available_cols = [c for c in series_cols if c in df.columns]
     
     if available_cols:
-        # साइडबार में एनालिसिस विंडो कंट्रोल ताकि आप हाल के महीनों पर फोकस एडजस्ट कर सकें
         st.sidebar.header("⚙️ एल्गोरिथम कंट्रोल (Formula Tuning)")
         recent_days = st.sidebar.slider(
             "हाल के कितने दिनों (रिकॉर्ड्स) को मुख्य आधार बनाएं?", 
             min_value=15, max_value=180, value=45, step=5,
-            help="कम दिन रखने पर ताज़ा ट्रेंड दिखेगा और पुराने अंक (जैसे 8) बार-बार रिपीट नहीं होंगे।"
+            help="कम दिन रखने पर ताज़ा ट्रेंड दिखेगा और पुराने अंक बार-बार रिपीट नहीं होंगे।"
         )
         
         tab1, tab2, tab3 = st.tabs([
             "🎯 1. Balanced Crossing & Haruf Engine", 
-            "🔥 2. Single Direct Number Engine (No Palat)",
+            "🔥 2. Audited Single Direct Number Engine (No Palat)",
             "🔍 3. पिछले महीने की गहराई से जांच (Data Audit)"
         ])
         
@@ -37,12 +55,11 @@ if uploaded_file is not None:
         # TAB 1: BALANCED CROSSING & HARUF ENGINE
         # ==========================================
         with tab1:
-            st.subheader(f"📊 संतुलित पैटर्न क्रॉसिंग (पिछले {recent_days} दिनों के ट्रेंड + फॉलो-अप पर आधारित)")
+            st.subheader(f"📊 संतुलित पैटर्न क्रॉसिंग (पिछले {recent_days} दिनों के ट्रेंड पर आधारित)")
             
             def analyze_balanced_crossing(df, column_name, window_size):
                 vals = df[column_name].dropna().tolist()
                 valid_vals = []
-                
                 for x in vals:
                     try:
                         val = int(x)
@@ -50,21 +67,18 @@ if uploaded_file is not None:
                             valid_vals.append(val)
                     except:
                         continue
-                        
                 if len(valid_vals) < 10:
                     return None
 
                 last_num = valid_vals[-1]
                 haruf_scores = {d: 0.0 for d in range(10)}
                 
-                # 1. हाल के दिनों (Recent Window) का मुख्य वेटेज (ताकि पुराना 13 साल का डेटा हावी न हो)
                 recent_slice = valid_vals[-window_size:]
                 for idx, num in enumerate(recent_slice):
                     recency_boost = 1.0 + (idx / len(recent_slice)) * 1.5
                     haruf_scores[num // 10] += recency_boost
                     haruf_scores[num % 10] += recency_boost
 
-                # 2. फॉलो-अप पैटर्न (पूरे इतिहास में जब भी last_num आया, उसके अगले 2 दिन क्या आया)
                 follow_up_count = 0
                 for i in range(len(valid_vals) - 2):
                     if valid_vals[i] == last_num:
@@ -76,9 +90,7 @@ if uploaded_file is not None:
                         haruf_scores[f2 // 10] += 1.5
                         haruf_scores[f2 % 10] += 1.5
 
-                # 3. नॉर्मलाइज़ेशन (ताकि हर अंक को निष्पक्ष मौका मिले)
                 ranked_harufs = sorted(haruf_scores.keys(), key=lambda x: haruf_scores[x], reverse=True)
-                
                 single_haruf = ranked_harufs[0]
                 top_4_harufs = sorted(ranked_harufs[:4])
                 top_6_harufs = sorted(ranked_harufs[:6])
@@ -107,9 +119,7 @@ if uploaded_file is not None:
                         "🔥 6 हरूफ़ क्रॉसिंग": res["haruf_6_str"],
                         "📈 हिस्ट्री मैच": f"{res['matches_found']} बार"
                     })
-                    
                     all_unique_harufs.add(res["single_h_int"])
-                    
                     game_msg = (
                         f"🎯 *{col}* (Last: {res['last_num']})\n"
                         f"👑 सिंगल हरूफ़: *{res['single_haruf']}* (अंदर/बाहर)\n"
@@ -128,7 +138,6 @@ if uploaded_file is not None:
 
                 sorted_unique = sorted(list(all_unique_harufs))
                 unique_crossing_str = ", ".join(map(str, sorted_unique))
-                
                 st.markdown("### 🔗 सभी गेम के सिंगल हरूफ़ की संयुक्त क्रॉसिंग (Unique Harufs Crossing)")
                 st.code(unique_crossing_str, language="text")
                 
@@ -136,7 +145,6 @@ if uploaded_file is not None:
                 full_whatsapp_text = "📊 *COMPLETE DAILY ANALYTICS REPORT* 📊\n\n" + "\n\n---\n\n".join(full_box_messages) + f"\n\n🔗 *Unique Harufs Crossing:* [{unique_crossing_str}]"
                 encoded_full_msg = urllib.parse.quote(full_whatsapp_text)
                 wa_full_url = f"https://api.whatsapp.com/send?text={encoded_full_msg}"
-                
                 st.markdown(
                     f'<a href="{wa_full_url}" target="_blank">'
                     f'<button style="background-color:#25D366; color:white; border:none; padding:12px 20px; '
@@ -147,15 +155,15 @@ if uploaded_file is not None:
                 )
 
         # ==========================================
-        # TAB 2: SINGLE DIRECT NUMBER ENGINE
+        # TAB 2: AUDITED SINGLE DIRECT NUMBER ENGINE
         # ==========================================
         with tab2:
-            st.subheader("🎯 100% सिंगल नंबर डायरेक्ट इंजन (No Palat)")
+            st.subheader("🎯 100% ऑडिटेड सिंगल नंबर डायरेक्ट इंजन (Smart Fallback & No Palat)")
+            st.write("इस इंजन में सटीक इतिहास, फैमिली पैटर्न और ट्रेंड बूस्ट के साथ-साथ नीचे **पिछले 10 दिनों का डेट-वाइज सिंगल नंबर रिकॉर्ड बॉक्स** भी जोड़ा गया है।")
             
-            def get_best_single_direct_number(df, column_name, window_size):
-                vals = df[column_name].dropna().tolist()
+            def get_audited_single_direct_number(sub_df, column_name, window_size):
+                vals = sub_df[column_name].dropna().tolist()
                 valid_vals = []
-                
                 for x in vals:
                     try:
                         v = int(x)
@@ -163,60 +171,65 @@ if uploaded_file is not None:
                             valid_vals.append(v)
                     except:
                         continue
-                        
                 if len(valid_vals) < 10:
                     return None
 
                 last_num = valid_vals[-1]
-                
-                in_haruf_counts = {d: 0.0 for d in range(10)}
-                out_haruf_counts = {d: 0.0 for d in range(10)}
+                num_scores = {n: 1.0 for n in range(100)}
                 
                 for idx, num in enumerate(valid_vals[-window_size:]):
-                    w = 1.0 + (idx / window_size)
-                    in_haruf_counts[num // 10] += w
-                    out_haruf_counts[num % 10] += w
-                    
-                top_in_haruf = max(in_haruf_counts.keys(), key=lambda x: in_haruf_counts[x])
-                top_out_haruf = max(out_haruf_counts.keys(), key=lambda x: out_haruf_counts[x])
-                
-                num_scores = {n: 0.0 for n in range(100)}
-                
+                    num_scores[num] += (0.1 + (idx / window_size) * 0.4)
+
+                direct_matches = 0
                 for i in range(len(valid_vals) - 1):
                     if valid_vals[i] == last_num:
+                        direct_matches += 1
                         nxt = valid_vals[i + 1]
-                        num_scores[nxt] += 5.0
+                        num_scores[nxt] += 6.0
                         
                 for i in range(len(valid_vals) - 2):
                     if valid_vals[i] == last_num:
                         nxt2 = valid_vals[i + 2]
-                        num_scores[nxt2] += 3.0
-                        
-                crossing_best = top_in_haruf * 10 + top_out_haruf
-                num_scores[crossing_best] += 4.5
+                        num_scores[nxt2] += 3.5
+
+                if direct_matches < 3:
+                    fam_nums = get_family_numbers(last_num)
+                    for fn in fam_nums:
+                        if fn in num_scores:
+                            num_scores[fn] += 4.0
+
+                in_c = {d: 0.0 for d in range(10)}
+                out_c = {d: 0.0 for d in range(10)}
+                for num in valid_vals[-window_size:]:
+                    in_c[num // 10] += 1.0
+                    out_c[num % 10] += 1.0
                 
-                for n in valid_vals[-30:]:
-                    num_scores[n] += 0.8
-                    
-                best_single_num = max(num_scores.keys(), key=lambda x: num_scores[x])
+                best_in = max(in_c, key=in_c.get)
+                best_out = max(out_c, key=out_c.get)
+                crossing_num = best_in * 10 + best_out
+                num_scores[crossing_num] += 5.0
+
+                best_single_num = max(num_scores, key=num_scores.get)
                 
                 return {
                     "last_num": f"{last_num:02d}",
                     "single_direct": f"{best_single_num:02d}",
-                    "score": round(num_scores[best_single_num], 1)
+                    "score": round(num_scores[best_single_num], 1),
+                    "matches": direct_matches
                 }
 
             single_results = []
             wa_msg_lines = []
 
             for col in available_cols:
-                res = get_best_single_direct_number(df, col, recent_days)
+                res = get_audited_single_direct_number(df, col, recent_days)
                 if res:
                     single_results.append({
                         "लोकेशन / गेम": col,
                         "🎯 ताज़ा रिज़ल्ट": res["last_num"],
                         "👑 1 सिंगल नंबर (No Palat)": f"🔥 {res['single_direct']} (100)",
-                        "📊 एल्गोरिथम स्कोर": f"{res['score']} pts"
+                        "📊 इतिहास मैच": f"{res['matches']} बार",
+                        "⭐ स्कोर": f"{res['score']} pts"
                     })
                     wa_msg_lines.append(f"• *{col}* (Last: {res['last_num']}) ➔ Single: *{res['single_direct']}* (100)")
 
@@ -232,10 +245,46 @@ if uploaded_file is not None:
                 direct_line_text = ", ".join([f"{r['👑 1 सिंगल नंबर (No Palat)'].split()[1]}" for r in single_results])
                 st.code(direct_line_text, language="text")
 
-                wa_text = "🎯 *TODAY SINGLE DIRECT NUMBERS (NO PALAT)* 🎯\n\n" + "\n".join(wa_msg_lines)
+                # ==========================================================
+                # NEW ADDITION: PAST 10 DAYS DATE-WISE SINGLE NUMBERS BOX
+                # ==========================================================
+                st.markdown("---")
+                st.markdown("### 📅 पिछले 10 दिनों के सिंगल नंबर (Date-Wise Rolling Single Numbers Box)")
+                st.write("यहाँ किसी भी गेम के लिए पिछले 10 रिकॉर्ड्स/दिनों के हिसाब से गणना किए गए सिंगल नंबर डेट-वाइज (एक के बाद एक लाइन में) दिए गए हैं:")
+
+                # गेम चुनने के लिए सलेक्ट बॉक्स
+                history_game = st.selectbox("डेट-वाइज इतिहास देखने के लिए गेम चुनें:", available_cols, key="hist_game_select")
+                
+                # चेक करें कि क्या CSV में कोई 'Date' या 'Tarik' कॉलम है
+                date_col = next((c for c in df.columns if 'date' in c.lower() or 'tarik' in c.lower() or 'din' in c.lower() or 'day' in c.lower()), None)
+                
+                raw_full_series = df[history_game].dropna().tolist()
+                if len(raw_full_series) >= 15:
+                    past_10_lines = []
+                    # पिछले 10 इंडेक्स पर लूप चलाएं
+                    total_len = len(df)
+                    start_idx = max(10, total_len - 10)
+                    
+                    for idx in range(start_idx, total_len):
+                        sub_df = df.iloc[:idx] # उस दिन तक का डेटा
+                        res_past = get_audited_single_direct_number(sub_df, history_game, recent_days)
+                        if res_past:
+                            # यदि डेट कॉलम है तो डेट उठाएं, नहीं तो रिकॉर्ड नंबर/इंडेक्स दिखाएं
+                            date_label = str(df.loc[idx, date_col]) if date_col and date_col in df.columns else f"Day / Row {idx+1}"
+                            actual_val = f"{int(df.loc[idx, history_game]):02d}" if pd.notna(df.loc[idx, history_game]) else "--"
+                            
+                            line_str = f"Date/Row: {date_label} | Actual: {actual_val} ➔ Single Predicted: {res_past['single_direct']}"
+                            past_10_lines.append(line_str)
+                    
+                    past_10_text = "\n".join(past_10_lines)
+                    st.code(past_10_text, language="text")
+                else:
+                    st.warning("इस गेम में पिछले 10 दिनों की गणना के लिए पर्याप्त डेटा उपलब्ध नहीं है।")
+
+                st.markdown("---")
+                wa_text = "🎯 *TODAY SINGLE DIRECT NUMBERS (AUDITED)* 🎯\n\n" + "\n".join(wa_msg_lines)
                 encoded_msg = urllib.parse.quote(wa_text)
                 wa_url = f"https://api.whatsapp.com/send?text={encoded_msg}"
-                
                 st.markdown(
                     f'<a href="{wa_url}" target="_blank">'
                     f'<button style="background-color:#25D366; color:white; border:none; padding:12px 20px; '
@@ -250,7 +299,7 @@ if uploaded_file is not None:
         # ==========================================
         with tab3:
             st.subheader("🔍 पिछले महीने के रिजल्ट्स और अंकों की गहराई से जांच (Audit)")
-            st.write("यहाँ आप देख सकते हैं कि किसी भी गेम में पिछले 30 दिनों (1 महीना) में असल में क्या-क्या आया है और कौन सा अंक कितनी बार बना है।")
+            st.write("यहाँ आप देख सकते हैं कि किसी भी गेम में पिछले 30 दिनों (1 महीना) में असल में क्या-क्या आया है।")
             
             audit_col1, audit_col2 = st.columns(2)
             with audit_col1:
@@ -270,8 +319,6 @@ if uploaded_file is not None:
                     
             if clean_series:
                 last_n_vals = clean_series[-audit_days:]
-                
-                # हर अंक (0-9) की गिनती
                 digit_counts = {d: 0 for d in range(10)}
                 for num in last_n_vals:
                     digit_counts[num // 10] += 1
@@ -299,14 +346,6 @@ if uploaded_file is not None:
                 st.markdown(f"**📜 {selected_game} के पिछले {len(last_n_vals)} असली रिजल्ट्स (क्रम अनुसार):**")
                 formatted_history = ", ".join([f"{v:02d}" for v in last_n_vals])
                 st.code(formatted_history, language="text")
-                
-                # 3, 5 और 8 की विशेष तुलना
-                st.info(
-                    f"💡 **तुलनात्मक रिपोर्ट ({selected_game} - पिछले {len(last_n_vals)} दिन):** "
-                    f"अंक **3** कुल **{digit_counts[3]} बार**, "
-                    f"अंक **5** कुल **{digit_counts[5]} बार**, और "
-                    f"अंक **8** कुल **{digit_counts[8]} बार** आया है।"
-                )
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:

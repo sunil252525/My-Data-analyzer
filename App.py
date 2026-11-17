@@ -1,6 +1,3 @@
-
-    
-
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -95,8 +92,8 @@ if uploaded_file is not None:
         
         tabs = st.tabs([f"🎯 {col}" for col in available_cols])
         
-        # 24 घंटे के सभी गेम्स के डेटा को एकत्र करने के लिए लिस्ट
-        all_games_24h_summary = []
+        # सभी गेम के 100-100 रेट वाले नंबरों को एक साथ स्टोर करने के लिए डिक्शनरी
+        global_100_summary_lines = []
         
         for idx, col in enumerate(available_cols):
             with tabs[idx]:
@@ -194,7 +191,7 @@ if uploaded_file is not None:
                     all_24h_harufs = list(dict.fromkeys(top_in_24h + top_out_24h))
                     haruf_24h_pairs = [f"{h}{h}" for h in all_24h_harufs]
 
-                    # --- HARUF DEDUPLICATION (कोई रिपीट नंबर/जोड़ा नहीं होगा) ---
+                    # --- HARUF DEDUPLICATION ---
                     seen_haruf_nums = set()
                     
                     h_nums_clean = []
@@ -340,7 +337,6 @@ if uploaded_file is not None:
                     nums_100 = []
                     nums_50 = []
 
-                    # सभी सेक्शन्स से यूनिक नंबर छाँटकर रेट (100 और 50) के हिसाब से अलग करें
                     for n_list, rate in raw_sections:
                         for num in n_list:
                             if num not in seen_base:
@@ -354,14 +350,12 @@ if uploaded_file is not None:
                     count_50 = len(nums_50)
                     final_unique_count = len(seen_base)
 
-                    # सिर्फ दो लाइनें बनाएँगी: एक 100 वालों की और एक 50 वालों की
                     unique_pattern_lines = []
                     if nums_100:
                         unique_pattern_lines.append(fmt_line(nums_100, 100))
                     if nums_50:
                         unique_pattern_lines.append(fmt_line(nums_50, 50))
 
-                    # --- PAYMENT CALCULATION ENGINE ---
                     total_100_amt = count_100 * 100
                     total_50_amt = count_50 * 50
                     grand_total_payment = total_100_amt + total_50_amt
@@ -376,3 +370,29 @@ if uploaded_file is not None:
 
                     unique_pattern_box_text = "\n".join(unique_pattern_lines)
                     st.code(unique_pattern_box_text, language="text")
+
+                    # ----------------------------------------------------
+                    # 5. COLLECTING 100-RATE NUMBERS FOR GLOBAL ALL-GAMES SUMMARY
+                    # ----------------------------------------------------
+                    # इस गेम के सभी 100-रेट वाले नंबरों को एक साथ कलेक्ट करें (जैसे Cross Line 1 और 24H Direct)
+                    game_100_nums = []
+                    for n_list, rate in raw_sections:
+                        if rate == 100:
+                            for n in n_list:
+                                if n not in game_100_nums:
+                                    game_100_nums.append(n)
+                    
+                    if game_100_nums:
+                        global_100_summary_lines.append(f"{col}: {', '.join([f'{int(n):02d}' for n in game_100_nums])} (100)")
+
+        # -------------------------------------------------------------------------
+        # 6. GLOBAL BOTTOM BOX: ALL GAMES 100-RATE SUMMARY (सबसे नीचे का नया बॉक्स)
+        # -------------------------------------------------------------------------
+        if global_100_summary_lines:
+            st.markdown("---")
+            st.markdown("### 🔥 सभी गेम के 100-100 रेट वाले नंबर (All Games 100-Rate Summary Box)")
+            st.write("नीचे दिए गए बॉक्स में सभी उपलब्ध गेमों के 100-100 रेट वाले नंबर गेम-वाइज (क्रमशः ऊपर से नीचे) एक साथ दिखाए गए हैं:")
+            
+            global_100_text = "\n".join(global_100_summary_lines)
+            st.code(global_100_text, language="text")
+            

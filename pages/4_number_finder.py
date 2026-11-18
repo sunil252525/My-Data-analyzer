@@ -6,7 +6,7 @@
 1. संतुलित पैटर्न क्रॉसिंग और हरूफ़ इंजन (Tab 1)
 2. ऑडिटेड सिंगल डायरेक्ट नंबर इंजन (Tab 2)
 3. पिछले महीने की गहराई से जांच / डेटा ऑडिट (Tab 3)
-4. स्पेशल ऑटोमैटिक और मैन्युअल पैटर्न स्कैनर (Tab 4) - हर गेम के ताज़ा रिजल्ट पर आधारित
+4. स्पेशल पैटर्न स्कैनर - ऑटोमैटिक (हर गेम के ताज़ा रिजल्ट पर आधारित) और मैन्युअल (Tab 4)
 =============================================================================
 """
 
@@ -315,9 +315,14 @@ if uploaded_file is not None:
         # ==========================================
         with tab4:
             st.subheader("⚡ स्पेशल पैटर्न स्कैनर: ताज़ा और मैन्युअल नंबर आधारित अगला सिंगल")
-            st.write("यह टैब दो हिस्सों में बंटा है: पहला हिस्सा **हर गेम के ताज़ा (Last) रिजल्ट को ऑटोमैटिकली सर्च** करता है, और दूसरा हिस्सा आपकी मर्जी के नंबर को सेपरेट गेम-वाइज चेक करता है।")
+            
+            # यहाँ जानकारी या मदद बॉक्स जोड़ा गया है ताकि याद रहे यह टैब क्या काम करता है
+            with st.expander("ℹ️ इस पैटर्न स्कैनर के काम करने का तरीका (How it Works)"):
+                st.markdown("""
+                * **ऑटोमैटिक स्कैनर (Auto-Scan):** यह हर गेम के सबसे आखिरी (Last) रिजल्ट को खुद पकड़कर, उसी गेम के पुराने 13 साल के इतिहास में चेक करता है कि उस नंबर के बाद सबसे पक्का सिंगल नंबर क्या आता है।
+                * **मैन्युअल स्कैनर (Manual Search):** आप अपनी पसंद का कोई भी नंबर दर्ज करके हर गेम का अलग-अलग पैटर्न सेपरेट चेक कर सकते हैं।
+                """)
 
-            # 1. ऑटोमैटिक लास्ट रिजल्ट स्कैनर सेक्शन
             st.markdown("### 🔥 1. ऑटोमैटिक लास्ट रिजल्ट पैटर्न स्कैनर (Auto-Scan Last Results)")
             st.write("यहाँ CSV के हर गेम के आखिरी नंबर को स्वतः पकड़कर उसके अगले फिक्स सिंगल नंबर की स्कैनिंग की गई है:")
 
@@ -367,7 +372,6 @@ if uploaded_file is not None:
                 valid_singles = [row['अगला बेस्ट सिंगल नंबर'].replace('🔥 ', '') for row in auto_results if '🔥' in row['अगला बेस्ट सिंगल नंबर']]
                 st.code(", ".join(valid_singles), language="text")
 
-            # 2. मैन्युअल सर्च बॉक्स सेक्शन
             st.markdown("---")
             st.markdown("### 🔍 2. मैन्युअल नंबर चेक बॉक्स (अपनी पसंद का नंबर हर गेम में अलग-अलग जांचें)")
             
@@ -398,4 +402,37 @@ if uploaded_file is not None:
                             
                             if game_next_nums:
                                 g_series = pd.Series(game_next_nums).value_counts()
-                                best_n = g_series
+                                best_n = g_series.index[0]
+                                best_cnt = g_series.iloc[0]
+                                top_3_str = ", ".join([f"{k:02d} ({v} बार)" for k, v in g_series.head(3).items()])
+                                manual_game_results.append({
+                                    "लोकेशन / गेम": col,
+                                    f"नंबर {formatted_target} के बाद बेस्ट सिंगल": f"🔥 {best_n:02d}",
+                                    "फ्रीक्वेंसी": f"{best_cnt} बार",
+                                    "टॉप 3 संभावित नंबर": top_3_str
+                                })
+                            else:
+                                manual_game_results.append({
+                                    "लोकेशन / गेम": col,
+                                    f"नंबर {formatted_target} के बाद बेस्ट सिंगल": "डाटा नहीं",
+                                    "फ्रीक्वेंसी": "-",
+                                    "टॉप 3 संभावित नंबर": "-"
+                                })
+
+                        if manual_game_results:
+                            res_df_man = pd.DataFrame(manual_game_results)
+                            st.dataframe(res_df_man, use_container_width=True, hide_index=True)
+                            
+                            st.markdown(f"**📋 नंबर {formatted_target} के बाद सभी गेम के अगले सिंगल की लाइन:**")
+                            valid_man_singles = [row[f'नंबर {formatted_target} के बाद बेस्ट सिंगल'].replace('🔥 ', '') for row in manual_game_results if '🔥' in row[f'नंबर {formatted_target} के बाद बेस्ट सिंगल']]
+                            st.code(", ".join(valid_man_singles), language="text")
+
+                    else:
+                        st.error("कृपया 00 से 99 के बीच का कोई वैध नंबर दर्ज करें।")
+                except ValueError:
+                    st.error("कृपया नंबर सही फॉर्मेट में दर्ज करें।")
+
+    else:
+        st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
+else:
+    st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")

@@ -1,11 +1,12 @@
 """
 =============================================================================
-📱 ऐप का नाम: Game-Wise Auto Last Result Pattern & Single Matcher
+📱 ऐप का नाम: Game-Wise Auto Last Result Pattern & Master Copy Scanner
 -----------------------------------------------------------------------------
-💡 यह कोड क्या करता है:
-1. छह की छह मार्केट (DB, SG, FRBD, GZBD, GALI, DSWR) के सबसे आखिरी (Last) रिजल्ट्स को स्वतः चुनता है।
-2. हर गेम के लिए अलग-अलग सेक्शन/बॉक्स बनाता है और उसके इतिहास के आधार पर अगला सिंगल नंबर निकालता है।
-3. सबसे नीचे सभी छह गेम के सिंगल नंबरों की एक कंबाइंड लिस्ट (पलट के साथ/डायरेक्ट) देता है जिसे एक क्लिक में कॉपी किया जा सके।
+💡 मुख्य विशेषताएँ:
+1. छह की छह मार्केट के ताज़ा रिजल्ट्स को स्वतः (Automatically) डिटेक्ट करना।
+2. हर गेम के लिए अलग-अलग इंडिविजुअल बॉक्स और सिंगल नंबर दिखाना।
+3. हर गेम के नीचे उसका अपना कॉपी-पेस्ट बॉक्स।
+4. सबसे नीचे सभी छह गेम्स के सिंगल नंबरों का कंबाइंड मास्टर बॉक्स (डायरेक्ट और पलट के साथ)।
 =============================================================================
 """
 
@@ -16,8 +17,8 @@ import numpy as np
 # --- Page Configuration ---
 st.set_page_config(page_title="Game-Wise Auto Pattern Scanner", layout="wide")
 
-st.title("⚡ हर गेम का अलग-अलग ऑटोमैटिक पैटर्न और सिंगल स्कैनर")
-st.write("यह इंजन हर मार्केट के ताज़ा (Last) रिजल्ट को खुद पकड़कर, उसके अगले सबसे मजबूत सिंगल नंबर की सेपरेट लिस्ट तैयार करता है।")
+st.title("⚡ हर गेम का अलग-अलग ऑटोमैटिक पैटर्न और मास्टर सिंगल स्कैनर")
+st.write("यह इंजन हर मार्केट के ताज़ा रिजल्ट को खुद पकड़कर, उसके अगले सबसे मजबूत सिंगल नंबर की सेपरेट लिस्ट और सबसे नीचे मास्टर कंबाइंड बॉक्स तैयार करता है।")
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -35,11 +36,11 @@ if uploaded_file is not None:
             df[c] = pd.to_numeric(df[c], errors='coerce')
 
         st.markdown("---")
-        st.subheader("📊 सभी छह मार्केट के अलग-अलग ऑटो-स्कैन रिजल्ट्स (Game-Wise Breakdown)")
+        st.subheader("📊 सभी छह मार्केट के अलग-अलग ऑटो-स्कैन रिजल्ट्स और सेपरेट बॉक्स")
 
         all_game_singles = []
 
-        # हर गेम के लिए अलग लूप चलाकर उसका बॉक्स बनाना
+        # हर गेम के लिए अलग लूप चलाकर उसका स्वतंत्र बॉक्स बनाना
         for col in available_cols:
             valid_series = df[col].dropna()
             if not valid_series.empty:
@@ -55,7 +56,7 @@ if uploaded_file is not None:
                         if pd.notna(nx_val):
                             game_next_nums.append(int(nx_val))
                 
-                # हर गेम के लिए अलग एक्सपेंडर/कंटेनर बॉक्स
+                # हर गेम के लिए अलग एक्सपेंडर बॉक्स
                 with st.expander(f"📍 मार्केट / गेम: {col} (ताज़ा रिजल्ट: {formatted_last})", expanded=True):
                     if game_next_nums:
                         g_series = pd.Series(game_next_nums).value_counts()
@@ -73,8 +74,8 @@ if uploaded_file is not None:
                             top_3_str = ", ".join([f"{k:02d} ({v} बार)" for k, v in g_series.head(3).items()])
                             st.info(f"🔥 **टॉप 3 संभावित नंबर:** {top_3_str}")
                         
-                        # कॉपी करने के लिए छोटी लाइन
-                        st.text(f"{col} Single Number:")
+                        # इस विशिष्ट गेम का सिंगल नंबर कॉपी करने के लिए बॉक्स
+                        st.markdown(f"**📋 {col} सिंगल नंबर (कॉपी करें):**")
                         st.code(formatted_best, language="text")
                     else:
                         st.warning(f"गेम {col} में नंबर {formatted_last} के बाद पर्याप्त ऐतिहासिक डेटा नहीं मिला।")
@@ -82,17 +83,17 @@ if uploaded_file is not None:
                 st.warning(f"गेम {col} में कोई वैध डेटा नहीं है।")
 
         # ==========================================
-        # सबसे नीचे: सभी छह गेम के सिंगल नंबरों का कंबाइंड बॉक्स (पलट के साथ)
+        # सबसे नीचे: सभी छह गेम के सिंगल नंबरों का मास्टर कंबाइंड बॉक्स (डायरेक्ट और पलट के साथ)
         # ==========================================
         st.markdown("---")
-        st.subheader("🎯 सभी छह मार्केट के सिंगल नंबरों की कंबाइंड लिस्ट (Copy & Paste Box)")
-        st.write("यहाँ सभी गेम्स के निकले हुए सिंगल नंबर और उनकी पलट (Palat) एक ही जगह मिल जाएगी:")
+        st.subheader("🎯 सभी छह मार्केट के सिंगल नंबरों का मास्टर कंबाइंड बॉक्स (Master Copy & Paste Box)")
+        st.write("यहाँ सभी गेम्स से निकले हुए सिंगल नंबर एक साथ एक ही जगह पर मिल जाएंगे:")
 
         if all_game_singles:
-            # डायरेक्ट सिंगल नंबर की लाइन
+            # डायरेक्ट सिंगल नंबर की कंबाइंड लाइन
             direct_combined = ", ".join(all_game_singles)
             
-            # पलट के साथ नंबर तैयार करना (जैसे 12 का 21, अगर डबल अंक है तो वही रहेगा)
+            # पलट के साथ नंबर तैयार करना (डबल अंकों को डुप्लीकेट होने से बचाते हुए)
             palat_list = []
             for s in all_game_singles:
                 palat_list.append(s)
@@ -104,10 +105,10 @@ if uploaded_file is not None:
 
             col_c1, col_c2 = st.columns(2)
             with col_c1:
-                st.markdown("**📋 सिर्फ सिंगल नंबर (Direct Line):**")
+                st.markdown("**📋 सभी गेम के सिर्फ सिंगल नंबर (Direct Line):**")
                 st.code(direct_combined, language="text")
             with col_c2:
-                st.markdown("**📋 पलट के साथ (With Palat / Family):**")
+                st.markdown("**📋 सभी गेम पलट के साथ (With Palat):**")
                 st.code(palat_combined, language="text")
         else:
             st.info("कॉपी करने के लिए अभी कोई सिंगल नंबर उपलब्ध नहीं है।")
@@ -116,3 +117,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
+    

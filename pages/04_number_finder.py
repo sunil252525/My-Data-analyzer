@@ -1,12 +1,23 @@
+"""
+=============================================================================
+📱 ऐप का नाम: Game-Wise Auto Last Result Pattern & Single Matcher
+-----------------------------------------------------------------------------
+💡 यह कोड क्या करता है:
+1. छह की छह मार्केट (DB, SG, FRBD, GZBD, GALI, DSWR) के सबसे आखिरी (Last) रिजल्ट्स को स्वतः चुनता है।
+2. हर गेम के लिए अलग-अलग सेक्शन/बॉक्स बनाता है और उसके इतिहास के आधार पर अगला सिंगल नंबर निकालता है।
+3. सबसे नीचे सभी छह गेम के सिंगल नंबरों की एक कंबाइंड लिस्ट (पलट के साथ/डायरेक्ट) देता है जिसे एक क्लिक में कॉपी किया जा सके।
+=============================================================================
+"""
+
 import streamlit as st
 import pandas as pd
 import numpy as np
 
 # --- Page Configuration ---
-st.set_page_config(page_title="Special Pattern Number Scanner", layout="wide")
+st.set_page_config(page_title="Game-Wise Auto Pattern Scanner", layout="wide")
 
-st.title("⚡ स्पेशल पैटर्न स्कैनर: नंबर आने के बाद अगला सिंगल नंबर (सुधरा हुआ संस्करण)")
-st.write("यहाँ अपनी CSV फ़ाइल अपलोड करें और किसी भी नंबर का 13 साल का ऐतिहासिक पैटर्न बिल्कुल सटीक रूप से स्कैन करें।")
+st.title("⚡ हर गेम का अलग-अलग ऑटोमैटिक पैटर्न और सिंगल स्कैनर")
+st.write("यह इंजन हर मार्केट के ताज़ा (Last) रिजल्ट को खुद पकड़कर, उसके अगले सबसे मजबूत सिंगल नंबर की सेपरेट लिस्ट तैयार करता है।")
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -19,79 +30,89 @@ if uploaded_file is not None:
     available_cols = [c for c in series_cols if c in df.columns]
     
     if available_cols:
-        # डेटा क्लीनिंग: सुरक्षित रूप से इंटीजर में बदलना
+        # डेटा क्लीनिंग: सभी गेम के कॉलम को नंबर फॉर्मेट में बदलना
         for c in available_cols:
             df[c] = pd.to_numeric(df[c], errors='coerce')
 
         st.markdown("---")
-        
-        # यूजर इनपुट सेक्शन
-        col_input1, col_input2 = st.columns([2, 2])
-        with col_input1:
-            target_num_input = st.text_input("🔍 वह नंबर दर्ज करें जिसे चेक करना है (जैसे: 80 या 7):", value="80")
-        with col_input2:
-            st.info("💡 यह सुधरा हुआ इंजन सही क्रम (Sequence) में चेक करेगा कि इस नंबर के ठीक बाद क्या आया है।")
+        st.subheader("📊 सभी छह मार्केट के अलग-अलग ऑटो-स्कैन रिजल्ट्स (Game-Wise Breakdown)")
 
-        if st.button("🔥 पैटर्न स्कैन शुरू करें (Run Pattern Scan)", use_container_width=True):
-            try:
-                target_num = int(target_num_input)
-                if 0 <= target_num <= 99:
-                    formatted_target = f"{target_num:02d}"
-                    st.success(f"📊 नंबर **{formatted_target}** के लिए शुद्ध ऐतिहासिक स्कैनिंग की जा रही है...")
+        all_game_singles = []
 
-                    # 1. Game-wise Breakdown Scan (सुधारा गया सटीक लॉजिक)
-                    st.markdown(f"### 📋 गेम-वाइज सेपरेट ब्रेकडाउन ({formatted_target} आने के ठीक बाद हर गेम का अगला फिक्स नंबर):")
-                    
-                    game_wise_results = []
-                    for col in available_cols:
-                        game_next_nums = []
-                        # सुधारा गया लूप: केवल ठीक अगले रिकॉर्ड (r_idx + 1) को चेक करेगा
-                        for r_idx in range(len(df) - 1):
-                            val = df.loc[r_idx, col]
-                            if pd.notna(val) and int(val) == target_num:
-                                # ठीक अगले दिन/टर्न का नंबर लें
-                                nx_val = df.loc[r_idx + 1, col]
-                                if pd.notna(nx_val):
-                                    game_next_nums.append(int(nx_val))
+        # हर गेम के लिए अलग लूप चलाकर उसका बॉक्स बनाना
+        for col in available_cols:
+            valid_series = df[col].dropna()
+            if not valid_series.empty:
+                last_val = int(valid_series.iloc[-1])
+                formatted_last = f"{last_val:02d}"
+                
+                # इस गेम के इतिहास में last_val के ठीक बाद क्या आया है, उसकी स्कैनिंग
+                game_next_nums = []
+                for r_idx in range(len(df) - 1):
+                    val = df.loc[r_idx, col]
+                    if pd.notna(val) and int(val) == last_val:
+                        nx_val = df.loc[r_idx + 1, col]
+                        if pd.notna(nx_val):
+                            game_next_nums.append(int(nx_val))
+                
+                # हर गेम के लिए अलग एक्सपेंडर/कंटेनर बॉक्स
+                with st.expander(f"📍 मार्केट / गेम: {col} (ताज़ा रिजल्ट: {formatted_last})", expanded=True):
+                    if game_next_nums:
+                        g_series = pd.Series(game_next_nums).value_counts()
+                        best_n = g_series.index[0]
+                        best_cnt = g_series.iloc[0]
                         
-                        if game_next_nums:
-                            g_series = pd.Series(game_next_nums).value_counts()
-                            best_n = g_series.index[0]
-                            best_cnt = g_series.iloc[0]
+                        formatted_best = f"{best_n:02d}"
+                        all_game_singles.append(formatted_best)
+                        
+                        col_box1, col_box2 = st.columns([2, 3])
+                        with col_box1:
+                            st.success(f"👑 **अगला बेस्ट सिंगल नंबर:** **{formatted_best}**")
+                            st.write(f"इतिहास में यह **{best_cnt} बार** देखा गया है।")
+                        with col_box2:
                             top_3_str = ", ".join([f"{k:02d} ({v} बार)" for k, v in g_series.head(3).items()])
-                            game_wise_results.append({
-                                "लोकेशन / गेम": col,
-                                "बेस्ट सिंगल नंबर": f"{best_n:02d}",
-                                "फ्रीक्वेंसी": f"{best_cnt} बार",
-                                "कुल मैच": f"{len(game_next_nums)} बार",
-                                "टॉप 3 संभावित नंबर": top_3_str
-                            })
-                        else:
-                            game_wise_results.append({
-                                "लोकेशन / गेम": col,
-                                "बेस्ट सिंगल नंबर": "डाटा नहीं",
-                                "फ्रीक्वेंसी": "-",
-                                "कुल मैच": "0 बार",
-                                "टॉप 3 संभावित नंबर": "-"
-                            })
-
-                    if game_wise_results:
-                        res_df_pattern = pd.DataFrame(game_wise_results)
-                        st.dataframe(res_df_pattern, use_container_width=True, hide_index=True)
+                            st.info(f"🔥 **टॉप 3 संभावित नंबर:** {top_3_str}")
                         
-                        # सभी गेम के अगले सिंगल नंबर की एक साथ कंबाइंड लाइन
-                        st.markdown("**📋 सभी गेम के अगले सिंगल नंबर की कंबाइंड लाइन (कॉपी करने के लिए):**")
-                        valid_singles = [row['बेस्ट सिंगल नंबर'] for row in game_wise_results if row['बेस्ट सिंगल नंबर'] != "डाटा नहीं"]
-                        combined_pattern_line = ", ".join(valid_singles)
-                        st.code(combined_pattern_line, language="text")
+                        # कॉपी करने के लिए छोटी लाइन
+                        st.text(f"{col} Single Number:")
+                        st.code(formatted_best, language="text")
+                    else:
+                        st.warning(f"गेम {col} में नंबर {formatted_last} के बाद पर्याप्त ऐतिहासिक डेटा नहीं मिला।")
+            else:
+                st.warning(f"गेम {col} में कोई वैध डेटा नहीं है।")
 
-                else:
-                    st.error("कृपया 00 से 99 के बीच का कोई वैध नंबर दर्ज करें।")
-            except ValueError:
-                st.error("कृपया नंबर सही फॉर्मेट में दर्ज करें।")
+        # ==========================================
+        # सबसे नीचे: सभी छह गेम के सिंगल नंबरों का कंबाइंड बॉक्स (पलट के साथ)
+        # ==========================================
+        st.markdown("---")
+        st.subheader("🎯 सभी छह मार्केट के सिंगल नंबरों की कंबाइंड लिस्ट (Copy & Paste Box)")
+        st.write("यहाँ सभी गेम्स के निकले हुए सिंगल नंबर और उनकी पलट (Palat) एक ही जगह मिल जाएगी:")
+
+        if all_game_singles:
+            # डायरेक्ट सिंगल नंबर की लाइन
+            direct_combined = ", ".join(all_game_singles)
+            
+            # पलट के साथ नंबर तैयार करना (जैसे 12 का 21, अगर डबल अंक है तो वही रहेगा)
+            palat_list = []
+            for s in all_game_singles:
+                palat_list.append(s)
+                rev_s = s[::-1]
+                if rev_s != s and rev_s not in palat_list:
+                    palat_list.append(rev_s)
+            
+            palat_combined = ", ".join(palat_list)
+
+            col_c1, col_c2 = st.columns(2)
+            with col_c1:
+                st.markdown("**📋 सिर्फ सिंगल नंबर (Direct Line):**")
+                st.code(direct_combined, language="text")
+            with col_c2:
+                st.markdown("**📋 पलट के साथ (With Palat / Family):**")
+                st.code(palat_combined, language="text")
+        else:
+            st.info("कॉपी करने के लिए अभी कोई सिंगल नंबर उपलब्ध नहीं है।")
 
     else:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-    

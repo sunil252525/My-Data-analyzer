@@ -1,10 +1,10 @@
 """
 =============================================================================
-📱 ऐप का नाम: Tabbed Multi-Market All-Game Pattern Matcher
+📱 ऐप का नाम: Tabbed Multi-Market All-Game Corrected Pattern Matcher
 -----------------------------------------------------------------------------
 💡 मुख्य विशेषताएँ:
 - टैब 1: हर गेम का अलग-अलग ऑटो-स्कैन और मास्टर कंबाइंड बॉक्स
-- टैब 2: हर गेम के ताज़ा नंबर का 'ऑल-गेम (सभी मार्केट)' में इतिहास स्कैन करके सबसे सटीक नंबर निकालना
+- टैब 2: सही 'फ्लैटेंड ऑल-गेम सीक्वेंस' लॉजिक के साथ ताज़ा नंबर का डीप स्कैनर
 =============================================================================
 """
 
@@ -13,10 +13,10 @@ import pandas as pd
 import numpy as np
 
 # --- Page Configuration ---
-st.set_page_config(page_title="Multi-Tab All-Game Pattern Matcher", layout="wide")
+st.set_page_config(page_title="Multi-Tab Corrected Pattern Matcher", layout="wide")
 
-st.title("🎯 एडवांस्ड ऑल-इन-वन पैटर्न और सिंगल स्कैनर")
-st.write("यह ऐप हर गेम के ताज़ा नंबर का ऑल-गेम (सभी मार्केट) इतिहास में सबसे सटीक पैटर्न स्कैन करता है।")
+st.title("🎯 एडवांस्ड ऑल-इन-वन पैटर्न और सिंगल स्कैनर (सटीक संशोधित संस्करण)")
+st.write("यह ऐप सही ऑल-गेम क्रमिक (Sequential) लॉजिक के साथ पैटर्न स्कैन करता है।")
 
 # --- FILE UPLOADER ---
 uploaded_file = st.file_uploader("📂 कृपया अपनी CSV फ़ाइल यहाँ अपलोड करें", type=["csv"])
@@ -38,7 +38,7 @@ if uploaded_file is not None:
         # --- दो स्पष्ट टैब ---
         tab1, tab2 = st.tabs([
             "⚡ 1. हर गेम का अलग-अलग ऑटो-स्कैन और मास्टर बॉक्स", 
-            "🔍 2. ताज़ा नंबर का ऑल-गेम (सभी मार्केट) डीप स्कैनर"
+            "🔍 2. ताज़ा नंबर का 'ऑल-गेम' सटीक क्रमिक स्कैनर"
         ])
         
         # ==========================================
@@ -114,41 +114,43 @@ if uploaded_file is not None:
                 st.info("कॉपी करने के लिए अभी कोई सिंगल नंबर उपलब्ध नहीं है।")
 
         # ==========================================
-        # TAB 2: ताज़ा नंबर का ऑल-गेम (सभी मार्केट) डीप स्कैनर
+        # TAB 2: ताज़ा नंबर का 'ऑल-गेम' सटीक क्रमिक स्कैनर (Corrected Flat Sequence Logic)
         # ==========================================
         with tab2:
-            st.subheader("🔍 ताज़ा नंबर का 'ऑल-गेम (सभी मार्केट)' डीप पैटर्न स्कैनर")
-            st.write("यह टैब हर गेम के ताज़ा नंबर (जैसे DB का 95, SG का 05 आदि) को पूरे **ऑल-गेम डेटाबेस (सभी छह मार्केट)** में खोजता है कि उस नंबर के बाद पूरी टेबल में सबसे ज्यादा बार कौन सा नंबर आया है:")
+            st.subheader("🔍 ताज़ा नंबर का 'ऑल-गेम' सटीक क्रमिक स्कैनर (Sequential All-Market Deep Matcher)")
+            st.write("यह टैब सभी छह मार्केट के डेटा को सही क्रमानुसार (Sequence में) जोड़कर चेक करता है कि किसी भी ताज़ा नंबर के बाद ऑल-गेम में ठीक अगला नंबर क्या आया है:")
 
-            # हर गेम का आखिरी नंबर निकालना
+            # 1. पूरी टेबल को क्रमानुसार एक लंबी लिस्ट (Flat List) में बदलना ताकि मार्केट-दर-मार्केट सही क्रम बना रहे
+            flat_sequence = []
+            for r_idx in range(len(df)):
+                for c_name in available_cols:
+                    val = df.loc[r_idx, c_name]
+                    if pd.notna(val):
+                        flat_sequence.append(int(val))
+
+            # 2. हर गेम का आखिरी (ताज़ा) नंबर निकालना
             game_latest_dict = {}
             for col in available_cols:
                 v_series = df[col].dropna()
                 if not v_series.empty:
                     game_latest_dict[col] = int(v_series.iloc[-1])
 
-            if game_latest_dict:
+            if game_latest_dict and len(flat_sequence) > 1:
                 latest_str_list = [f"{g}: {n:02d}" for g, n in game_latest_dict.items()]
                 st.info(f"💡 **हर गेम का ताज़ा रिजल्ट:** {', '.join(latest_str_list)}")
 
                 all_game_breakdown = []
                 master_all_game_nexts = []
 
-                # अब हर गेम के ताज़ा नंबर को पूरी टेबल (All Columns & Rows) में सर्च करना
+                # 3. हर गेम के ताज़ा नंबर को इस लंबी क्रमिक लिस्ट में ढूंढकर उसके ठीक बाद आने वाले नंबर देखना
                 for col, target_val in game_latest_dict.items():
                     market_all_nexts = []
                     
-                    # पूरी CSV के हरrow और हर column में घूमेंगे
-                    for r_idx in range(len(df) - 1):
-                        for c_name in available_cols:
-                            val = df.loc[r_idx, c_name]
-                            if pd.notna(val) and int(val) == target_val:
-                                # जब भी वह नंबर पूरी टेबल में कहीं भी मिले, उसके ठीक अगले रिकॉर्ड (अगले दिन/टर्न) को चेक करें
-                                # (यहाँ हम ठीक अगले रो का उसी कॉलम का या अगले कॉलम का डेटा देख सकते हैं, मानक क्रमानुसार r_idx + 1)
-                                nx_val = df.loc[r_idx + 1, c_name]
-                                if pd.notna(nx_val):
-                                    market_all_nexts.append(int(nx_val))
-                                    master_all_game_nexts.append(int(nx_val))
+                    for i in range(len(flat_sequence) - 1):
+                        if flat_sequence[i] == target_val:
+                            nx_val = flat_sequence[i + 1]
+                            market_all_nexts.append(nx_val)
+                            master_all_game_nexts.append(nx_val)
 
                     if market_all_nexts:
                         top_m = pd.Series(market_all_nexts).value_counts().index[0]
@@ -166,11 +168,10 @@ if uploaded_file is not None:
                         })
 
                 if all_game_breakdown:
-                    st.markdown("### 📊 हर गेम के ताज़ा नंबर के बाद 'ऑल-गेम' इतिहास का रिजल्ट:")
+                    st.markdown("### 📊 हर गेम के ताज़ा नंबर के बाद 'ऑल-गेम' क्रमिक इतिहास का रिजल्ट:")
                     res_df_all = pd.DataFrame(all_game_breakdown)
                     st.dataframe(res_df_all, use_container_width=True, hide_index=True)
                     
-                    # कॉपी करने के लिए ऑल-गेम सिंगल नंबर्स की लाइन
                     valid_all_singles = [row['ऑल-गेम में सबसे पक्का अगला नंबर'] for row in all_game_breakdown if row['ऑल-गेम में सबसे पक्का अगला नंबर'] != "डाटा नहीं"]
                     if valid_all_singles:
                         st.markdown("**📋 इन सभी ऑल-गेम सिंगल नंबरों की कंबाइंड लाइन (कॉपी करें):**")
@@ -179,13 +180,13 @@ if uploaded_file is not None:
                 if master_all_game_nexts:
                     m_series = pd.Series(master_all_game_nexts).value_counts()
                     st.markdown("---")
-                    st.success(f"🔥 **इन सबका महा-संयोजन (Overall All-Game Top Single):** **{m_series.index[0]:02d}** (कुल {m_series.iloc[0]} बार ऑल-गेम में आया है)")
+                    st.success(f"🔥 **इन सबका महा-संयोजन (Overall All-Game Top Single):** **{m_series.index[0]:02d}** (कुल {m_series.iloc[0]} बार ऑल-गेम क्रम में आया है)")
                     
                     st.markdown("**📋 ऑल-गेम के टॉप 10 सबसे ताकतवर नंबर (कॉपी करने के लिए):**")
                     top_10_all = ", ".join([f"{k:02d}" for k in m_series.head(10).keys()])
                     st.code(top_10_all, language="text")
                 else:
-                    st.warning("ऑल-गेम के लिए पर्याप्त ऐतिहासिक मैच नहीं मिले।")
+                    st.warning("ऑल-गेम के लिए पर्याप्त क्रमिक ऐतिहासिक मैच नहीं मिले।")
             else:
                 st.warning("कोई ताज़ा रिजल्ट उपलब्ध नहीं है।")
 
@@ -193,4 +194,4 @@ if uploaded_file is not None:
         st.error("CSV फ़ाइल में DB, SG, FRBD, GZBD, GALI, DSWR में से कोई भी कॉलम नहीं मिला!")
 else:
     st.info("कृपया आगे बढ़ने के लिए ऊपर दी गई जगह पर अपनी CSV फ़ाइल अपलोड करें।")
-  
+    

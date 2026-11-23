@@ -120,7 +120,7 @@ if uploaded_file is not None:
                     st.code(direct_combined, language="text")
                 with col_c2:
                     st.markdown("**📋 सभी गेम पलट के साथ (With Palat):**")
-                    st.code(pal_combined, language="text")
+                    st.code(palat_combined, language="text")
                 
                 # --- सबसे लास्ट वाला बॉक्स: हर गेम के 3 नंबर + उनकी पलट एक ही लाइन में ---
                 if all_games_compact_lines:

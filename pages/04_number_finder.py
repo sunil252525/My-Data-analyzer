@@ -3,7 +3,7 @@
 📱 ऐप का नाम: Tabbed Multi-Market All-Game Corrected Pattern Matcher
 -----------------------------------------------------------------------------
 💡 मुख्य विशेषताएँ:
-- टैब 1: हर गेम का अलग-अलग ऑटो-स्कैन और मास्टर कंबाइंड बॉक्स
+- टैब 1: हर गेम का अलग-अलग ऑटो-स्कैन और मास्टर कंबाइंड बॉक्स (सिर्फ नंबर व नीचे पलट)
 - टैब 2: सही 'फ्लैटेंड ऑल-गेम सीक्वेंस' लॉजिक के साथ ताज़ा नंबर का डीप स्कैनर
 =============================================================================
 """
@@ -48,6 +48,7 @@ if uploaded_file is not None:
             st.subheader("📊 सभी छह मार्केट के अलग-अलग ऑटो-स्कैन रिजल्ट्स")
             
             all_game_singles = []
+            all_game_top3_blocks = []  # हर गेम के टॉप 3 और नीचे पलट के ब्लॉक स्टोर करने के लिए
 
             for col in available_cols:
                 valid_series = df[col].dropna()
@@ -71,6 +72,24 @@ if uploaded_file is not None:
                             
                             formatted_best = f"{best_n:02d}"
                             all_game_singles.append(formatted_best)
+                            
+                            # टॉप 3 नंबर और उनकी पलट तैयार करना (बिना किसी अतिरिक्त शब्द के)
+                            top3_list = [f"{k:02d}" for k in g_series.head(3).keys()]
+                            top_3_nums_only = ", ".join(top3_list)
+                            
+                            palat_only_list = []
+                            for num_str in top3_list:
+                                rev_str = num_str[::-1]
+                                if rev_str != num_str and rev_str not in palat_only_list:
+                                    palat_only_list.append(rev_str)
+                            palat_line_str = ", ".join(palat_only_list)
+                            
+                            # पहली लाइन में सिर्फ नंबर, दूसरी लाइन में सिर्फ पलट
+                            if palat_line_str:
+                                block_text = f"{top_3_nums_only}\n{palat_line_str}"
+                            else:
+                                block_text = top_3_nums_only
+                            all_game_top3_blocks.append(block_text)
                             
                             col_box1, col_box2 = st.columns([2, 3])
                             with col_box1:
@@ -110,6 +129,12 @@ if uploaded_file is not None:
                 with col_c2:
                     st.markdown("**📋 सभी गेम पलट के साथ (With Palat):**")
                     st.code(palat_combined, language="text")
+                
+                # --- नया बॉक्स: सिर्फ नंबर और उनके ठीक नीचे पलट ---
+                if all_game_top3_blocks:
+                    st.markdown("**📋 हर गेम के नंबर और उनके ठीक नीचे पलट:**")
+                    top3_master_text = "\n\n".join(all_game_top3_blocks)
+                    st.code(top3_master_text, language="text")
             else:
                 st.info("कॉपी करने के लिए अभी कोई सिंगल नंबर उपलब्ध नहीं है।")
 

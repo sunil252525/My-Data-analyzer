@@ -3,7 +3,7 @@
 📱 ऐप का नाम: Tabbed Multi-Market All-Game Corrected Pattern Matcher
 -----------------------------------------------------------------------------
 💡 मुख्य विशेषताएँ:
-- टैब 1: हर गेम का अलग-अलग ऑटो-स्कैन और मास्टर कंबाइंड बॉक्स (सभी गेम के नंबर व पलट एक ही बॉक्स में)
+- टैब 1: हर गेम का अलग-अलग ऑटो-स्कैन और मास्टर कंबाइंड बॉक्स (हर गेम की एक लाइन में नंबर + पलट)
 - टैब 2: सही 'फ्लैटेंड ऑल-गेम सीक्वेंस' लॉजिक के साथ ताज़ा नंबर का डीप स्कैनर
 =============================================================================
 """
@@ -48,8 +48,7 @@ if uploaded_file is not None:
             st.subheader("📊 सभी छह मार्केट के अलग-अलग ऑटो-स्कैन रिजल्ट्स")
             
             all_game_singles = []
-            all_games_direct_lines = []  # सभी गेम के नंबरों की लाइनें
-            all_games_palat_lines = []   # सभी गेम की पलट की लाइनें
+            all_games_compact_lines = []  # हर गेम की एक लाइन (टॉप 3 + उनकी पलट साथ में)
 
             for col in available_cols:
                 valid_series = df[col].dropna()
@@ -74,20 +73,15 @@ if uploaded_file is not None:
                             formatted_best = f"{best_n:02d}"
                             all_game_singles.append(formatted_best)
                             
-                            # टॉप 3 नंबर और उनकी पलट तैयार करना (सिर्फ नंबर, बिना किसी शब्द के)
+                            # टॉप 3 नंबर और उन्हीं की पलट एक ही लाइन में जोड़ना
                             top3_list = [f"{k:02d}" for k in g_series.head(3).keys()]
-                            direct_line_str = ", ".join(top3_list)
-                            
-                            palat_list_game = []
+                            line_items = list(top3_list)
                             for num_str in top3_list:
                                 rev_str = num_str[::-1]
-                                if rev_str != num_str and rev_str not in palat_list_game:
-                                    palat_list_game.append(rev_str)
-                            palat_line_str = ", ".join(palat_list_game)
+                                if rev_str not in line_items:
+                                    line_items.append(rev_str)
                             
-                            all_games_direct_lines.append(direct_line_str)
-                            if palat_line_str:
-                                all_games_palat_lines.append(palat_line_str)
+                            all_games_compact_lines.append(", ".join(line_items))
                             
                             col_box1, col_box2 = st.columns([2, 3])
                             with col_box1:
@@ -126,14 +120,13 @@ if uploaded_file is not None:
                     st.code(direct_combined, language="text")
                 with col_c2:
                     st.markdown("**📋 सभी गेम पलट के साथ (With Palat):**")
-                    st.code(palat_combined, language="text")
+                    st.code(pal_combined, language="text")
                 
-                # --- सबसे लास्ट वाला बॉक्स: सभी गेम के नंबर लाइन-बाय-लाइन और नीचे सभी गेम की पलट लाइन-बाय-लाइन ---
-                if all_games_direct_lines or all_games_palat_lines:
-                    st.markdown("**📋 सभी गेम के संभावित नंबर और नीचे उनकी पलट:**")
-                    combined_lines = all_games_direct_lines + all_games_palat_lines
-                    final_box_text = "\n".join(combined_lines)
-                    st.code(final_box_text, language="text")
+                # --- सबसे लास्ट वाला बॉक्स: हर गेम के 3 नंबर + उनकी पलट एक ही लाइन में ---
+                if all_games_compact_lines:
+                    st.markdown("**📋 सभी गेम के नंबर और पलट (हर गेम की एक लाइन में):**")
+                    compact_box_text = "\n".join(all_games_compact_lines)
+                    st.code(compact_box_text, language="text")
             else:
                 st.info("कॉपी करने के लिए अभी कोई सिंगल नंबर उपलब्ध नहीं है।")
 

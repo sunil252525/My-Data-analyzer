@@ -29,9 +29,10 @@ if uploaded_file is not None:
     available_cols = [c for c in series_cols if c in df.columns]
     
     if available_cols:
-        # डेटा क्लीनिंग
+        # डेटा क्लीनिंग (केवल 0 से 99 के बीच के वैध दो-अंकीय नंबर रखना)
         for c in available_cols:
             df[c] = pd.to_numeric(df[c], errors='coerce')
+            df.loc[(df[c] < 0) | (df[c] > 99), c] = np.nan
 
         st.markdown("---")
         
@@ -48,7 +49,7 @@ if uploaded_file is not None:
             st.subheader("📊 सभी छह मार्केट के अलग-अलग ऑटो-स्कैन रिजल्ट्स")
             
             all_game_singles = []
-            all_games_compact_lines = []  # हर गेम की एक लाइन (टॉप 3 + उनकी पलट साथ में)
+            all_games_compact_lines = []
 
             for col in available_cols:
                 valid_series = df[col].dropna()
@@ -67,14 +68,14 @@ if uploaded_file is not None:
                     with st.expander(f"📍 मार्केट / गेम: {col} (ताज़ा रिजल्ट: {formatted_last})", expanded=True):
                         if game_next_nums:
                             g_series = pd.Series(game_next_nums).value_counts()
-                            best_n = g_series.index[0]
-                            best_cnt = g_series.iloc[0]
+                            best_n = int(g_series.index[0])
+                            best_cnt = int(g_series.iloc[0])
                             
                             formatted_best = f"{best_n:02d}"
                             all_game_singles.append(formatted_best)
                             
                             # टॉप 3 नंबर और उन्हीं की पलट एक ही लाइन में जोड़ना
-                            top3_list = [f"{k:02d}" for k in g_series.head(3).keys()]
+                            top3_list = [f"{int(k):02d}" for k in g_series.head(3).keys()]
                             line_items = list(top3_list)
                             for num_str in top3_list:
                                 rev_str = num_str[::-1]
@@ -88,7 +89,7 @@ if uploaded_file is not None:
                                 st.success(f"👑 **अगला बेस्ट सिंगल नंबर:** **{formatted_best}**")
                                 st.write(f"इतिहास में यह **{best_cnt} बार** देखा गया है।")
                             with col_box2:
-                                top_3_str = ", ".join([f"{k:02d} ({v} बार)" for k, v in g_series.head(3).items()])
+                                top_3_str = ", ".join([f"{int(k):02d} ({int(v)} बार)" for k, v in g_series.head(3).items()])
                                 st.info(f"🔥 **टॉप 3 संभावित नंबर:** {top_3_str}")
                             
                             st.markdown(f"**📋 {col} सिंगल नंबर (कॉपी करें):**")
@@ -107,9 +108,10 @@ if uploaded_file is not None:
                 
                 palat_list = []
                 for s in all_game_singles:
-                    palat_list.append(s)
+                    if s not in palat_list:
+                        palat_list.append(s)
                     rev_s = s[::-1]
-                    if rev_s != s and rev_s not in palat_list:
+                    if rev_s not in palat_list:
                         palat_list.append(rev_s)
                 
                 palat_combined = ", ".join(palat_list)
@@ -122,7 +124,6 @@ if uploaded_file is not None:
                     st.markdown("**📋 सभी गेम पलट के साथ (With Palat):**")
                     st.code(palat_combined, language="text")
                 
-                # --- सबसे लास्ट वाला बॉक्स: हर गेम के 3 नंबर + उनकी पलट एक ही लाइन में ---
                 if all_games_compact_lines:
                     st.markdown("**📋 सभी गेम के नंबर और पलट (हर गेम की एक लाइन में):**")
                     compact_box_text = "\n".join(all_games_compact_lines)
@@ -131,13 +132,12 @@ if uploaded_file is not None:
                 st.info("कॉपी करने के लिए अभी कोई सिंगल नंबर उपलब्ध नहीं है।")
 
         # ==========================================
-        # TAB 2: ताज़ा नंबर का 'ऑल-गेम' सटीक क्रमिक स्कैनर (Corrected Flat Sequence Logic)
+        # TAB 2: ताज़ा नंबर का 'ऑल-गेम' सटीक क्रमिक स्कैनर
         # ==========================================
         with tab2:
             st.subheader("🔍 ताज़ा नंबर का 'ऑल-गेम' सटीक क्रमिक स्कैनर (Sequential All-Market Deep Matcher)")
             st.write("यह टैब सभी छह मार्केट के डेटा को सही क्रमानुसार (Sequence में) जोड़कर चेक करता है कि किसी भी ताज़ा नंबर के बाद ऑल-गेम में ठीक अगला नंबर क्या आया है:")
 
-            # 1. पूरी टेबल को क्रमानुसार एक लंबी लिस्ट (Flat List) में बदलना ताकि मार्केट-दर-मार्केट सही क्रम बना रहे
             flat_sequence = []
             for r_idx in range(len(df)):
                 for c_name in available_cols:
@@ -145,7 +145,6 @@ if uploaded_file is not None:
                     if pd.notna(val):
                         flat_sequence.append(int(val))
 
-            # 2. हर गेम का आखिरी (ताज़ा) नंबर निकालना
             game_latest_dict = {}
             for col in available_cols:
                 v_series = df[col].dropna()
@@ -159,7 +158,6 @@ if uploaded_file is not None:
                 all_game_breakdown = []
                 master_all_game_nexts = []
 
-                # 3. हर गेम के ताज़ा नंबर को इस लंबी क्रमिक लिस्ट में ढूंढकर उसके ठीक बाद आने वाले नंबर देखना
                 for col, target_val in game_latest_dict.items():
                     market_all_nexts = []
                     
@@ -170,8 +168,9 @@ if uploaded_file is not None:
                             master_all_game_nexts.append(nx_val)
 
                     if market_all_nexts:
-                        top_m = pd.Series(market_all_nexts).value_counts().index[0]
-                        top_count = pd.Series(market_all_nexts).value_counts().iloc[0]
+                        counts = pd.Series(market_all_nexts).value_counts()
+                        top_m = int(counts.index[0])
+                        top_count = int(counts.iloc[0])
                         all_game_breakdown.append({
                             "गेम & ताज़ा नंबर": f"{col} ({target_val:02d})",
                             "ऑल-गेम में सबसे पक्का अगला नंबर": f"{top_m:02d}",
@@ -189,7 +188,11 @@ if uploaded_file is not None:
                     res_df_all = pd.DataFrame(all_game_breakdown)
                     st.dataframe(res_df_all, use_container_width=True, hide_index=True)
                     
-                    valid_all_singles = [row['ऑल-गेम में सबसे पक्का अगला नंबर'] for row in all_game_breakdown if row['ऑल-गेम में सबसे पक्का अगला नंबर'] != "डाटा नहीं"]
+                    valid_all_singles = [
+                        row['ऑल-गेम में सबसे पक्का अगला नंबर']
+                        for row in all_game_breakdown
+                        if row['ऑल-गेम में सबसे पक्का अगला नंबर'] != "डाटा नहीं"
+                    ]
                     if valid_all_singles:
                         st.markdown("**📋 इन सभी ऑल-गेम सिंगल नंबरों की कंबाइंड लाइन (कॉपी करें):**")
                         st.code(", ".join(valid_all_singles), language="text")
@@ -197,10 +200,10 @@ if uploaded_file is not None:
                 if master_all_game_nexts:
                     m_series = pd.Series(master_all_game_nexts).value_counts()
                     st.markdown("---")
-                    st.success(f"🔥 **इन सबका महा-संयोजन (Overall All-Game Top Single):** **{m_series.index[0]:02d}** (कुल {m_series.iloc[0]} बार ऑल-गेम क्रम में आया है)")
+                    st.success(f"🔥 **इन सबका महा-संयोजन (Overall All-Game Top Single):** **{int(m_series.index[0]):02d}** (कुल {int(m_series.iloc[0])} बार ऑल-गेम क्रम में आया है)")
                     
                     st.markdown("**📋 ऑल-गेम के टॉप 10 सबसे ताकतवर नंबर (कॉपी करने के लिए):**")
-                    top_10_all = ", ".join([f"{k:02d}" for k in m_series.head(10).keys()])
+                    top_10_all = ", ".join([f"{int(k):02d}" for k in m_series.head(10).keys()])
                     st.code(top_10_all, language="text")
                 else:
                     st.warning("ऑल-गेम के लिए पर्याप्त क्रमिक ऐतिहासिक मैच नहीं मिले।")
